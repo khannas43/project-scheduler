@@ -1,0 +1,19 @@
+{
+  "projectStart": 6300,
+  "defaultCalendarId": "cal-1",
+  "calendar": {
+    "horizonStart": 5760,
+    "horizonDays": 30,
+    "workingWeekdays": [1, 2, 3, 4, 5],
+    "defaultStartMinute": 540,
+    "defaultFinishMinute": 1020
+  },
+  "tasks": [
+    { "id": "A", "parentId": null, "isSummary": false, "durationMinutes": 240, "calendarId": "cal-1" },
+    { "id": "B", "parentId": null, "isSummary": false, "durationMinutes": 240, "calendarId": "cal-1" },
+    { "id": "Short", "parentId": null, "isSummary": false, "durationMinutes": 60, "calendarId": "cal-1" }
+  ],
+  "dependencies": [
+    { "predecessorId": "A", "successorId": "B", "linkType": "FS", "lagMinutes": 0 }
+  ]
+}
