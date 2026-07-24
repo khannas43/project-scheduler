@@ -1,0 +1,30 @@
+import cookie from '@fastify/cookie';
+import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from '@fastify/type-provider-zod';
+import Fastify, { type FastifyInstance } from 'fastify';
+
+import { env } from './env.js';
+import { registerErrorHandler } from './middleware/errors.js';
+import './middleware/auth.js'; // FastifyRequest.user module augmentation
+import './middleware/permissions.js'; // FastifyRequest.permissionsCache module augmentation
+import { authRoutes } from './routes/auth.js';
+import { healthRoutes } from './routes/health.js';
+
+/** Separate from server.ts (which calls .listen()) so tests can `fastify.inject()` against it (§11). */
+export async function buildApp(): Promise<FastifyInstance> {
+  const fastify = Fastify({ logger: { level: env.LOG_LEVEL } }).withTypeProvider<ZodTypeProvider>();
+
+  fastify.setValidatorCompiler(validatorCompiler);
+  fastify.setSerializerCompiler(serializerCompiler);
+
+  fastify.decorateRequest('user', undefined);
+  fastify.decorateRequest('permissionsCache', undefined);
+
+  await fastify.register(cookie);
+
+  registerErrorHandler(fastify);
+
+  await fastify.register(healthRoutes);
+  await fastify.register(authRoutes);
+
+  return fastify;
+}

@@ -13,6 +13,10 @@ function requireEnv(name: string): string {
   return value;
 }
 
+function optionalEnv(name: string, fallback: string): string {
+  return process.env[name] ?? fallback;
+}
+
 function optionalIntEnv(name: string, fallback: number): number {
   const value = process.env[name];
   if (!value) {
@@ -26,14 +30,25 @@ function optionalIntEnv(name: string, fallback: number): number {
 }
 
 export const env = {
+  NODE_ENV: optionalEnv('NODE_ENV', 'development'),
+  PORT: optionalIntEnv('PORT', 3000),
+  LOG_LEVEL: optionalEnv('LOG_LEVEL', 'info'),
+  CORS_ORIGIN: optionalEnv('CORS_ORIGIN', 'http://localhost:8080'),
+
   DATABASE_URL: requireEnv('DATABASE_URL'),
-  // Only read by seed.ts — lazy getters so migrate/client don't require them.
+
+  JWT_SECRET: requireEnv('JWT_SECRET'),
+  JWT_ACCESS_TTL: optionalEnv('JWT_ACCESS_TTL', '15m'),
+  JWT_REFRESH_TTL: optionalEnv('JWT_REFRESH_TTL', '7d'),
+
+  // Appendix B's documented default.
+  ARGON2_MEMORY_KB: optionalIntEnv('ARGON2_MEMORY_KB', 65536),
+
+  // Only read by seed.ts — lazy getters so other entrypoints don't require them.
   get SEED_ADMIN_EMAIL(): string {
     return requireEnv('SEED_ADMIN_EMAIL');
   },
   get SEED_ADMIN_PASSWORD(): string {
     return requireEnv('SEED_ADMIN_PASSWORD');
   },
-  // Appendix B's documented default.
-  ARGON2_MEMORY_KB: optionalIntEnv('ARGON2_MEMORY_KB', 65536),
 };

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.config.json",
     "test": "echo \"no tests yet\" && exit 0",
@@ -14,12 +15,17 @@
     "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.1.2",
+    "@fastify/type-provider-zod": "^1.0.0",
     "@pkg/rbac": "workspace:*",
     "@pkg/scheduler": "workspace:*",
     "@pkg/schema": "workspace:*",
     "argon2": "^0.41.1",
     "drizzle-orm": "^0.45.2",
-    "postgres": "^3.4.5"
+    "fastify": "^5.10.0",
+    "jose": "^6.2.4",
+    "postgres": "^3.4.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

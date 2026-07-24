@@ -2,7 +2,7 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import postgres from 'postgres';
 
-import { env } from './env.js';
+import { env } from '../env.js';
 
 async function main() {
   // A dedicated single connection for migrations, per drizzle-orm's guidance —

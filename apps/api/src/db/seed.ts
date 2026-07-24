@@ -4,7 +4,7 @@ import { eq, inArray, sql } from 'drizzle-orm';
 import { PERMISSIONS, SYSTEM_ROLES } from '@pkg/rbac';
 
 import { db, sql as pgConnection } from './client.js';
-import { env } from './env.js';
+import { env } from '../env.js';
 import { permissions, rolePermissions, roles, users } from './schema/index.js';
 
 /** Mirrors @pkg/rbac's PERMISSIONS registry into the database (§6.1). */
