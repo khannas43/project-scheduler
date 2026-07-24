@@ -1,0 +1,80 @@
+:root {
+  color-scheme: light;
+  --bg: #0f1419;
+  --panel: #1a222c;
+  --text: #e7ecf3;
+  --muted: #8b98a8;
+  --accent: #3b82f6;
+  --ok: #22c55e;
+  --warn: #eab308;
+  --bad: #ef4444;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.hud {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 1rem 1.5rem;
+  align-items: center;
+  padding: 0.65rem 1rem;
+  background: var(--panel);
+  border-bottom: 1px solid #2a3544;
+  font-size: 0.85rem;
+}
+
+.brand {
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem 1.25rem;
+  color: var(--muted);
+}
+
+.stats strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  margin-left: 0.25rem;
+}
+
+.fps strong {
+  font-size: 1.05rem;
+}
+
+.fps.ok strong {
+  color: var(--ok);
+}
+
+.fps.warn strong {
+  color: var(--warn);
+}
+
+.fps.bad strong {
+  color: var(--bad);
+}
+
+.hint {
+  color: var(--muted);
+  font-size: 0.75rem;
+  justify-self: end;
+}
+
+#gantt-root {
+  height: calc(100% - 52px);
+  background: #f7f8fa;
+}

@@ -7,15 +7,17 @@
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch",
+    "dev": "vite --config vite.config.ts",
     "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo \"no tests yet\" && exit 0"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json",
+    "test": "vitest run"
   },
   "dependencies": {
     "@pkg/schema": "workspace:*"
   },
   "devDependencies": {
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vite": "^6.0.6",
+    "vitest": "^4.1.10"
   }
 }

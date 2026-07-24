@@ -1,0 +1,17 @@
+import { describe, expect, it } from 'vitest';
+
+import * as schema from '../src/index.js';
+
+describe('@pkg/schema barrel', () => {
+  it('re-exports create/update schemas for all four entities plus TaskMove', () => {
+    expect(schema.ProjectCreateInputSchema).toBeDefined();
+    expect(schema.ProjectUpdateInputSchema).toBeDefined();
+    expect(schema.CalendarCreateInputSchema).toBeDefined();
+    expect(schema.CalendarUpdateInputSchema).toBeDefined();
+    expect(schema.TaskCreateInputSchema).toBeDefined();
+    expect(schema.TaskUpdateInputSchema).toBeDefined();
+    expect(schema.TaskMoveInputSchema).toBeDefined();
+    expect(schema.DependencyCreateInputSchema).toBeDefined();
+    expect(schema.DependencyUpdateInputSchema).toBeDefined();
+  });
+});
