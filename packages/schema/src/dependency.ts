@@ -40,11 +40,8 @@ const DependencyCreateFields = z.object({
 
 export const DependencyCreateInputSchema = DependencyCreateFields.superRefine(noSelfLink);
 
-export const DependencyUpdateInputSchema = DependencyCreateFields.partial()
-  .extend({
-    version: z.number().int().nonnegative(),
-  })
-  .superRefine(noSelfLink);
+/** Dependencies have no `version` column — update is a plain partial of create fields. */
+export const DependencyUpdateInputSchema = DependencyCreateFields.partial().superRefine(noSelfLink);
 
 export type DependencyCreateInput = z.infer<typeof DependencyCreateInputSchema>;
 export type DependencyUpdateInput = z.infer<typeof DependencyUpdateInputSchema>;

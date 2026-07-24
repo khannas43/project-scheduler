@@ -13,9 +13,8 @@ export const CalendarCreateInputSchema = z.object({
   defaultFinish: z.iso.time(),
 });
 
-export const CalendarUpdateInputSchema = CalendarCreateInputSchema.partial().extend({
-  version: z.number().int().nonnegative(),
-});
+/** Calendars have no `version` column — update is a plain partial of create fields. */
+export const CalendarUpdateInputSchema = CalendarCreateInputSchema.partial();
 
 export type CalendarCreateInput = z.infer<typeof CalendarCreateInputSchema>;
 export type CalendarUpdateInput = z.infer<typeof CalendarUpdateInputSchema>;

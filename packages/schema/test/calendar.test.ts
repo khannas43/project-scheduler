@@ -70,16 +70,23 @@ describe('CalendarCreateInputSchema', () => {
 });
 
 describe('CalendarUpdateInputSchema', () => {
-  it('requires version for optimistic locking (§9.1)', () => {
-    expect(CalendarUpdateInputSchema.safeParse({ name: 'Renamed' }).success).toBe(false);
-  });
-
-  it('accepts a partial patch with version', () => {
+  it('accepts a partial patch without version (calendars have no version column)', () => {
     const result = CalendarUpdateInputSchema.safeParse({
-      version: 2,
       workingDays: [1, 2, 3, 4, 5, 6],
       hoursPerDay: 10,
     });
     expect(result.success).toBe(true);
+  });
+
+  it('accepts a name-only rename', () => {
+    expect(CalendarUpdateInputSchema.safeParse({ name: 'Renamed' }).success).toBe(true);
+  });
+
+  it('strips a stray version field by omission', () => {
+    const result = CalendarUpdateInputSchema.safeParse({ name: 'Renamed', version: 2 });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data).not.toHaveProperty('version');
+    }
   });
 });

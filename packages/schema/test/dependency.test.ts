@@ -76,13 +76,8 @@ describe('DependencyCreateInputSchema', () => {
 });
 
 describe('DependencyUpdateInputSchema', () => {
-  it('requires version for optimistic locking (§9.1)', () => {
-    expect(DependencyUpdateInputSchema.safeParse({ lagMinutes: 60 }).success).toBe(false);
-  });
-
-  it('accepts a partial patch with version', () => {
+  it('accepts a partial patch without version (dependencies have no version column)', () => {
     const result = DependencyUpdateInputSchema.safeParse({
-      version: 1,
       lagMinutes: 120,
       linkType: 'FF',
     });
@@ -91,7 +86,6 @@ describe('DependencyUpdateInputSchema', () => {
 
   it('rejects a self-link when both ids are present in the patch', () => {
     const result = DependencyUpdateInputSchema.safeParse({
-      version: 1,
       predecessorId: PREDECESSOR_ID,
       successorId: PREDECESSOR_ID,
     });
@@ -101,7 +95,6 @@ describe('DependencyUpdateInputSchema', () => {
   it('allows updating only successorId (self-check deferred when predecessor absent)', () => {
     expect(
       DependencyUpdateInputSchema.safeParse({
-        version: 1,
         successorId: SUCCESSOR_ID,
       }).success,
     ).toBe(true);
