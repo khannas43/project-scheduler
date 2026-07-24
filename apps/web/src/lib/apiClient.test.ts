@@ -1,0 +1,110 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import { ApiError, apiRequest, configureApiClient } from '../lib/apiClient.js';
+
+describe('apiRequest', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('attaches the Bearer access token from memory', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    configureApiClient({
+      accessToken: 'tok-123',
+      getAccessToken: () => 'tok-123',
+      setAccessToken: vi.fn(),
+      onAuthFailure: vi.fn(),
+    });
+
+    await apiRequest<{ ok: boolean }>('/api/projects');
+
+    expect(fetchMock).toHaveBeenCalledOnce();
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const headers = new Headers(init.headers);
+    expect(headers.get('Authorization')).toBe('Bearer tok-123');
+    expect(init.credentials).toBe('include');
+  });
+
+  it('on 401 refreshes once then retries the original request', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ status: 401, detail: 'expired', code: 'unauthorized' }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/problem+json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accessToken: 'new-tok' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ items: [1] }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const setAccessToken = vi.fn();
+    configureApiClient({
+      accessToken: 'old-tok',
+      getAccessToken: () => (setAccessToken.mock.calls.length ? 'new-tok' : 'old-tok'),
+      setAccessToken,
+      onAuthFailure: vi.fn(),
+    });
+
+    const result = await apiRequest<{ items: number[] }>('/api/projects');
+
+    expect(result).toEqual({ items: [1] });
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[1]?.[0])).toContain('/api/auth/refresh');
+    expect(setAccessToken).toHaveBeenCalledWith('new-tok');
+  });
+
+  it('surfaces RFC 7807 code and detail on non-auth failures', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            status: 409,
+            detail: 'Task version conflict',
+            code: 'conflict',
+            current: { version: 2 },
+          }),
+          { status: 409, headers: { 'Content-Type': 'application/problem+json' } },
+        ),
+      ),
+    );
+
+    configureApiClient({
+      accessToken: 'tok',
+      getAccessToken: () => 'tok',
+      setAccessToken: vi.fn(),
+      onAuthFailure: vi.fn(),
+    });
+
+    await expect(apiRequest('/api/tasks/x', { method: 'PATCH', body: {} })).rejects.toSatisfy(
+      (err: unknown) => {
+        expect(err).toBeInstanceOf(ApiError);
+        const e = err as ApiError;
+        expect(e.status).toBe(409);
+        expect(e.code).toBe('conflict');
+        expect(e.detail).toBe('Task version conflict');
+        expect(e.problem.current).toEqual({ version: 2 });
+        return true;
+      },
+    );
+  });
+});

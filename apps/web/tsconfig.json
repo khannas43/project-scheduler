@@ -5,8 +5,12 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
-    "rootDir": "src",
-    "outDir": "dist"
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "rootDir": ".",
+    "types": ["vite/client", "vitest/globals"]
   },
-  "include": ["src"]
+  "include": ["src", "vite.config.ts", "vitest.config.ts"]
 }

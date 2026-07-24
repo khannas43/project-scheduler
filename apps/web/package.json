@@ -4,20 +4,35 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsc -p tsconfig.json --watch",
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo \"no tests yet\" && exit 0"
+    "test": "vitest run"
   },
   "dependencies": {
     "@pkg/gantt": "workspace:*",
     "@pkg/rbac": "workspace:*",
     "@pkg/scheduler": "workspace:*",
     "@pkg/schema": "workspace:*",
-    "@pkg/ui": "workspace:*"
+    "@pkg/ui": "workspace:*",
+    "@tanstack/react-query": "^5.66.0",
+    "@tanstack/react-router": "^1.105.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "typescript": "^5.7.2"
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.6",
+    "vitest": "^4.1.10"
   }
 }
