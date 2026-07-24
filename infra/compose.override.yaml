@@ -1,0 +1,30 @@
+# Dev overlay (§10.2): mounts source for hot reload instead of running the
+# slim production image. Not used in production deployments.
+#
+# Usage: docker compose -f infra/compose.yaml -f infra/compose.override.yaml up
+
+services:
+  api:
+    build:
+      target: builder    # keep the toolchain (tsx, pnpm) instead of the deployed runtime stage
+    working_dir: /repo
+    command: ["pnpm", "--filter=api", "dev"]
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ../apps/api/src:/repo/apps/api/src
+      - ../packages:/repo/packages
+    healthcheck:
+      disable: true
+
+  # Becomes a real dev server once apps/web is a Vite app (docs/adr/plan.md's
+  # "apps/web shell" item) — today `pnpm --filter web dev` is just
+  # `tsc --watch` with nothing listening on a port.
+  web:
+    build:
+      target: builder
+    working_dir: /repo
+    command: ["pnpm", "--filter=web", "dev"]
+    ports: ["5173:5173"]
+    volumes:
+      - ../apps/web/src:/repo/apps/web/src

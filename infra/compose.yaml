@@ -1,0 +1,78 @@
+# See docs/TECHNICAL_DESIGN.md §10 for the design this implements.
+#
+# Usage:
+#   cp infra/.env.example infra/.env   # fill in real values
+#   docker compose -f infra/compose.yaml up
+#
+# Dev, with hot reload:
+#   docker compose -f infra/compose.yaml -f infra/compose.override.yaml up
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: scheduler
+      POSTGRES_USER: scheduler
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in infra/.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scheduler"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Init container (§10.2): runs migrations once and exits. Never run on
+  # API boot — two API replicas racing on the same migration is exactly
+  # what this avoids.
+  migrate:
+    build:
+      context: ..
+      dockerfile: infra/docker/api.Dockerfile
+    command: ["node", "dist/db/migrate.js"]
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/docker/api.Dockerfile
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      # 127.0.0.1, not localhost: Alpine resolves localhost to ::1 first,
+      # and the server only binds the IPv4 0.0.0.0 — that would refuse the
+      # connection and leave the container permanently "unhealthy".
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/docker/web.Dockerfile
+    ports: ["8080:80"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:
