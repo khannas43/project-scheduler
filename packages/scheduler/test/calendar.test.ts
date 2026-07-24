@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { addWorkingMinutes, compileCalendar, type CalendarCompilationInput } from '../src/calendar.js';
+import { addWorkingMinutes, compileCalendar, subtractWorkingMinutes, type CalendarCompilationInput } from '../src/calendar.js';
 import { asEpochMinutes, MINUTES_PER_DAY } from '../src/types.js';
 
 // Unix epoch day 0 (1970-01-01) was a Thursday. Day 4 (1970-01-05) was
@@ -136,6 +136,84 @@ describe('addWorkingMinutes (§4.2)', () => {
 
     // Saturday's 240 minutes consumed exactly, Sunday contributes nothing -> Monday 9:01am.
     expect(result).toBe(dayStart(SAT + 2) + NINE_AM + 1);
+  });
+});
+
+describe('subtractWorkingMinutes (§4.5 — the backward pass needs this)', () => {
+  it('mid-day: subtracts within the same working day', () => {
+    const calendar = compileCalendar(MON_FRI_9_5);
+    const finish = asEpochMinutes(dayStart(MON) + ONE_PM);
+
+    const result = subtractWorkingMinutes(finish, 120, calendar);
+
+    expect(result).toBe(dayStart(MON) + ELEVEN_AM);
+  });
+
+  it('crossing a weekend backward: rolls remaining duration back over Sat/Sun to Friday', () => {
+    const calendar = compileCalendar(MON_FRI_9_5);
+    // Monday 10am, only 1 hour of working time available so far that day.
+    const finish = asEpochMinutes(dayStart(MON + 7) + TEN_AM);
+
+    const result = subtractWorkingMinutes(finish, 120, calendar);
+
+    // 60 min consumed backward into Monday, 60 min remaining -> Friday 4pm.
+    expect(result).toBe(dayStart(FRI) + FOUR_PM);
+  });
+
+  it('landing exactly on a day boundary: a full working day lands exactly at day start', () => {
+    const calendar = compileCalendar(MON_FRI_9_5);
+    const finish = asEpochMinutes(dayStart(MON) + FIVE_PM);
+
+    const result = subtractWorkingMinutes(finish, 480, calendar);
+
+    expect(result).toBe(dayStart(MON) + NINE_AM);
+  });
+
+  it('zero duration: returns the finish time unchanged, even outside working hours', () => {
+    const calendar = compileCalendar(MON_FRI_9_5);
+    const finish = asEpochMinutes(dayStart(SAT) + THREE_PM);
+
+    const result = subtractWorkingMinutes(finish, 0, calendar);
+
+    expect(result).toBe(finish);
+  });
+
+  it('duration spanning a holiday exception: skips a mid-week holiday entirely', () => {
+    const calendar = compileCalendar({
+      ...MON_FRI_9_5,
+      exceptions: [{ date: asEpochMinutes(dayStart(WED)), isWorking: false }],
+    });
+    // Thursday 10am, only 1 hour of working time available so far that day.
+    const finish = asEpochMinutes(dayStart(THU) + TEN_AM);
+
+    const result = subtractWorkingMinutes(finish, 120, calendar);
+
+    // 60 min consumed backward into Thursday, Wednesday skipped, 60 min -> Tuesday 4pm.
+    expect(result).toBe(dayStart(TUE) + FOUR_PM);
+  });
+
+  it('is the exact inverse of addWorkingMinutes across a variety of starts and durations', () => {
+    const calendar = compileCalendar({
+      ...MON_FRI_9_5,
+      exceptions: [
+        { date: asEpochMinutes(dayStart(WED)), isWorking: false },
+        { date: asEpochMinutes(dayStart(SAT + 7)), isWorking: true, startMinute: TEN_AM, finishMinute: TWO_PM },
+      ],
+    });
+
+    const cases: Array<{ start: number; duration: number }> = [
+      { start: dayStart(MON) + ELEVEN_AM, duration: 120 },
+      { start: dayStart(FRI) + FOUR_PM, duration: 300 },
+      { start: dayStart(TUE) + FOUR_PM, duration: 180 },
+      { start: dayStart(MON) + NINE_AM, duration: 0 },
+      { start: dayStart(SAT + 7) + TEN_AM, duration: 241 },
+    ];
+
+    for (const { start, duration } of cases) {
+      const finish = addWorkingMinutes(asEpochMinutes(start), duration, calendar);
+      const roundTripped = subtractWorkingMinutes(finish, duration, calendar);
+      expect(roundTripped).toBe(start);
+    }
   });
 });
 

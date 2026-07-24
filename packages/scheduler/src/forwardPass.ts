@@ -1,4 +1,5 @@
 import { addWorkingMinutes, type CompiledCalendar } from './calendar.js';
+import { computeTopologicalOrder } from './graphOrdering.js';
 import { asEpochMinutes, type CalendarId, type EpochMinutes, type TaskId } from './types.js';
 
 export type LinkType = 'FS' | 'SS' | 'FF' | 'SF';
@@ -67,55 +68,13 @@ export function runForwardPass(
   }
 
   const predecessorsOf = new Map<TaskId, { predecessorId: TaskId; lagMinutes: number }[]>();
-  const successorsOf = new Map<TaskId, TaskId[]>();
-  const inDegree = new Map<TaskId, number>();
-  for (const id of schedulableIds) {
-    inDegree.set(id, 0);
-  }
-
   for (const dep of relevantDeps) {
     const preds = predecessorsOf.get(dep.successorId) ?? [];
     preds.push({ predecessorId: dep.predecessorId, lagMinutes: dep.lagMinutes });
     predecessorsOf.set(dep.successorId, preds);
-
-    const succs = successorsOf.get(dep.predecessorId) ?? [];
-    succs.push(dep.successorId);
-    successorsOf.set(dep.predecessorId, succs);
-
-    inDegree.set(dep.successorId, (inDegree.get(dep.successorId) ?? 0) + 1);
   }
 
-  // Kahn's algorithm — validateGraph already ran (§4.3), so this graph is
-  // known acyclic; a leftover node after the queue drains would mean this
-  // function was called without validating first.
-  const queue: TaskId[] = [];
-  for (const [id, degree] of inDegree) {
-    if (degree === 0) {
-      queue.push(id);
-    }
-  }
-
-  const topoOrder: TaskId[] = [];
-  let head = 0;
-  while (head < queue.length) {
-    const current = queue[head];
-    head += 1;
-    if (current === undefined) {
-      continue;
-    }
-    topoOrder.push(current);
-    for (const successor of successorsOf.get(current) ?? []) {
-      const remaining = (inDegree.get(successor) ?? 0) - 1;
-      inDegree.set(successor, remaining);
-      if (remaining === 0) {
-        queue.push(successor);
-      }
-    }
-  }
-
-  if (topoOrder.length !== schedulableIds.size) {
-    throw new Error('Forward pass encountered a cycle — call validateGraph() first');
-  }
+  const topoOrder = computeTopologicalOrder(schedulableIds, relevantDeps);
 
   const results = new Map<TaskId, ComputedSchedule>();
 

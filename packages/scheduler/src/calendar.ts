@@ -1,4 +1,4 @@
-import { lowerBound } from './binarySearch.js';
+import { lowerBound, upperBound } from './binarySearch.js';
 import { asEpochMinutes, MINUTES_PER_DAY, type EpochMinutes } from './types.js';
 
 /**
@@ -113,6 +113,69 @@ export function compileCalendar(input: CalendarCompilationInput): CompiledCalend
 }
 
 /**
+ * g(t) — total working minutes from `horizonStart` up to `t` (§4.2). The
+ * shared core of both addWorkingMinutes and subtractWorkingMinutes: adding
+ * duration to a start time and subtracting it from a finish time are the
+ * same operation — evaluate g, shift the cumulative value, invert g — just
+ * shifted in opposite directions.
+ */
+function cumulativeWorkingMinutesUpTo(t: EpochMinutes, calendar: CompiledCalendar): number {
+  const { horizonStart, slots, dayStarts } = calendar;
+  const dayIndex = Math.floor((t - horizonStart) / MINUTES_PER_DAY);
+  if (dayIndex < 0 || dayIndex >= slots.length) {
+    throw new RangeError('time falls outside the compiled calendar horizon');
+  }
+
+  const priorCumulative = dayIndex > 0 ? (slots[dayIndex - 1] ?? 0) : 0;
+  const dayCapacity = (slots[dayIndex] ?? 0) - priorCumulative;
+  const dayBegin = dayStarts[dayIndex] ?? 0;
+  const dayEnd = dayBegin + dayCapacity;
+
+  let consumed: number;
+  if (t <= dayBegin) {
+    consumed = 0;
+  } else if (t >= dayEnd) {
+    consumed = dayCapacity;
+  } else {
+    consumed = t - dayBegin;
+  }
+
+  return priorCumulative + consumed;
+}
+
+/**
+ * g⁻¹(target) — the timestamp at which exactly `target` working minutes have
+ * elapsed since horizonStart. Not always unique: if `target` falls exactly
+ * on the boundary between a working period ending and the next one starting
+ * (a non-working gap), *every* instant in that gap satisfies g(t) = target.
+ * `bound` picks which end of that gap to resolve to — the earliest instant
+ * (lowerBound) for addWorkingMinutes, since forward motion should stop as
+ * soon as the target is reached; the latest instant (upperBound) for
+ * subtractWorkingMinutes, for the mirror-image reason moving backward.
+ */
+function timestampAtCumulative(
+  target: number,
+  calendar: CompiledCalendar,
+  bound: (sorted: Int32Array, target: number) => number,
+): EpochMinutes {
+  if (target < 0) {
+    throw new RangeError('target cumulative working minutes is before the compiled calendar horizon');
+  }
+
+  const { slots, dayStarts } = calendar;
+  const dayIndex = bound(slots, target);
+  if (dayIndex >= slots.length) {
+    throw new RangeError('target cumulative working minutes exceeds the compiled calendar horizon');
+  }
+
+  const priorCumulative = dayIndex > 0 ? (slots[dayIndex - 1] ?? 0) : 0;
+  const remainderIntoDay = target - priorCumulative;
+  const dayBegin = dayStarts[dayIndex] ?? 0;
+
+  return asEpochMinutes(dayBegin + remainderIntoDay);
+}
+
+/**
  * Adds `durationMinutes` of *working* time to `start`, skipping non-working
  * time entirely (§4.2). `durationMinutes` must be >= 0 — this function only
  * moves forward; `start` need not itself be a working instant.
@@ -129,36 +192,31 @@ export function addWorkingMinutes(
     return start;
   }
 
-  const { horizonStart, slots, dayStarts } = calendar;
-  const startDayIndex = Math.floor((start - horizonStart) / MINUTES_PER_DAY);
-  if (startDayIndex < 0 || startDayIndex >= slots.length) {
-    throw new RangeError('start falls outside the compiled calendar horizon');
+  const target = cumulativeWorkingMinutesUpTo(start, calendar) + durationMinutes;
+  return timestampAtCumulative(target, calendar, lowerBound);
+}
+
+/**
+ * Subtracts `durationMinutes` of *working* time from `finish` (§4.5 needs
+ * this for the backward pass — predecessor.late_finish derives from
+ * successor.late_start minus lag, and late_start itself derives from
+ * late_finish minus the task's own duration). The exact inverse of
+ * addWorkingMinutes: `subtractWorkingMinutes(addWorkingMinutes(t, n, cal), n, cal) === t`.
+ * `durationMinutes` must be >= 0 — this function only moves backward;
+ * `finish` need not itself be a working instant.
+ */
+export function subtractWorkingMinutes(
+  finish: EpochMinutes,
+  durationMinutes: number,
+  calendar: CompiledCalendar,
+): EpochMinutes {
+  if (durationMinutes < 0) {
+    throw new RangeError('durationMinutes must be >= 0');
+  }
+  if (durationMinutes === 0) {
+    return finish;
   }
 
-  const priorCumulative = startDayIndex > 0 ? (slots[startDayIndex - 1] ?? 0) : 0;
-  const startDayCapacity = (slots[startDayIndex] ?? 0) - priorCumulative;
-  const startDayBegin = dayStarts[startDayIndex] ?? 0;
-  const startDayEnd = startDayBegin + startDayCapacity;
-
-  let consumedOnStartDay: number;
-  if (start <= startDayBegin) {
-    consumedOnStartDay = 0;
-  } else if (start >= startDayEnd) {
-    consumedOnStartDay = startDayCapacity;
-  } else {
-    consumedOnStartDay = start - startDayBegin;
-  }
-
-  const target = priorCumulative + consumedOnStartDay + durationMinutes;
-
-  const targetDayIndex = lowerBound(slots, target);
-  if (targetDayIndex >= slots.length) {
-    throw new RangeError('addWorkingMinutes exceeded the compiled calendar horizon');
-  }
-
-  const priorAtTargetDay = targetDayIndex > 0 ? (slots[targetDayIndex - 1] ?? 0) : 0;
-  const remainderIntoDay = target - priorAtTargetDay;
-  const targetDayBegin = dayStarts[targetDayIndex] ?? 0;
-
-  return asEpochMinutes(targetDayBegin + remainderIntoDay);
+  const target = cumulativeWorkingMinutesUpTo(finish, calendar) - durationMinutes;
+  return timestampAtCumulative(target, calendar, upperBound);
 }
