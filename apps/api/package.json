@@ -7,15 +7,24 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
     "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "echo \"no tests yet\" && exit 0"
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.config.json",
+    "test": "echo \"no tests yet\" && exit 0",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed": "tsx src/db/seed.ts"
   },
   "dependencies": {
     "@pkg/rbac": "workspace:*",
     "@pkg/scheduler": "workspace:*",
-    "@pkg/schema": "workspace:*"
+    "@pkg/schema": "workspace:*",
+    "argon2": "^0.41.1",
+    "drizzle-orm": "^0.45.2",
+    "postgres": "^3.4.5"
   },
   "devDependencies": {
+    "@types/node": "^22.10.2",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }
 }
