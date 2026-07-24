@@ -1,19 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  SchedulingError,
-  validateGraph,
-  type DependencyEdge,
-  type TaskNode,
-} from '../src/graphValidation.js';
-import { asTaskId } from '../src/types.js';
+import { SchedulingError, validateGraph } from '../src/graphValidation.js';
+import type { DependencyInput, TaskInput } from '../src/taskTypes.js';
+import { asCalendarId, asTaskId } from '../src/types.js';
 
-function task(id: string, parentId: string | null = null, isSummary = false): TaskNode {
-  return { id: asTaskId(id), parentId: parentId === null ? null : asTaskId(parentId), isSummary };
+const DUMMY_CALENDAR = asCalendarId('cal');
+
+function task(id: string, parentId: string | null = null, isSummary = false): TaskInput {
+  return {
+    id: asTaskId(id),
+    parentId: parentId === null ? null : asTaskId(parentId),
+    isSummary,
+    durationMinutes: 60,
+    calendarId: DUMMY_CALENDAR,
+  };
 }
 
-function edge(predecessorId: string, successorId: string): DependencyEdge {
-  return { predecessorId: asTaskId(predecessorId), successorId: asTaskId(successorId) };
+function edge(predecessorId: string, successorId: string): DependencyInput {
+  return {
+    predecessorId: asTaskId(predecessorId),
+    successorId: asTaskId(successorId),
+    linkType: 'FS',
+    lagMinutes: 0,
+  };
 }
 
 describe('validateGraph — cycle detection (§4.3)', () => {

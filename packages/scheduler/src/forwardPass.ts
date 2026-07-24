@@ -1,23 +1,9 @@
 import { addWorkingMinutes, type CompiledCalendar } from './calendar.js';
 import { computeTopologicalOrder } from './graphOrdering.js';
+import type { DependencyInput, TaskInput } from './taskTypes.js';
 import { asEpochMinutes, type CalendarId, type EpochMinutes, type TaskId } from './types.js';
 
-export type LinkType = 'FS' | 'SS' | 'FF' | 'SF';
-
-export interface DependencyInput {
-  readonly predecessorId: TaskId;
-  readonly successorId: TaskId;
-  readonly linkType: LinkType;
-  readonly lagMinutes: number;
-}
-
-export interface TaskInput {
-  readonly id: TaskId;
-  /** Summary tasks are never directly scheduled (§4.7) — excluded from the result entirely. */
-  readonly isSummary: boolean;
-  readonly durationMinutes: number;
-  readonly calendarId: CalendarId;
-}
+export type { DependencyInput, LinkType, TaskInput } from './taskTypes.js';
 
 export interface ComputedSchedule {
   readonly earlyStart: EpochMinutes;

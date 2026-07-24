@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { addWorkingMinutes, compileCalendar, subtractWorkingMinutes, type CalendarCompilationInput } from '../src/calendar.js';
+import {
+  addWorkingMinutes,
+  compileCalendar,
+  subtractWorkingMinutes,
+  workingMinutesBetween,
+  type CalendarCompilationInput,
+} from '../src/calendar.js';
 import { asEpochMinutes, MINUTES_PER_DAY } from '../src/types.js';
 
 // Unix epoch day 0 (1970-01-01) was a Thursday. Day 4 (1970-01-05) was
@@ -214,6 +220,43 @@ describe('subtractWorkingMinutes (§4.5 — the backward pass needs this)', () =
       const roundTripped = subtractWorkingMinutes(finish, duration, calendar);
       expect(roundTripped).toBe(start);
     }
+  });
+});
+
+describe('workingMinutesBetween (§4.7 — summary rollup needs this)', () => {
+  it('counts working minutes within a single day', () => {
+    const calendar = compileCalendar(MON_FRI_9_5);
+    const start = asEpochMinutes(dayStart(MON) + ELEVEN_AM);
+    const finish = asEpochMinutes(dayStart(MON) + ONE_PM);
+
+    expect(workingMinutesBetween(start, finish, calendar)).toBe(120);
+  });
+
+  it('skips weekends and holidays entirely', () => {
+    const calendar = compileCalendar({
+      ...MON_FRI_9_5,
+      exceptions: [{ date: asEpochMinutes(dayStart(WED)), isWorking: false }],
+    });
+    const start = asEpochMinutes(dayStart(MON) + NINE_AM);
+    const finish = asEpochMinutes(dayStart(MON + 7) + NINE_AM); // one week later, same instant
+
+    // Mon,Tue,Thu,Fri full days (Wed is a holiday, Sat/Sun never work) = 4 * 480.
+    expect(workingMinutesBetween(start, finish, calendar)).toBe(4 * 480);
+  });
+
+  it('is zero when start === finish', () => {
+    const calendar = compileCalendar(MON_FRI_9_5);
+    const t = asEpochMinutes(dayStart(MON) + ELEVEN_AM);
+
+    expect(workingMinutesBetween(t, t, calendar)).toBe(0);
+  });
+
+  it('is the inverse relationship of addWorkingMinutes: workingMinutesBetween(start, addWorkingMinutes(start, n)) === n', () => {
+    const calendar = compileCalendar(MON_FRI_9_5);
+    const start = asEpochMinutes(dayStart(FRI) + FOUR_PM);
+    const finish = addWorkingMinutes(start, 300, calendar); // crosses the weekend
+
+    expect(workingMinutesBetween(start, finish, calendar)).toBe(300);
   });
 });
 

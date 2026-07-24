@@ -220,3 +220,8 @@ export function subtractWorkingMinutes(
   const target = cumulativeWorkingMinutesUpTo(finish, calendar) - durationMinutes;
   return timestampAtCumulative(target, calendar, upperBound);
 }
+
+/** g(finish) − g(start) — the working minutes between two instants (§4.7 needs this for summary duration rollup). */
+export function workingMinutesBetween(start: EpochMinutes, finish: EpochMinutes, calendar: CompiledCalendar): number {
+  return cumulativeWorkingMinutesUpTo(finish, calendar) - cumulativeWorkingMinutesUpTo(start, calendar);
+}

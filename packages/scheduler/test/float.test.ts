@@ -23,7 +23,7 @@ const MON_FRI_9_5: CalendarCompilationInput = {
 const calendars = new Map([[CAL, compileCalendar(MON_FRI_9_5)]]);
 
 function task(id: string, durationMinutes: number): TaskInput {
-  return { id: asTaskId(id), isSummary: false, durationMinutes, calendarId: CAL };
+  return { id: asTaskId(id), parentId: null, isSummary: false, durationMinutes, calendarId: CAL };
 }
 
 function fs(predecessorId: string, successorId: string): DependencyInput {
@@ -111,7 +111,9 @@ describe('computeFloat (§4.6)', () => {
         }),
       ],
     ]);
-    const tasks: TaskInput[] = [{ id: asTaskId('A'), isSummary: false, durationMinutes: 480, calendarId: wideCal }];
+    const tasks: TaskInput[] = [
+      { id: asTaskId('A'), parentId: null, isSummary: false, durationMinutes: 480, calendarId: wideCal },
+    ];
 
     const forward = runForwardPass(projectStart, tasks, [], wideCalendars);
     // Finish the project at 1pm, but A needs until 5pm -> negative float.

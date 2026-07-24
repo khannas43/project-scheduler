@@ -36,7 +36,7 @@ const calendars = new Map([
 ]);
 
 function task(id: string, durationMinutes: number, calendarId = CAL, isSummary = false): TaskInput {
-  return { id: asTaskId(id), isSummary, durationMinutes, calendarId };
+  return { id: asTaskId(id), parentId: null, isSummary, durationMinutes, calendarId };
 }
 
 function fs(predecessorId: string, successorId: string, lagMinutes = 0): DependencyInput {

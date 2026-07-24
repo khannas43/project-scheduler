@@ -1,15 +1,5 @@
+import type { DependencyInput, TaskInput } from './taskTypes.js';
 import type { TaskId } from './types.js';
-
-export interface TaskNode {
-  readonly id: TaskId;
-  readonly parentId: TaskId | null;
-  readonly isSummary: boolean;
-}
-
-export interface DependencyEdge {
-  readonly predecessorId: TaskId;
-  readonly successorId: TaskId;
-}
 
 /** §12.3: carries the offending task IDs for UI highlighting. */
 export class SchedulingError extends Error {
@@ -83,7 +73,7 @@ function findCycle(taskIds: readonly TaskId[], adjacency: ReadonlyMap<TaskId, re
   return null;
 }
 
-function buildAdjacency(dependencies: readonly DependencyEdge[]): Map<TaskId, TaskId[]> {
+function buildAdjacency(dependencies: readonly DependencyInput[]): Map<TaskId, TaskId[]> {
   const adjacency = new Map<TaskId, TaskId[]>();
   for (const { predecessorId, successorId } of dependencies) {
     const successors = adjacency.get(predecessorId);
@@ -97,7 +87,7 @@ function buildAdjacency(dependencies: readonly DependencyEdge[]): Map<TaskId, Ta
 }
 
 function isAncestorOf(
-  taskById: ReadonlyMap<TaskId, TaskNode>,
+  taskById: ReadonlyMap<TaskId, TaskInput>,
   ancestorId: TaskId,
   descendantId: TaskId,
 ): boolean {
@@ -112,11 +102,11 @@ function isAncestorOf(
 }
 
 function findSummaryLinkViolations(
-  tasks: readonly TaskNode[],
-  dependencies: readonly DependencyEdge[],
-): DependencyEdge[] {
+  tasks: readonly TaskInput[],
+  dependencies: readonly DependencyInput[],
+): DependencyInput[] {
   const taskById = new Map(tasks.map((t) => [t.id, t] as const));
-  const violations: DependencyEdge[] = [];
+  const violations: DependencyInput[] = [];
 
   for (const dep of dependencies) {
     const predecessor = taskById.get(dep.predecessorId);
@@ -141,7 +131,7 @@ function findSummaryLinkViolations(
  * the first class of problem found (cycle, then orphan, then summary-link) —
  * reject the mutation entirely rather than attempt partial scheduling.
  */
-export function validateGraph(tasks: readonly TaskNode[], dependencies: readonly DependencyEdge[]): void {
+export function validateGraph(tasks: readonly TaskInput[], dependencies: readonly DependencyInput[]): void {
   const taskIds = tasks.map((t) => t.id);
   const taskIdSet = new Set(taskIds);
 
