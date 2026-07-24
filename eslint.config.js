@@ -86,7 +86,11 @@ module.exports = tseslint.config(
     // §1.2: scheduler is pure — no imports of any kind outside itself,
     // including npm packages (date-fns, lodash) and Node builtins.
     // Relative imports within the package (./, ../) are unaffected.
-    files: ['packages/scheduler/**/*.ts', 'packages/scheduler/**/*.tsx'],
+    // Scoped to src/ only, not test/ — the purity rule is about what ships
+    // and runs in the browser/server, not the Vitest harness that never does
+    // (test files still can't import sibling workspace packages, per the
+    // import/no-restricted-paths zone above, which covers the whole package).
+    files: ['packages/scheduler/src/**/*.ts', 'packages/scheduler/src/**/*.tsx'],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -98,6 +102,28 @@ module.exports = tseslint.config(
               message: 'packages/scheduler must not import anything outside itself (§1.2) — no npm packages, no Node builtins.',
             },
           ],
+        },
+      ],
+      // §1.2: no Date.now(), no bare `new Date()`, no Math.random() — the
+      // engine is a referentially transparent function of its inputs.
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "NewExpression[callee.name='Date'][arguments.length=0]",
+          message: 'packages/scheduler must not construct `new Date()` without an explicit argument (§1.2) — all times are EpochMinutes.',
+        },
+      ],
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Date',
+          property: 'now',
+          message: 'packages/scheduler must not call Date.now() (§1.2) — the engine is a pure function of its inputs.',
+        },
+        {
+          object: 'Math',
+          property: 'random',
+          message: 'packages/scheduler must not call Math.random() (§1.2) — the engine is referentially transparent.',
         },
       ],
     },
