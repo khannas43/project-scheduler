@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { FastifyRequest } from 'fastify';
 
 import { db } from '../db/client.js';
-import { tasks } from '../db/schema/index.js';
+import { taskDependencies, tasks } from '../db/schema/index.js';
 import { getEffectivePermissions } from '../services/permissionService.js';
 import { ForbiddenError, UnauthorizedError } from './errors.js';
 
@@ -20,16 +20,11 @@ declare module 'fastify' {
  * route pattern (request.routeOptions.url) rather than the param name —
  * reliable without renaming every route's params.
  *
- * Extend the prefix list as more resource types gain permission-guarded
- * routes (e.g. `/api/dependencies/:id` -> dependency -> task -> project).
+ * Exported for unit tests covering the dependency branches.
  */
-async function resolveProjectId(request: FastifyRequest): Promise<string | undefined> {
+export async function resolveProjectId(request: FastifyRequest): Promise<string | undefined> {
   const params = request.params as Record<string, unknown>;
   const id = typeof params.id === 'string' ? params.id : undefined;
-  if (!id) {
-    return undefined;
-  }
-
   const routePath = request.routeOptions.url ?? '';
 
   if (routePath.startsWith('/api/projects/')) {
@@ -37,8 +32,36 @@ async function resolveProjectId(request: FastifyRequest): Promise<string | undef
   }
 
   if (routePath.startsWith('/api/tasks/')) {
+    if (!id) return undefined;
     const [task] = await db.select({ projectId: tasks.projectId }).from(tasks).where(eq(tasks.id, id)).limit(1);
     return task?.projectId;
+  }
+
+  // POST /api/dependencies — no :id; project comes from body.predecessorId → task.
+  // DELETE /api/dependencies/:id — :id is a dependency id, not a task/project.
+  if (routePath.startsWith('/api/dependencies')) {
+    if (!id) {
+      const body = request.body as Record<string, unknown> | null | undefined;
+      const predecessorId =
+        body && typeof body === 'object' && typeof body.predecessorId === 'string'
+          ? body.predecessorId
+          : undefined;
+      if (!predecessorId) return undefined;
+      const [task] = await db
+        .select({ projectId: tasks.projectId })
+        .from(tasks)
+        .where(eq(tasks.id, predecessorId))
+        .limit(1);
+      return task?.projectId;
+    }
+
+    const [row] = await db
+      .select({ projectId: tasks.projectId })
+      .from(taskDependencies)
+      .innerJoin(tasks, eq(taskDependencies.predecessorId, tasks.id))
+      .where(eq(taskDependencies.id, id))
+      .limit(1);
+    return row?.projectId;
   }
 
   return undefined;

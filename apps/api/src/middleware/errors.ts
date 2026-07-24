@@ -35,16 +35,68 @@ export class NotFoundError extends AppError {
   }
 }
 
+export class BadRequestError extends AppError {
+  constructor(message = 'Bad request') {
+    super('bad_request', 400, message);
+    this.name = 'BadRequestError';
+  }
+}
+
+/** §9.1: 409 with the current server state attached for the client reload prompt. */
 export class ConflictError extends AppError {
-  constructor(message = 'Conflict') {
+  readonly current: unknown;
+
+  constructor(message = 'Conflict', current?: unknown) {
     super('conflict', 409, message);
     this.name = 'ConflictError';
+    this.current = current;
+  }
+}
+
+/** Maps @pkg/scheduler SchedulingError → 409 with taskIds for UI highlighting. */
+export class SchedulingConflictError extends AppError {
+  readonly taskIds: readonly string[];
+
+  constructor(message: string, taskIds: readonly string[]) {
+    super('scheduling_conflict', 409, message);
+    this.name = 'SchedulingConflictError';
+    this.taskIds = taskIds;
   }
 }
 
 /** RFC 7807 problem+json error responses (§5.1). Never swallow an error (§12.3). */
 export function registerErrorHandler(fastify: FastifyInstance): void {
   fastify.setErrorHandler((error, request, reply) => {
+    if (error instanceof ConflictError) {
+      reply
+        .code(error.status)
+        .type('application/problem+json')
+        .send({
+          type: 'about:blank',
+          title: error.name,
+          status: error.status,
+          detail: error.message,
+          code: error.code,
+          ...(error.current !== undefined ? { current: error.current } : {}),
+        });
+      return;
+    }
+
+    if (error instanceof SchedulingConflictError) {
+      reply
+        .code(error.status)
+        .type('application/problem+json')
+        .send({
+          type: 'about:blank',
+          title: error.name,
+          status: error.status,
+          detail: error.message,
+          code: error.code,
+          taskIds: error.taskIds,
+        });
+      return;
+    }
+
     if (error instanceof AppError) {
       reply
         .code(error.status)

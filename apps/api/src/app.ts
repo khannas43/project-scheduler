@@ -8,7 +8,10 @@ import { registerErrorHandler } from './middleware/errors.js';
 import './middleware/auth.js'; // FastifyRequest.user module augmentation
 import './middleware/permissions.js'; // FastifyRequest.permissionsCache module augmentation
 import { authRoutes } from './routes/auth.js';
+import { dependencyRoutes } from './routes/dependencies.js';
 import { healthRoutes } from './routes/health.js';
+import { projectRoutes } from './routes/projects.js';
+import { taskRoutes } from './routes/tasks.js';
 
 /** Separate from server.ts (which calls .listen()) so tests can `fastify.inject()` against it (§11). */
 export async function buildApp(): Promise<FastifyInstance> {
@@ -49,6 +52,9 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   await fastify.register(healthRoutes);
   await fastify.register(authRoutes);
+  await fastify.register(projectRoutes);
+  await fastify.register(taskRoutes);
+  await fastify.register(dependencyRoutes);
 
   return fastify;
 }

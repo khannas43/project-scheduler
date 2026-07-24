@@ -1,0 +1,112 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const limit = vi.fn();
+const chain = {
+  from: vi.fn(),
+  where: vi.fn(),
+  innerJoin: vi.fn(),
+  limit,
+};
+chain.from.mockReturnValue(chain);
+chain.where.mockReturnValue(chain);
+chain.innerJoin.mockReturnValue(chain);
+
+vi.mock('../src/db/client.js', () => ({
+  db: {
+    select: vi.fn(() => chain),
+  },
+}));
+
+vi.mock('../src/services/permissionService.js', () => ({
+  getEffectivePermissions: vi.fn(),
+}));
+
+const { resolveProjectId } = await import('../src/middleware/permissions.js');
+const { db } = await import('../src/db/client.js');
+
+function mockRequest(partial: {
+  url: string;
+  id?: string;
+  body?: unknown;
+}): Parameters<typeof resolveProjectId>[0] {
+  return {
+    params: partial.id !== undefined ? { id: partial.id } : {},
+    body: partial.body,
+    routeOptions: { url: partial.url },
+  } as Parameters<typeof resolveProjectId>[0];
+}
+
+describe('resolveProjectId — dependency branches', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    chain.from.mockReturnValue(chain);
+    chain.where.mockReturnValue(chain);
+    chain.innerJoin.mockReturnValue(chain);
+  });
+
+  it('POST /api/dependencies resolves via body.predecessorId → tasks.projectId', async () => {
+    limit.mockResolvedValueOnce([{ projectId: 'proj-1' }]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/dependencies',
+        body: {
+          predecessorId: '11111111-1111-4111-8111-111111111111',
+          successorId: '22222222-2222-4222-8222-222222222222',
+          linkType: 'FS',
+        },
+      }),
+    );
+
+    expect(projectId).toBe('proj-1');
+    expect(db.select).toHaveBeenCalled();
+  });
+
+  it('POST /api/dependencies returns undefined for a malformed body (fail-closed)', async () => {
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/dependencies',
+        body: { successorId: '22222222-2222-4222-8222-222222222222' },
+      }),
+    );
+    expect(projectId).toBeUndefined();
+    expect(db.select).not.toHaveBeenCalled();
+  });
+
+  it('POST /api/dependencies returns undefined when predecessorId is not a string', async () => {
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/dependencies',
+        body: { predecessorId: 123 },
+      }),
+    );
+    expect(projectId).toBeUndefined();
+  });
+
+  it('DELETE /api/dependencies/:id resolves via dependency → predecessor → project', async () => {
+    limit.mockResolvedValueOnce([{ projectId: 'proj-2' }]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/dependencies/:id',
+        id: '33333333-3333-4333-8333-333333333333',
+      }),
+    );
+
+    expect(projectId).toBe('proj-2');
+    expect(db.select).toHaveBeenCalled();
+  });
+
+  it('DELETE /api/dependencies/:id returns undefined when the dependency is missing', async () => {
+    limit.mockResolvedValueOnce([]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/dependencies/:id',
+        id: '33333333-3333-4333-8333-333333333333',
+      }),
+    );
+
+    expect(projectId).toBeUndefined();
+  });
+});

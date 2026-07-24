@@ -12,8 +12,12 @@ function isPermissionPreHandler(fn: unknown): fn is PermissionPreHandler {
   return typeof fn === 'function' && 'permissionKey' in fn;
 }
 
-function isPublicRoute(config: unknown): boolean {
-  return typeof config === 'object' && config !== null && (config as { public?: unknown }).public === true;
+function isExemptFromPermissionGuard(config: unknown): boolean {
+  if (typeof config !== 'object' || config === null) return false;
+  const c = config as { public?: unknown; authOnly?: unknown };
+  // public: pre-auth endpoints (login/refresh). authOnly: authenticated but
+  // project-unscoped mutators (POST /api/projects) — no project to resolve.
+  return c.public === true || c.authOnly === true;
 }
 
 /**
@@ -33,13 +37,21 @@ describe('route-guard drift (§6.4)', () => {
 
     const missingGuard: string[] = [];
     const unknownPermissionKey: string[] = [];
+    const authOnlyPaths: string[] = [];
 
     for (const route of fastify.routeTable) {
       if (SAFE_METHODS.has(route.method)) {
         continue;
       }
 
-      if (isPublicRoute(route.config)) {
+      if (isExemptFromPermissionGuard(route.config)) {
+        if (
+          typeof route.config === 'object' &&
+          route.config !== null &&
+          (route.config as { authOnly?: unknown }).authOnly === true
+        ) {
+          authOnlyPaths.push(`${route.method} ${route.path}`);
+        }
         continue;
       }
 
@@ -55,13 +67,16 @@ describe('route-guard drift (§6.4)', () => {
       }
     }
 
-    expect(missingGuard, 'routes missing a requirePermission preHandler (or a PUBLIC_ROUTE_CONFIG marker)').toEqual(
+    expect(missingGuard, 'routes missing a requirePermission preHandler (or a PUBLIC/AUTH_ONLY route config marker)').toEqual(
       [],
     );
     expect(
       unknownPermissionKey,
       "routes calling requirePermission with a key that isn't in @pkg/rbac's PERMISSIONS registry",
     ).toEqual([]);
+
+    // POST /api/projects is intentionally auth-only (no project to resolve yet).
+    expect(authOnlyPaths).toContain('POST /api/projects');
 
     await fastify.close();
   });
