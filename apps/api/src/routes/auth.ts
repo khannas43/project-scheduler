@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { env } from '../env.js';
 import { parseDurationToSeconds } from '../lib/duration.js';
+import { PUBLIC_ROUTE_CONFIG } from '../lib/routeMeta.js';
 import { UnauthorizedError } from '../middleware/errors.js';
 import * as authService from '../services/authService.js';
 
@@ -44,6 +45,8 @@ export const authRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.post(
     '/api/auth/login',
     {
+      // No requirePermission — you can't check a permission before you're authenticated.
+      config: PUBLIC_ROUTE_CONFIG,
       schema: {
         body: LoginBodySchema,
         response: { 200: LoginResponseSchema },
@@ -60,6 +63,8 @@ export const authRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.post(
     '/api/auth/refresh',
     {
+      // Authenticated by the refresh cookie itself, not a bearer token — same reasoning as login.
+      config: PUBLIC_ROUTE_CONFIG,
       schema: {
         response: { 200: AccessTokenResponseSchema },
       },
@@ -75,10 +80,14 @@ export const authRoutes: FastifyPluginAsyncZod = async (fastify) => {
     },
   );
 
-  fastify.post('/api/auth/logout', async (_request, reply) => {
-    // Stateless in v1 (ADR 001) — nothing to revoke server-side, just drop the cookie.
-    reply.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
-    reply.code(204);
-    return null;
-  });
+  fastify.post(
+    '/api/auth/logout',
+    { config: PUBLIC_ROUTE_CONFIG },
+    async (_request, reply) => {
+      // Stateless in v1 (ADR 001) — nothing to revoke server-side, just drop the cookie.
+      reply.clearCookie(REFRESH_COOKIE_NAME, { path: REFRESH_COOKIE_PATH });
+      reply.code(204);
+      return null;
+    },
+  );
 };

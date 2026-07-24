@@ -3,6 +3,7 @@ import { serializerCompiler, validatorCompiler, type ZodTypeProvider } from '@fa
 import Fastify, { type FastifyInstance } from 'fastify';
 
 import { env } from './env.js';
+import type { RegisteredRouteInfo } from './lib/routeMeta.js';
 import { registerErrorHandler } from './middleware/errors.js';
 import './middleware/auth.js'; // FastifyRequest.user module augmentation
 import './middleware/permissions.js'; // FastifyRequest.permissionsCache module augmentation
@@ -18,6 +19,29 @@ export async function buildApp(): Promise<FastifyInstance> {
 
   fastify.decorateRequest('user', undefined);
   fastify.decorateRequest('permissionsCache', undefined);
+
+  // Feeds the route-guard drift test (§6.4) — records every route as it's
+  // registered, since Fastify has no direct API to enumerate them afterward.
+  fastify.decorate('routeTable', []);
+  fastify.addHook('onRoute', (routeOptions) => {
+    const methods = Array.isArray(routeOptions.method) ? routeOptions.method : [routeOptions.method];
+    const preHandlerOption = routeOptions.preHandler;
+    const preHandlers = preHandlerOption
+      ? Array.isArray(preHandlerOption)
+        ? preHandlerOption
+        : [preHandlerOption]
+      : [];
+
+    for (const method of methods) {
+      const route: RegisteredRouteInfo = {
+        method,
+        path: routeOptions.url,
+        preHandlers,
+        config: routeOptions.config,
+      };
+      fastify.routeTable.push(route);
+    }
+  });
 
   await fastify.register(cookie);
 

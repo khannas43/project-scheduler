@@ -44,9 +44,20 @@ async function resolveProjectId(request: FastifyRequest): Promise<string | undef
   return undefined;
 }
 
+/**
+ * The preHandler returned by requirePermission(), tagged with the key it was
+ * built with. The route-guard drift test (§6.4) reads `.permissionKey` off
+ * of registered preHandlers to verify it's a real, registered permission —
+ * this is the single source of truth; nothing duplicates the key elsewhere.
+ */
+export interface PermissionPreHandler {
+  (request: FastifyRequest): Promise<void>;
+  readonly permissionKey: PermissionKey;
+}
+
 /** §6.2/§6.3: fail closed — an unresolved project or missing permission is a 403, never a silent pass. */
-export function requirePermission(key: PermissionKey) {
-  return async function permissionGuard(request: FastifyRequest): Promise<void> {
+export function requirePermission(key: PermissionKey): PermissionPreHandler {
+  const permissionGuard = async function permissionGuard(request: FastifyRequest): Promise<void> {
     if (!request.user) {
       throw new UnauthorizedError();
     }
@@ -66,5 +77,9 @@ export function requirePermission(key: PermissionKey) {
     if (!granted.has(key)) {
       throw new ForbiddenError(`Missing permission: ${key}`);
     }
-  };
+  } as PermissionPreHandler;
+
+  Object.defineProperty(permissionGuard, 'permissionKey', { value: key, enumerable: true });
+
+  return permissionGuard;
 }
