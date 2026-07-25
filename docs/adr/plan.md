@@ -30,17 +30,17 @@ number, not a timeline estimate.
 |---|---|---|---|---|---|
 | 0 — Foundation | 12 | 12 | 0 | 0 | 100% |
 | 1 — Core planning | 14 | 14 | 0 | 0 | 100% |
-| 2 — Full scheduling | 8 | 6 (link types+lag; constraints+ADR; deadlines; calendars; undo/redo) | 2 (Gantt interaction — slice 1/3; 200-task reference plan) | 0 | 75% |
+| 2 — Full scheduling | 8 | 7 (link types+lag; constraints+ADR; deadlines; calendars; undo/redo; 200-task reference plan) | 1 (Gantt interaction — slice 1/3 done, resize + drag-to-link remain) | 0 | 88% |
 | 3 — Resources | 6 | 0 | 0 | 6 | 0% |
 | 4 — Tracking | 6 | 0 | 0 | 6 | 0% |
 | 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **32** | **2** | **23** | **~56%** |
+| **Total** | **57** | **33** | **1** | **23** | **~58%** |
 
-**~56% done, ~40% pending, ~4% in progress** (32/57 done — Phases 0–1
-complete, plus six of Phase 2's eight items; 2/57 in progress — Gantt
-drag interaction's remaining slices and terminal 2's 200-task reference
-plan; 23/57 not started). Nothing in Phases 3–6 (resources, tracking,
+**~58% done, ~40% pending, ~2% in progress** (33/57 done — Phases 0–1
+complete, plus seven of Phase 2's eight items; 1/57 in progress — Gantt
+drag interaction's remaining resize/drag-to-link slices; 23/57 not
+started). Nothing in Phases 3–6 (resources, tracking,
 interop/reporting, agile) has started.
 
 ---
@@ -232,6 +232,29 @@ interop/reporting, agile) has started.
   fixed a latent bug where the old hardcoded name/duration-only check
   would have silently dropped a constraint-only undo command. **Resize
   and drag-to-link remain out of scope** — separate follow-up rounds.
+- **200-task reference plan capstone** (§13 item 34, Cursor,
+  `packages/scheduler`) — 203 tasks (193 leaf + 10 summary), 197
+  dependencies, three calendars (a 24/7 continuous calendar hosting the
+  130-task critical spine so weekend/holiday packing can't insert
+  artificial float into the TF=0 chain; a Mon–Fri calendar with a
+  holiday exception; a Mon–Sat ops calendar), all four link types,
+  fixed/negative/percentage lag, six of the seven implemented constraint
+  types, both `CONSTRAINT_OVERRIDES_DEPENDENCY` and `DEADLINE_MISSED`
+  firing on purpose. No MS Project install in this environment (the
+  standing caveat on every golden case), so validated two ways instead:
+  a 16-task hand-verified sample in `notes.md`, and five global
+  invariants (link-type/lag ordering, float ordering, critical-path
+  connectivity, working-time-only spans, `schedule()` determinism) in
+  `referencePlanInvariants.test.ts` asserted against the full output.
+  Independently re-verified during review with a from-scratch script,
+  outside their test harness, that rebuilds the package and calls
+  `schedule()` directly on the fixture's raw input — byte-for-byte match
+  against `expected.json`, proving it's real engine output, not a
+  hand-typed or drifted fixture.
+
+**Phase 2 (TECHNICAL_DESIGN.md §13, all eight build-order items) is now
+fully done**, except item 6's resize/drag-to-link slices (always scoped
+as follow-ups) and the small flagged `lagPercent` wiring gap.
 
 ## Next up
 
@@ -267,30 +290,33 @@ Phase 2 (§13 items 27–34), status:
    each touching the same `GanttView`/`GanttPanel` files as slice 1, so
    one terminal at a time here too.
 7. **Undo/redo** — **done**.
-8. **200-task reference plan vs. MS Project** — **in progress**
-   (terminal 2, worktree `reference-plan`, branch `reference-plan`,
-   `packages/scheduler/scripts/` + `test/golden/200-reference-plan/`,
-   uncommitted as of this check). Same constraint as every other golden
-   case: no MS Project install in this environment, so "validated
-   against MS Project" will mean hand-computed/self-verified reference
-   output unless real MS Project output is supplied from outside this
-   environment.
+8. **200-task reference plan vs. MS Project** — **done**. No MS Project
+   install in this environment (same standing caveat as every other
+   golden case), so this uses a two-tier approach instead: `expected.json`
+   is engine-generated, a 16-task representative sample is hand-verified
+   in `notes.md`, and five global invariants (`referencePlanInvariants.test.ts`)
+   are asserted against the full 203-task output. Independently
+   re-verified during review by rebuilding `packages/scheduler` and
+   running a from-scratch script (outside their test harness) that
+   recompiles the fixture's calendars/tasks/dependencies and calls
+   `schedule()` directly — byte-for-byte match against `expected.json`.
 
-Only item 6's remaining slices (resize, drag-to-link) and the
-`lagPercent` fix are unclaimed and ready to pick up — everything else in
-Phase 2 is either done or already being worked.
+**Phase 2 (§13 items 27–34) is now fully done**, except item 6's resize
+and drag-to-link slices (always scoped as separate follow-ups) and the
+small flagged `lagPercent` wiring gap under item 2.
 
 ## What can run in parallel (one terminal per Claude Code session)
 
-- ~~Items 1–5, 7~~ — done.
-- **Item 8** — in progress, terminal 2's `reference-plan` worktree.
+- ~~Items 1–5, 7–8~~ — done. Phase 2 is fully done except item 6's
+  remaining slices and the `lagPercent` gap below.
 - **Item 6's remaining slices** (resize, drag-to-link) —
-  `packages/gantt` + `apps/web`, no overlap with item 8's
-  `packages/scheduler` files. One terminal at a time within item 6
+  `packages/gantt` + `apps/web`. One terminal at a time within item 6
   itself (same `GanttView`/`GanttPanel` files as slice 1).
 - The small **`lagPercent` wiring gap** (flagged under item 2) lives in
-  `apps/api/src/services/scheduleRunner.ts` — no conflict with item 6 or
-  item 8, good filler for a spare terminal.
+  `apps/api/src/services/scheduleRunner.ts` — no conflict with item 6,
+  good filler for a spare terminal.
+- Nothing left in `packages/scheduler` proper — Phases 3–6 (below) are
+  the next source of scheduler-adjacent work whenever that starts.
 
 ## Phases 3–6 (PROJECT_SCOPE.md §8) — not started
 
