@@ -30,7 +30,7 @@ number, not a timeline estimate.
 |---|---|---|---|---|---|
 | 0 — Foundation | 12 | 12 | 0 | 0 | 100% |
 | 1 — Core planning | 14 | 14 | 0 | 0 | 100% |
-| 2 — Full scheduling | 8 | 7 (link types+lag; constraints+ADR; deadlines; calendars; undo/redo; 200-task reference plan) | 1 (Gantt interaction — slice 1/3 done, resize + drag-to-link remain) | 0 | 88% |
+| 2 — Full scheduling | 8 | 7 (link types+lag; constraints+ADR; deadlines; calendars; undo/redo; 200-task reference plan) | 1 (Gantt interaction — slices 1–2/3 done: move, resize; drag-to-link remains) | 0 | 88% |
 | 3 — Resources | 6 | 0 | 0 | 6 | 0% |
 | 4 — Tracking | 6 | 0 | 0 | 6 | 0% |
 | 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
@@ -39,9 +39,9 @@ number, not a timeline estimate.
 
 **~58% done, ~40% pending, ~2% in progress** (33/57 done — Phases 0–1
 complete, plus seven of Phase 2's eight items; 1/57 in progress — Gantt
-drag interaction's remaining resize/drag-to-link slices; 23/57 not
-started). Nothing in Phases 3–6 (resources, tracking,
-interop/reporting, agile) has started.
+drag interaction's final drag-to-link slice; 23/57 not started). Nothing
+in Phases 3–6 (resources, tracking, interop/reporting, agile) has
+started.
 
 ---
 
@@ -251,10 +251,19 @@ interop/reporting, agile) has started.
   `schedule()` directly on the fixture's raw input — byte-for-byte match
   against `expected.json`, proving it's real engine output, not a
   hand-typed or drifted fixture.
+- **Gantt bar resize** (item 6, slice 2 of 3) — right-edge only
+  (`RESIZE_EDGE_PX` hit-slop), disambiguated from a move-drag by
+  checking edge proximity in `handlePointerDown` before falling through
+  to the existing move logic. `DragGhost` became a
+  `{ kind: 'move' | 'resize' }` union. `snapDurationMinutes` clamps to a
+  minimum of one day. Commits plain `durationMinutes` through the same
+  `useTaskEdit` mutation `TaskGrid`'s inline duration cell already
+  uses — no new undo/optimistic-edit plumbing needed, unlike move's MSO
+  mapping. Left-edge resize remains explicitly out of scope.
 
 **Phase 2 (TECHNICAL_DESIGN.md §13, all eight build-order items) is now
-fully done**, except item 6's resize/drag-to-link slices (always scoped
-as follow-ups) and the small flagged `lagPercent` wiring gap.
+fully done**, except item 6's final drag-to-link slice (always scoped
+as a follow-up) and the small flagged `lagPercent` wiring gap.
 
 ## Next up
 
@@ -283,12 +292,12 @@ Phase 2 (§13 items 27–34), status:
 5. **Calendars** — **done** except the resource-calendar sub-piece
    (deferred to Phase 3, `resources.calendar_id` exists but nothing
    schedules against it yet).
-6. **Gantt interaction: drag-to-move, resize, drag-to-link** — **slice 1
-   of 3 done** (drag-to-move, mapped to an MSO constraint). Resize
-   (drag a bar edge to change duration) and drag-to-link (drag between
-   two bars to create a dependency) remain — separate follow-up rounds,
-   each touching the same `GanttView`/`GanttPanel` files as slice 1, so
-   one terminal at a time here too.
+6. **Gantt interaction: drag-to-move, resize, drag-to-link** — **slices 1–2
+   of 3 done** (drag-to-move → MSO constraint; right-edge resize →
+   `durationMinutes`). **Drag-to-link remains** — the only Phase 2 item
+   not yet done. `apps/web` has never called `POST /api/dependencies` —
+   `createDependency` doesn't exist yet in `features/tasks/api.ts`, so
+   this slice also adds that, not just the Gantt-side gesture.
 7. **Undo/redo** — **done**.
 8. **200-task reference plan vs. MS Project** — **done**. No MS Project
    install in this environment (same standing caveat as every other
@@ -307,16 +316,21 @@ small flagged `lagPercent` wiring gap under item 2.
 
 ## What can run in parallel (one terminal per Claude Code session)
 
-- ~~Items 1–5, 7–8~~ — done. Phase 2 is fully done except item 6's
-  remaining slices and the `lagPercent` gap below.
-- **Item 6's remaining slices** (resize, drag-to-link) —
-  `packages/gantt` + `apps/web`. One terminal at a time within item 6
-  itself (same `GanttView`/`GanttPanel` files as slice 1).
-- The small **`lagPercent` wiring gap** (flagged under item 2) lives in
-  `apps/api/src/services/scheduleRunner.ts` — no conflict with item 6,
-  good filler for a spare terminal.
-- Nothing left in `packages/scheduler` proper — Phases 3–6 (below) are
-  the next source of scheduler-adjacent work whenever that starts.
+**No longer relevant** — back to a single active terminal on this
+project as of 2026-07-25 (the second, parallel Cursor/Claude Code
+session used earlier in Phase 2 is no longer in use). Two of its
+worktrees were fully merged and cleaned up already
+(`link-types-lag`); `project-scheduler-role-mgmt` remains — `git`
+operations on it (`status`, `worktree remove --force`) hung
+repeatedly during cleanup with no error, cause not yet diagnosed
+(no `index.lock` present; Cursor background git-worker processes were
+running and may be the culprit). Left untouched; the user will handle
+it outside this session. Don't attempt to remove it again without new
+information — retrying the same hung command isn't productive.
+
+Remaining unclaimed work (item 6's drag-to-link slice, the small
+`lagPercent` gap) is now just sequential backlog, not something to
+split across terminals.
 
 ## Phases 3–6 (PROJECT_SCOPE.md §8) — not started
 
