@@ -249,7 +249,8 @@ export function assertGraphValid(
   }
 }
 
-async function loadCompiledCalendars(
+/** Load + compile project calendars (shared by reschedule and timephased distribution). */
+export async function loadCompiledCalendars(
   tx: Db,
   project: typeof projects.$inferSelect,
   projectStart: ReturnType<typeof asEpochMinutes>,

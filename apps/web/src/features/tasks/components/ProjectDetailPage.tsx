@@ -6,13 +6,15 @@ import { projectsApi } from '../../projects/index.js';
 import { projectQueryKey, useTaskEdit } from '../hooks/useTaskEdit.js';
 import { useTaskTree } from '../hooks/useTaskTree.js';
 import { useUndoRedo } from '../hooks/useUndoRedo.js';
-import type { TaskEditPatch } from '../types.js';
+import type { TaskEditPatch, TaskRow } from '../types.js';
+import { AssignmentPanel } from './AssignmentPanel.js';
 import { GanttPanel } from './GanttPanel.js';
 import { TaskGrid } from './TaskGrid.js';
 
 export function ProjectDetailPage() {
   const { projectId } = useParams({ strict: false }) as { projectId: string };
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
+  const [assignTask, setAssignTask] = useState<TaskRow | null>(null);
 
   const projectQuery = useQuery({
     queryKey: projectQueryKey(projectId),
@@ -67,7 +69,7 @@ export function ProjectDetailPage() {
   }
 
   const project = projectQuery.data;
-  const { tasks, dependencies, projectVersion } = taskTree.data;
+  const { tasks, dependencies, assignments, projectVersion } = taskTree.data;
 
   return (
     <div className="page project-detail-page">
@@ -83,6 +85,10 @@ export function ProjectDetailPage() {
             {' · '}
             <Link to="/projects/$projectId/roles" params={{ projectId }}>
               Manage roles
+            </Link>
+            {' · '}
+            <Link to="/projects/$projectId/resources" params={{ projectId }}>
+              Resources
             </Link>
           </p>
         </div>
@@ -114,6 +120,7 @@ export function ProjectDetailPage() {
             tasks={tasks}
             highlightedTaskId={highlightedTaskId}
             onEdit={onEdit}
+            onAssignResources={setAssignTask}
             isEditing={edit.isPending}
           />
         </section>
@@ -128,6 +135,19 @@ export function ProjectDetailPage() {
           />
         </section>
       </div>
+
+      {assignTask ? (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal assignment-modal" role="dialog" aria-modal="true">
+            <AssignmentPanel
+              projectId={projectId}
+              task={assignTask}
+              assignments={assignments}
+              onClose={() => setAssignTask(null)}
+            />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

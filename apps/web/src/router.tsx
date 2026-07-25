@@ -3,6 +3,7 @@ import { Outlet, createRootRoute, createRoute, createRouter, redirect } from '@t
 import { AppShell } from './components/AppShell.js';
 import { LoginPage, RequireAuth } from './features/auth/index.js';
 import { ProjectListPage } from './features/projects/index.js';
+import { ResourceSheet } from './features/resources/index.js';
 import { RolesPage } from './features/roles/index.js';
 import { ProjectDetailPage } from './features/tasks/index.js';
 import { useAuthStore } from './stores/authStore.js';
@@ -56,11 +57,22 @@ const projectRolesRoute = createRoute({
   component: RolesPage,
 });
 
+const projectResourcesRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/projects/$projectId/resources',
+  component: ResourceSheet,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
   authenticatedRoute.addChildren([
-    shellRoute.addChildren([projectsRoute, projectDetailRoute, projectRolesRoute]),
+    shellRoute.addChildren([
+      projectsRoute,
+      projectDetailRoute,
+      projectRolesRoute,
+      projectResourcesRoute,
+    ]),
   ]),
 ]);
 

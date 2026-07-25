@@ -1,6 +1,7 @@
 import { apiRequest } from '../../lib/apiClient.js';
 
 import type {
+  AssignmentRow,
   DependencyMutationResponse,
   TaskEditPatch,
   TaskMutationResponse,
@@ -35,4 +36,49 @@ export function createDependency(input: {
     method: 'POST',
     body: input,
   });
+}
+
+/** POST /api/assignments — returns the created assignment row (no MutationResult wrapper). */
+export function createAssignment(input: {
+  taskId: string;
+  resourceId: string;
+  units?: number | null;
+}): Promise<AssignmentRow> {
+  return apiRequest<AssignmentRow>('/api/assignments', {
+    method: 'POST',
+    body: input,
+  });
+}
+
+export function updateAssignment(
+  assignmentId: string,
+  input: { units: number },
+): Promise<AssignmentRow> {
+  return apiRequest<AssignmentRow>(`/api/assignments/${assignmentId}`, {
+    method: 'PATCH',
+    body: input,
+  });
+}
+
+export function deleteAssignment(assignmentId: string): Promise<{ deleted: true }> {
+  return apiRequest<{ deleted: true }>(`/api/assignments/${assignmentId}`, {
+    method: 'DELETE',
+  });
+}
+
+/** Timephased planned-work buckets for one assignment (§3.5). */
+export interface AssignmentTimephasedRow {
+  readonly id: string;
+  readonly assignmentId: string;
+  readonly periodDate: string;
+  readonly plannedWorkMinutes: number | null;
+  readonly actualWorkMinutes: number | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
+export function getAssignmentTimephased(
+  assignmentId: string,
+): Promise<AssignmentTimephasedRow[]> {
+  return apiRequest<AssignmentTimephasedRow[]>(`/api/assignments/${assignmentId}/timephased`);
 }

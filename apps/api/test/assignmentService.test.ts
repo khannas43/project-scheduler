@@ -60,6 +60,10 @@ vi.mock('../src/services/scheduleRunner.js', () => ({
   withSerializableRetry: (fn: (tx: unknown) => Promise<unknown>, dbArg: unknown) =>
     withSerializableRetry(fn, dbArg),
   writeAuditLog: (...args: unknown[]) => writeAuditLog(...args),
+  loadCompiledCalendars: vi.fn(async () => ({
+    calendars: new Map(),
+    defaultCalendarId: 'cal',
+  })),
 }));
 
 const {

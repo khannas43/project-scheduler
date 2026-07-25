@@ -13,6 +13,7 @@ export interface TaskGridProps {
   readonly tasks: readonly TaskRow[];
   readonly highlightedTaskId: string | null;
   readonly onEdit: (patch: TaskEditPatch) => void;
+  readonly onAssignResources?: (task: TaskRow) => void;
   readonly isEditing?: boolean;
 }
 
@@ -100,7 +101,12 @@ function InlineCell({
 
 const columnHelper = createColumnHelper<TaskRow>();
 
-export function TaskGrid({ tasks, highlightedTaskId, onEdit }: TaskGridProps) {
+export function TaskGrid({
+  tasks,
+  highlightedTaskId,
+  onEdit,
+  onAssignResources,
+}: TaskGridProps) {
   const data = useMemo(() => sortTasksForGrid(tasks), [tasks]);
 
   const columns = useMemo(
@@ -157,8 +163,27 @@ export function TaskGrid({ tasks, highlightedTaskId, onEdit }: TaskGridProps) {
         header: 'Critical',
         cell: (info) => (info.getValue() ? 'Yes' : '—'),
       }),
+      columnHelper.display({
+        id: 'resources',
+        header: 'Resources',
+        cell: (info) => {
+          const task = info.row.original;
+          if (task.isSummary || !onAssignResources) {
+            return <span className="muted">—</span>;
+          }
+          return (
+            <button
+              type="button"
+              className="btn-link"
+              onClick={() => onAssignResources(task)}
+            >
+              Resources
+            </button>
+          );
+        },
+      }),
     ],
-    [onEdit],
+    [onEdit, onAssignResources],
   );
 
   const table = useReactTable({

@@ -98,6 +98,8 @@ describe('route-guard drift (§6.4)', () => {
     byKey('POST', '/api/assignments', PERMISSIONS.RESOURCE_ASSIGN.key);
     byKey('PATCH', '/api/assignments/:id', PERMISSIONS.RESOURCE_ASSIGN.key);
     byKey('DELETE', '/api/assignments/:id', PERMISSIONS.RESOURCE_ASSIGN.key);
+    // GET is skipped by the SAFE_METHODS loop above — assert the guard key explicitly.
+    byKey('GET', '/api/assignments/:id/timephased', PERMISSIONS.RESOURCE_ASSIGN.key);
 
     await fastify.close();
   });

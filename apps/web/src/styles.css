@@ -567,6 +567,83 @@ button:disabled {
   min-height: 280px;
 }
 
+/* —— Resources / assignments —— */
+.overalloc-badge {
+  background: #fde8e4;
+  color: #9b2c1f;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.resource-form select {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  background: #fff;
+  font: inherit;
+}
+
+.assignment-modal {
+  width: min(720px, 100%);
+  max-height: min(90vh, 900px);
+  overflow: auto;
+}
+
+.assignment-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.assignment-panel-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+.assignment-panel-header h2 {
+  margin: 0 0 0.25rem;
+}
+
+.assignment-panel-header p {
+  margin: 0;
+}
+
+.assignment-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.assignment-add-row label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.assignment-add-row select,
+.assignment-add-row input {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  background: #fff;
+  font: inherit;
+  min-width: 8rem;
+}
+
+.assignment-distribution-row td {
+  background: #faf8f4;
+  padding: 0.75rem 1rem;
+}
+
+.timephased-table {
+  width: auto;
+  min-width: 16rem;
+  margin: 0;
+}
+
 @media (max-width: 960px) {
   .project-detail-layout {
     grid-template-columns: 1fr;

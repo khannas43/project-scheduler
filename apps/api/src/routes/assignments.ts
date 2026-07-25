@@ -53,4 +53,13 @@ export const assignmentRoutes: FastifyPluginAsyncZod = async (fastify) => {
       return assignmentService.deleteAssignment(request.params.id, user.id);
     },
   );
+
+  fastify.get(
+    '/api/assignments/:id/timephased',
+    {
+      preHandler: [requireAuth, requirePermission('resource.assign')],
+      schema: { params: AssignmentIdParams },
+    },
+    async (request) => assignmentService.listTimephasedForAssignment(request.params.id),
+  );
 };

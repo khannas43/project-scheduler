@@ -161,6 +161,20 @@ describe('resolveProjectId — assignment branches', () => {
     expect(db.select).toHaveBeenCalled();
   });
 
+  it('GET /api/assignments/:id/timephased uses the same assignment → task join', async () => {
+    limit.mockResolvedValueOnce([{ projectId: 'proj-tp' }]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/assignments/:id/timephased',
+        id: '33333333-3333-4333-8333-333333333333',
+      }),
+    );
+
+    expect(projectId).toBe('proj-tp');
+    expect(db.select).toHaveBeenCalled();
+  });
+
   it('DELETE /api/assignments/:id returns undefined when the assignment is missing', async () => {
     limit.mockResolvedValueOnce([]);
 
