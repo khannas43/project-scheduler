@@ -1,6 +1,11 @@
 import { apiRequest } from '../../lib/apiClient.js';
 
-import type { TaskEditPatch, TaskMutationResponse, TaskTreeResponse } from './types.js';
+import type {
+  DependencyMutationResponse,
+  TaskEditPatch,
+  TaskMutationResponse,
+  TaskTreeResponse,
+} from './types.js';
 
 /** §5.3 — full flat tree + calendars + projectVersion. */
 export function getTaskTree(projectId: string): Promise<TaskTreeResponse> {
@@ -16,5 +21,18 @@ export function patchTask(
   return apiRequest<TaskMutationResponse>(`/api/tasks/${taskId}`, {
     method: 'PATCH',
     body: { version, ...rest },
+  });
+}
+
+/** POST /api/dependencies — create FS (etc.) link; server validates graph (cycle → 409). */
+export function createDependency(input: {
+  predecessorId: string;
+  successorId: string;
+  linkType: 'FS';
+  lagMinutes: 0;
+}): Promise<DependencyMutationResponse> {
+  return apiRequest<DependencyMutationResponse>('/api/dependencies', {
+    method: 'POST',
+    body: input,
   });
 }

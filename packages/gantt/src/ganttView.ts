@@ -19,6 +19,8 @@ export interface GanttViewOptions {
   readonly onCommitMove?: (taskId: number, newStartMinutes: number) => void;
   /** Fired on pointerup when a non-summary bar's right edge was resized to a new duration. */
   readonly onCommitResize?: (taskId: number, newDurationMinutes: number) => void;
+  /** Fired on pointerup when Shift+right-edge drag lands on a different non-summary task. */
+  readonly onCommitLink?: (predecessorId: number, successorId: number) => void;
 }
 
 type LayerName = 'background' | 'arrows' | 'bars' | 'interaction';
@@ -38,6 +40,11 @@ interface ActiveResize {
   readonly startMinutes: number;
   readonly originDurationMinutes: number;
   currentDurationMinutes: number;
+}
+
+interface ActiveLink {
+  readonly pointerId: number;
+  readonly fromTaskId: number;
 }
 
 /**
@@ -67,6 +74,7 @@ export class GanttView {
   private readonly onHover: ((taskId: number | null) => void) | undefined;
   private readonly onCommitMove: ((taskId: number, newStartMinutes: number) => void) | undefined;
   private readonly onCommitResize: ((taskId: number, newDurationMinutes: number) => void) | undefined;
+  private readonly onCommitLink: ((predecessorId: number, successorId: number) => void) | undefined;
 
   private viewport: ViewportState = { scrollTop: 0, scrollLeft: 0, width: 0, height: 0 };
   private spatialIndex: Float32Array = new Float32Array(0);
@@ -74,6 +82,7 @@ export class GanttView {
   private dragGhost: DragGhost | null = null;
   private drag: ActiveDrag | null = null;
   private resizeDrag: ActiveResize | null = null;
+  private linkDrag: ActiveLink | null = null;
   private raf = 0;
   private dpr = 1;
 
@@ -93,6 +102,7 @@ export class GanttView {
     this.onHover = options.onHover;
     this.onCommitMove = options.onCommitMove;
     this.onCommitResize = options.onCommitResize;
+    this.onCommitLink = options.onCommitLink;
 
     this.stack = document.createElement('div');
     this.stack.style.cssText =
@@ -120,7 +130,7 @@ export class GanttView {
     this.onPointerMove = (e) => this.handlePointerMove(e);
     this.onPointerUp = (e) => this.handlePointerUp(e);
     this.onPointerLeave = () => {
-      if (!this.drag && !this.resizeDrag) {
+      if (!this.drag && !this.resizeDrag && !this.linkDrag) {
         this.setHover(null);
         this.stack.style.cursor = '';
       }
@@ -158,6 +168,16 @@ export class GanttView {
   /** Test seam — active resize-drag state, if any. */
   getActiveResize(): Readonly<ActiveResize> | null {
     return this.resizeDrag;
+  }
+
+  /** Test seam — active link-drag state, if any. */
+  getActiveLink(): Readonly<ActiveLink> | null {
+    return this.linkDrag;
+  }
+
+  /** Test seam — current drag ghost (move / resize / link preview). */
+  getDragGhost(): DragGhost | null {
+    return this.dragGhost;
   }
 
   setData(tasks: readonly GanttTask[], dependencies: readonly GanttDependency[]): void {
@@ -271,7 +291,7 @@ export class GanttView {
   }
 
   private updateHoverCursor(x: number, y: number): void {
-    if (this.drag || this.resizeDrag) return;
+    if (this.drag || this.resizeDrag || this.linkDrag) return;
     const taskId = hitTest(this.spatialIndex, x, y);
     const task = lookupTask(this.tasksById, taskId);
     if (task && !task.isSummary && this.isNearRightResizeEdge(x, task)) {
@@ -282,7 +302,7 @@ export class GanttView {
   }
 
   private handlePointerDown(e: PointerEvent): void {
-    if (this.drag || this.resizeDrag) return;
+    if (this.drag || this.resizeDrag || this.linkDrag) return;
     // Ensure spatial index is current before hit-testing.
     this.paint();
 
@@ -296,6 +316,15 @@ export class GanttView {
     this.stack.setPointerCapture(e.pointerId);
 
     if (this.isNearRightResizeEdge(x, task)) {
+      // Shift+right-edge starts a link-drag; plain right-edge still resizes.
+      if (e.shiftKey) {
+        this.linkDrag = { pointerId: e.pointerId, fromTaskId: taskId };
+        this.stack.style.cursor = '';
+        this.setDragGhost({ kind: 'link', fromTaskId: taskId, toX: x, toY: y });
+        e.preventDefault();
+        return;
+      }
+
       this.resizeDrag = {
         pointerId: e.pointerId,
         taskId,
@@ -329,6 +358,17 @@ export class GanttView {
   }
 
   private handlePointerMove(e: PointerEvent): void {
+    if (this.linkDrag && e.pointerId === this.linkDrag.pointerId) {
+      const { x, y } = this.pointerLocal(e);
+      this.setDragGhost({
+        kind: 'link',
+        fromTaskId: this.linkDrag.fromTaskId,
+        toX: x,
+        toY: y,
+      });
+      return;
+    }
+
     if (this.resizeDrag && e.pointerId === this.resizeDrag.pointerId) {
       const { x } = this.pointerLocal(e);
       const pointerMinutes = xToMinutes(x, this.viewport.scrollLeft, this.pixelsPerMinute);
@@ -366,6 +406,27 @@ export class GanttView {
   }
 
   private handlePointerUp(e: PointerEvent): void {
+    if (this.linkDrag && e.pointerId === this.linkDrag.pointerId) {
+      const { fromTaskId, pointerId } = this.linkDrag;
+      this.linkDrag = null;
+
+      if (this.stack.hasPointerCapture(pointerId)) {
+        this.stack.releasePointerCapture(pointerId);
+      }
+      this.setDragGhost(null);
+      this.stack.style.cursor = '';
+
+      const { x, y } = this.pointerLocal(e);
+      // Ensure spatial index is current for the drop hit-test.
+      this.paint();
+      const toTaskId = hitTest(this.spatialIndex, x, y);
+      if (toTaskId === null || toTaskId === fromTaskId) return;
+      const target = lookupTask(this.tasksById, toTaskId);
+      if (!target || target.isSummary) return;
+      this.onCommitLink?.(fromTaskId, toTaskId);
+      return;
+    }
+
     if (this.resizeDrag && e.pointerId === this.resizeDrag.pointerId) {
       const { taskId, originDurationMinutes, currentDurationMinutes, pointerId } = this.resizeDrag;
       this.resizeDrag = null;

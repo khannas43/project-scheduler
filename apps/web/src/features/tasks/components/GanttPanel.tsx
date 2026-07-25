@@ -2,6 +2,7 @@ import { GanttView, type GanttDependency, type GanttTask } from '@pkg/gantt';
 import { useEffect, useMemo, useRef } from 'react';
 
 import type { Project } from '../../projects/index.js';
+import { useCreateDependency } from '../hooks/useDependencies.js';
 import { TaskIdAdapter } from '../idAdapter.js';
 import {
   epochMinutesToIso,
@@ -61,7 +62,7 @@ function buildGanttData(
 }
 
 /**
- * Imperative wrapper around @pkg/gantt GanttView — hover, drag-to-move (MSO), resize duration.
+ * Imperative wrapper around @pkg/gantt GanttView — hover, move, resize, Shift+edge link.
  */
 export function GanttPanel({
   project,
@@ -84,6 +85,10 @@ export function GanttPanel({
   onCommitMoveRef.current = onCommitMove;
   const onCommitResizeRef = useRef(onCommitResize);
   onCommitResizeRef.current = onCommitResize;
+
+  const createDep = useCreateDependency(project.id);
+  const createDepRef = useRef(createDep);
+  createDepRef.current = createDep;
 
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
   const adapter = useMemo(() => new TaskIdAdapter(taskIds), [taskIds]);
@@ -133,6 +138,12 @@ export function GanttPanel({
           version: task.version,
           durationMinutes: newDurationMinutes,
         });
+      },
+      onCommitLink: (fromNumericId, toNumericId) => {
+        const predecessorId = adapterRef.current.toUuid(fromNumericId);
+        const successorId = adapterRef.current.toUuid(toNumericId);
+        if (!predecessorId || !successorId) return;
+        createDepRef.current.mutate({ predecessorId, successorId });
       },
     });
     viewRef.current = view;

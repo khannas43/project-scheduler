@@ -16,11 +16,12 @@ export interface InteractionDrawInput {
 
 export type DragGhost =
   | { readonly kind: 'move'; readonly taskId: number; readonly startMinutes: number }
-  | { readonly kind: 'resize'; readonly taskId: number; readonly durationMinutes: number };
+  | { readonly kind: 'resize'; readonly taskId: number; readonly durationMinutes: number }
+  | { readonly kind: 'link'; readonly fromTaskId: number; readonly toX: number; readonly toY: number };
 
 /**
  * Layer 4 — drag ghost / hover. Redrawn on every pointer move (§8.2).
- * Move/resize interaction lives in GanttView; this layer paints the outline + ghost.
+ * Move/resize/link interaction lives in GanttView; this layer paints the outline + ghost.
  */
 export function drawInteraction(input: InteractionDrawInput): void {
   const { ctx, viewport, tasksById, hoverTaskId, dragGhost } = input;
@@ -39,19 +40,59 @@ export function drawInteraction(input: InteractionDrawInput): void {
     ctx.strokeRect(x - 1, y - 1, w + 2, BAR_HEIGHT + 2);
   }
 
-  if (dragGhost) {
-    const task = lookupTask(tasksById, dragGhost.taskId);
-    if (task) {
-      const startMinutes = dragGhost.kind === 'move' ? dragGhost.startMinutes : task.startMinutes;
-      const durationMinutes =
-        dragGhost.kind === 'resize' ? dragGhost.durationMinutes : task.durationMinutes;
-      const x = minutesToX(startMinutes, scrollLeft, ppm);
-      const w = Math.max(2, durationMinutes * ppm);
-      const y = task.row * ROW_HEIGHT - scrollTop + BAR_VPAD;
-      ctx.globalAlpha = 0.35;
-      ctx.fillStyle = '#111827';
-      ctx.fillRect(x, y, w, BAR_HEIGHT);
-      ctx.globalAlpha = 1;
-    }
+  if (!dragGhost) return;
+
+  if (dragGhost.kind === 'link') {
+    drawLinkGhost(ctx, tasksById, dragGhost, scrollLeft, scrollTop, ppm);
+    return;
   }
+
+  const task = lookupTask(tasksById, dragGhost.taskId);
+  if (!task) return;
+
+  const startMinutes = dragGhost.kind === 'move' ? dragGhost.startMinutes : task.startMinutes;
+  const durationMinutes =
+    dragGhost.kind === 'resize' ? dragGhost.durationMinutes : task.durationMinutes;
+  const x = minutesToX(startMinutes, scrollLeft, ppm);
+  const w = Math.max(2, durationMinutes * ppm);
+  const y = task.row * ROW_HEIGHT - scrollTop + BAR_VPAD;
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = '#111827';
+  ctx.fillRect(x, y, w, BAR_HEIGHT);
+  ctx.globalAlpha = 1;
+}
+
+function drawLinkGhost(
+  ctx: CanvasRenderingContext2D,
+  tasksById: ReadonlyMap<number, GanttTask>,
+  ghost: Extract<DragGhost, { kind: 'link' }>,
+  scrollLeft: number,
+  scrollTop: number,
+  ppm: number,
+): void {
+  const from = lookupTask(tasksById, ghost.fromTaskId);
+  if (!from) return;
+
+  const fromEnd = from.startMinutes + from.durationMinutes;
+  const x1 = minutesToX(fromEnd, scrollLeft, ppm);
+  const y1 = from.row * ROW_HEIGHT - scrollTop + BAR_VPAD + BAR_HEIGHT / 2;
+  const x2 = ghost.toX;
+  const y2 = ghost.toY;
+
+  ctx.strokeStyle = '#111827';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+
+  // Small arrowhead at the pointer tip (angle of the rubber-band line).
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  const ah = 6;
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - ah * Math.cos(angle - 0.4), y2 - ah * Math.sin(angle - 0.4));
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - ah * Math.cos(angle + 0.4), y2 - ah * Math.sin(angle + 0.4));
+  ctx.stroke();
 }

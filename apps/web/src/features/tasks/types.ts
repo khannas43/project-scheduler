@@ -79,6 +79,11 @@ export interface TaskMutationResponse {
   readonly warnings: readonly SchedulingWarningView[];
 }
 
+/** POST /api/dependencies — MutationResult & { dependency } from dependencyService.createDependency. */
+export type DependencyMutationResponse = TaskMutationResponse & {
+  readonly dependency: DependencyRow;
+};
+
 /** Editable fields + optimistic-lock version (§9.1). */
 export interface TaskEditPatch {
   readonly taskId: string;
