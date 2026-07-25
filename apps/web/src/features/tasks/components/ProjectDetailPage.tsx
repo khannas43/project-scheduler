@@ -75,6 +75,10 @@ export function ProjectDetailPage() {
           <p className="lede muted">
             Version <span className="mono">{projectVersion}</span>
             {project.status ? <> · {project.status}</> : null}
+            {' · '}
+            <Link to="/projects/$projectId/roles" params={{ projectId }}>
+              Manage roles
+            </Link>
           </p>
         </div>
       </header>

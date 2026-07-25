@@ -352,6 +352,112 @@ button:disabled {
   flex-shrink: 0;
 }
 
+/* —— Roles —— */
+.role-actions {
+  display: flex;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.system-badge {
+  background: #ebe4d8;
+  color: #5a4a32;
+}
+
+.custom-badge {
+  background: #e8f0ea;
+  color: var(--brand-ink);
+}
+
+.role-modal {
+  width: min(720px, 100%);
+  max-height: min(90vh, 900px);
+  overflow: auto;
+}
+
+.role-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.role-form h2 {
+  margin: 0 0 0.25rem;
+}
+
+.role-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.role-form input,
+.role-form textarea {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+  background: #fff;
+  font: inherit;
+}
+
+.role-form-permissions {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem 1rem 1rem;
+  margin: 0;
+}
+
+.role-form-permissions legend {
+  padding: 0 0.35rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.permission-matrix {
+  display: grid;
+  gap: 1.1rem;
+}
+
+.permission-category-title {
+  margin: 0 0 0.55rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.permission-columns {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.55rem 0.85rem;
+}
+
+.permission-cell {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: 0.5rem;
+  row-gap: 0.1rem;
+  align-items: start;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.permission-cell input {
+  grid-row: 1 / span 2;
+  margin-top: 0.2rem;
+}
+
+.permission-key {
+  font-size: 0.88rem;
+}
+
+.permission-desc {
+  grid-column: 2;
+  font-size: 0.8rem;
+  font-weight: 400;
+}
+
 /* —— Project detail (grid + Gantt) —— */
 .project-detail-page {
   max-width: none;
