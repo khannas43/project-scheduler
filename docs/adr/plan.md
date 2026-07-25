@@ -40,8 +40,8 @@ number, not a timeline estimate.
 **~60% done, ~40% pending, 0% in progress** (34/57 done — Phases 0–2
 fully complete; 23/57 not started, nothing currently in progress).
 Everything remaining is Phases 3–6 (resources, tracking,
-interop/reporting, agile) plus one small flagged item (`lagPercent`
-wiring in `apps/api`). Nothing in Phases 3–6 has started.
+interop/reporting, agile). No other known gaps anywhere in the
+codebase as of this check.
 
 ---
 
@@ -167,11 +167,7 @@ wiring in `apps/api`). Nothing in Phases 3–6 has started.
   before either pass touches it. Golden corpus grew 2 → 7 cases
   (003–007); one (007, percentage lag crossing a Monday→Tuesday working
   boundary) independently re-derived by hand during review, not just
-  re-run. **Not yet wired**: `apps/api`'s `toDependencyInputs` doesn't
-  read `lagPercent` off the DB row, so the live server still silently
-  ignores it on a real dependency today — flagged explicitly, not
-  hidden, and `DependencyInput.lagPercent`'s type is optional
-  specifically so this doesn't block compilation until it's fixed.
+  re-run.
 - **Constraint types + precedence + ADR** (§13 item 29, Cursor,
   `packages/scheduler`) — seven of eight types (`asap`/`snet`/`fnet`/
   `mso`/`mfo`/`snlt`/`fnlt`) applied per-task in the forward pass after
@@ -205,10 +201,11 @@ wiring in `apps/api`). Nothing in Phases 3–6 has started.
   and `DEADLINE_MISSED` in the same warnings array — independent checks,
   not exclusive. Golden corpus grew 13 → 15 (014–015); 014 independently
   re-derived by hand during review, matches exactly. Same flagged-gap
-  pattern as `lagPercent`: `apps/api`'s `toTaskInputs` didn't read the
-  `deadline` column at merge time — closed opportunistically in the very
-  next commit (Gantt drag-to-move) while that function was already being
-  touched for `constraintType`/`constraintDate`.
+  pattern as `lagPercent` (below, since fixed): `apps/api`'s
+  `toTaskInputs` didn't read the `deadline` column at merge time —
+  closed opportunistically in the very next commit (Gantt drag-to-move)
+  while that function was already being touched for
+  `constraintType`/`constraintDate`.
 - **Gantt drag-to-move** (§13 item 6, slice 1 of 3) — task dates are
   computed (ASAP from dependencies), not directly settable, so dragging
   a bar sets an MSO constraint at the drop date via the existing
@@ -288,9 +285,21 @@ wiring in `apps/api`). Nothing in Phases 3–6 has started.
   the no-cache-yet fallback to `invalidateQueries`, including an
   unprompted but valuable addition: asserting the query cache is
   provably unchanged after a failed mutation.
+- **`lagPercent` wiring fix** (`apps/api`) — `toDependencyInputs` never
+  read the `lag_percent` column; a `numeric()` column, which Drizzle
+  returns as `string | null` not a native number, so a percentage-lag
+  dependency was silently scheduled as if unset even though the engine,
+  DB column, and Zod schema all supported it since items 27–28 landed.
+  Fixed directly (not via Cursor — small and precise enough to do
+  inline) with two new regression tests, and verified against the live
+  dev server (`tsx watch`, picked up the change automatically): created
+  a real FS dependency with `lagPercent: 50` via the API and confirmed
+  the successor's `earlyStart` landed exactly 240 working minutes (50%
+  of the 480-minute predecessor) later — proof the live server applies
+  it now, not just an isolated unit test.
 
 **Phase 2 (TECHNICAL_DESIGN.md §13, all eight build-order items) is now
-fully done**, except the small flagged `lagPercent` wiring gap (item 2).
+fully done, with no known gaps anywhere in the codebase.**
 
 ## Next up
 
@@ -305,13 +314,8 @@ watch a 403) is fully reachable end-to-end today.
 Phase 2 (§13 items 27–34), status:
 
 1. **SS/FF/SF link types + golden cases** — **done**.
-2. **Lead/lag, including negative and percentage** — **done**. **Loose
-   end still open**: `apps/api`'s `scheduleRunner.ts#toDependencyInputs`
-   still doesn't read `lagPercent` off the DB row (confirmed still true
-   as of this check), so a percentage-lag dependency set via the API is
-   silently ignored by the live server even though the engine, DB
-   column, and Zod schema all support it. Small, precise, `apps/api`-only
-   fix — good pickup for a spare terminal.
+2. **Lead/lag, including negative and percentage** — **done**, including
+   the `apps/api` wiring gap (see Done section above).
 3. **All eight constraint types + precedence rules + ADR** — **done**
    (seven of eight — ALAP deliberately throws; `docs/adr/002-constraint-precedence.md`).
 4. **Deadlines + warnings** — **done**. `DEADLINE_MISSED`, checked
@@ -336,9 +340,7 @@ Phase 2 (§13 items 27–34), status:
    recompiles the fixture's calendars/tasks/dependencies and calls
    `schedule()` directly — byte-for-byte match against `expected.json`.
 
-**Phase 2 (§13 items 27–34) is now fully done**, except item 6's resize
-and drag-to-link slices (always scoped as separate follow-ups) and the
-small flagged `lagPercent` wiring gap under item 2.
+**Phase 2 (§13 items 27–34) is now fully done, with no known gaps.**
 
 ## What can run in parallel (one terminal per Claude Code session)
 
@@ -354,9 +356,8 @@ running and may be the culprit). Left untouched; the user will handle
 it outside this session. Don't attempt to remove it again without new
 information — retrying the same hung command isn't productive.
 
-Remaining unclaimed work (item 6's drag-to-link slice, the small
-`lagPercent` gap) is now just sequential backlog, not something to
-split across terminals.
+Phase 2 is fully done and closed out — no unclaimed work remains from
+it. Phases 3–6 (below) are the next source of work whenever that starts.
 
 ## Phases 3–6 (PROJECT_SCOPE.md §8) — not started
 
