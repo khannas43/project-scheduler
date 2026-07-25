@@ -31,17 +31,15 @@ number, not a timeline estimate.
 | 0 — Foundation | 12 | 12 | 0 | 0 | 100% |
 | 1 — Core planning | 14 | 14 | 0 | 0 | 100% |
 | 2 — Full scheduling | 8 | 8 (all items done) | 0 | 0 | 100% |
-| 3 — Resources | 6 | 4 (pool CRUD; assignments CRUD; cost model; overallocation) | 0 | 2 (timephased distribution; resource sheet/usage UI) | 67% |
+| 3 — Resources | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 4 — Tracking | 6 | 0 | 0 | 6 | 0% |
 | 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **38** | **0** | **19** | **~67%** |
+| **Total** | **57** | **40** | **0** | **17** | **~70%** |
 
-**~67% done, ~33% pending, 0% in progress** (38/57 done — Phases 0–2
-fully complete, plus four of Phase 3's six items; 19/57 not started,
-nothing currently in progress). Remaining: Phase 3's timephased
-distribution and web UI, then Phases 4–6 (tracking, interop/reporting,
-agile) untouched.
+**~70% done, ~30% pending, 0% in progress** (40/57 done — Phases 0–3
+fully complete; 17/57 not started, nothing currently in progress).
+Remaining: Phases 4–6 (tracking, interop/reporting, agile) untouched.
 
 ---
 
@@ -329,6 +327,49 @@ fully done, with no known gaps anywhere in the codebase.**
   work distribution), any `apps/web` UI (resource sheet/usage views —
   Phase 3's stated exit criterion still needs this), overtime-rate
   costing.
+- **Resource sheet, task-assignment UI, and timephased work
+  distribution** — closes out Phase 3. `apps/web/src/features/resources/`
+  (mirrors `features/roles/`'s layout) — global-catalog CRUD,
+  `ResourceSheet` with a per-row `OverallocationBadge` (independently
+  mounted so the table never blocks on any row's overallocation query),
+  delete surfaces the server's 400-with-assignments through the
+  existing error banner. `AssignmentPanel` (opened via a per-row
+  "Resources" action in `TaskGrid`, skipped for summaries) filters
+  `TaskTreeResponse.assignments` to the current task; its three
+  mutations mirror `useCreateDependency`'s exact non-optimistic pattern
+  since assignments don't drive the CPM engine.
+  **Timephased distribution** (`assignment_timephased`, §3.5) —
+  recomputed only when the assignment itself is created or its units
+  change, deliberately *not* wired into `scheduleRunner.ts`'s
+  `rescheduleProject` (the shared, safety-critical transaction loop
+  every other mutation depends on) — if a task's own schedule shifts
+  later for an unrelated reason, its assignments' timephased rows go
+  stale until the assignment is touched again. **A deliberate,
+  explicit limitation for this round**, not silently swept under the
+  rug; wiring it into every reschedule is a separate, dedicated future
+  round given the blast radius of touching that shared loop.
+  `distributeWorkAcrossWorkingDays` is genuinely calendar-aware (reuses
+  the newly-exported `loadCompiledCalendars`, checks each day's actual
+  working capacity via the compiled calendar's `slots` array) — proven
+  with a real mid-range holiday exception built through `compileCalendar`
+  itself, not mocked. Evenly splits work minutes across working days,
+  remainder on the last day so the total always matches exactly.
+  `refreshTimephasedDistribution` deletes prior rows before inserting
+  (the table's composite PK has no natural `(assignment_id,
+  period_date)` uniqueness to upsert against — `id` is freshly
+  generated per row purely to satisfy Postgres's partition-key
+  requirement) — confirmed idempotent across two recomputes with
+  different unit values in the same test. `GET
+  /api/assignments/:id/timephased` added under the existing
+  `resource.assign` guard; the route-guard drift test explicitly
+  asserts its key since GET routes are otherwise skipped by that
+  test's method filter — this was called out specifically because it
+  would have been a silent, untested guard otherwise. Independently
+  reviewed in full — no bugs found.
+
+**Phase 3 (PROJECT_SCOPE.md §8: resource pool, assignments, cost
+model, overallocation detection, timephased distribution, resource
+sheet/usage views) is now fully done.**
 
 ## Next up
 
@@ -338,14 +379,11 @@ avoid two copies drifting out of sync). **Phase 0's exit demo**
 (`docker compose up`, log in, create a custom role, watch a 403) is
 fully reachable end-to-end today.
 
-The actual next work is **Phase 3's two remaining items** — see the
-"Phase 3 — Resources" section below for the full breakdown:
-
-1. **Timephased work distribution** (`assignment_timephased`) — not
-   started.
-2. **Resource sheet / usage views** (`apps/web`) — not started. This is
-   what makes Phase 3's backend work (cost/work computation,
-   overallocation detection) actually visible to a user.
+**Phase 3 (Resources) is also entirely done** — see the "Phase 3 —
+Resources" section below. The actual next work is **Phase 4 —
+Tracking** (baselines, actuals, % complete, status date, progress
+lines, earned value + S-curve), not yet broken down into individual
+build-order items the way Phases 0–3 have been.
 
 ## What can run in parallel (one terminal per Claude Code session)
 
@@ -364,22 +402,23 @@ information — retrying the same hung command isn't productive.
 Phase 2 is fully done and closed out — no unclaimed work remains from
 it. Phase 3 (below) is now in progress.
 
-## Phase 3 — Resources (PROJECT_SCOPE.md §8, in progress)
+## Phase 3 — Resources (PROJECT_SCOPE.md §8) — done
 
-1. **Resource pool CRUD** — **done** (see Done section above).
-2. **Assignments CRUD** — **done**.
-3. **Cost model** (`computeWorkAndCost`) — **done**. Standard rate +
-   cost-per-use only; overtime rate unused (no threshold defined yet).
-4. **Overallocation detection** — **done**, at UTC-calendar-day
-   granularity. A working-minute/calendar-aware version would need
-   `assignment_timephased` (item 5) to be meaningfully more precise.
-5. **Timephased work distribution** — not started.
-   `assignment_timephased` exists in the DB (partitioned, per §3.5) but
-   nothing in the application layer writes or reads it yet.
-6. **Resource sheet / usage views** (`apps/web`) — not started. Phase
-   3's stated exit criterion ("assignments compute cost and work
-   correctly; overallocations surface") needs this to actually be
-   *visible* — the backend can do it today, nothing shows it yet.
+All six items complete (see Done section above for the full
+walkthrough): resource pool CRUD, assignments CRUD, cost model
+(`computeWorkAndCost` — standard rate + cost-per-use; overtime rate
+unused, no threshold defined yet), overallocation detection
+(UTC-calendar-day granularity — a working-minute-precise version isn't
+needed now that item 5 has landed, since the day-bucket approach was
+always the deliberately-simpler stand-in), timephased work distribution
+(`assignment_timephased`, recomputed on assignment mutation only — see
+the Done section's explicit note on what's *not* covered: a task
+reschedule alone doesn't refresh it), and the resource sheet /
+task-assignment UI in `apps/web` making all of the above visible.
+
+**Exit criterion met**: "Assignments compute cost and work correctly;
+overallocations surface" — verifiable end-to-end today via
+`/projects/$projectId/resources` and the per-task "Resources" panel.
 
 ## Phases 4–6 (PROJECT_SCOPE.md §8) — not started
 
