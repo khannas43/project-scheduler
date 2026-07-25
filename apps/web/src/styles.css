@@ -644,6 +644,111 @@ button:disabled {
   margin: 0;
 }
 
+.earned-value-panel {
+  margin-top: 2rem;
+}
+
+.evm-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 0.75rem 1rem;
+  margin: 1rem 0 1.5rem;
+}
+
+.evm-stats dt {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.evm-stats dd {
+  margin: 0.2rem 0 0;
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.s-curve-chart {
+  width: 100%;
+  max-width: 40rem;
+  height: auto;
+  display: block;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.s-curve-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.s-curve-axis {
+  stroke: var(--muted);
+  stroke-width: 1.25;
+}
+
+.s-curve-axis-label {
+  fill: var(--muted);
+  font-size: 10px;
+}
+
+.s-curve-pv {
+  stroke: #2f5d50;
+  stroke-width: 2.5;
+}
+
+.s-curve-ev {
+  fill: #c45c26;
+}
+
+.s-curve-ac {
+  fill: #3b5bdb;
+}
+
+.s-curve-legend {
+  display: flex;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.s-curve-legend-pv::before,
+.s-curve-legend-ev::before,
+.s-curve-legend-ac::before {
+  content: '';
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  margin-right: 0.35rem;
+  vertical-align: middle;
+  border-radius: 999px;
+}
+
+.s-curve-legend-pv::before {
+  background: #2f5d50;
+}
+
+.s-curve-legend-ev::before {
+  background: #c45c26;
+}
+
+.s-curve-legend-ac::before {
+  background: #3b5bdb;
+}
+
+.section-heading-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.baseline-detail {
+  margin-top: 1.5rem;
+}
+
 @media (max-width: 960px) {
   .project-detail-layout {
     grid-template-columns: 1fr;

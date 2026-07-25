@@ -298,4 +298,20 @@ describe('resolveProjectId — baseline branches', () => {
     expect(projectId).toBe('77777777-7777-4777-8777-777777777777');
     expect(db.select).not.toHaveBeenCalled();
   });
+
+  it('GET /api/projects/:id/earned-value and /s-curve resolve via the projects prefix', async () => {
+    const projectId = '88888888-8888-4888-8888-888888888888';
+
+    expect(
+      await resolveProjectId(
+        mockRequest({ url: '/api/projects/:id/earned-value', id: projectId }),
+      ),
+    ).toBe(projectId);
+
+    expect(
+      await resolveProjectId(mockRequest({ url: '/api/projects/:id/s-curve', id: projectId })),
+    ).toBe(projectId);
+
+    expect(db.select).not.toHaveBeenCalled();
+  });
 });

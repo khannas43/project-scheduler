@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/permissions.js';
 import * as baselineService from '../services/baselineService.js';
+import * as earnedValueService from '../services/earnedValueService.js';
 
 const ProjectIdParams = z.object({ id: z.uuid() });
 const BaselineIdParams = z.object({ id: z.uuid() });
@@ -12,7 +13,17 @@ const BaselineCreateBodySchema = z.object({
   name: z.string().min(1).nullable().optional(),
 });
 
-/** §5.2 baseline routes — project-scoped list/save + baseline-scoped detail/clear. */
+const EarnedValueQuerySchema = z.object({
+  baselineId: z.uuid().optional(),
+  asOfDate: z.iso.datetime().optional(),
+});
+
+const SCurveQuerySchema = z.object({
+  baselineId: z.uuid().optional(),
+  granularityDays: z.coerce.number().int().positive().optional(),
+});
+
+/** §5.2 baseline + EVM routes (EVM reuses baseline.view — no dedicated EVM key). */
 export const baselineRoutes: FastifyPluginAsyncZod = async (fastify) => {
   fastify.post(
     '/api/projects/:id/baselines',
@@ -43,6 +54,42 @@ export const baselineRoutes: FastifyPluginAsyncZod = async (fastify) => {
       schema: { params: ProjectIdParams },
     },
     async (request) => baselineService.listBaselines(request.params.id),
+  );
+
+  fastify.get(
+    '/api/projects/:id/earned-value',
+    {
+      preHandler: [requireAuth, requirePermission('baseline.view')],
+      schema: {
+        params: ProjectIdParams,
+        querystring: EarnedValueQuerySchema,
+      },
+    },
+    async (request) => {
+      const opts: { baselineId?: string; asOfDate?: Date } = {};
+      if (request.query.baselineId !== undefined) opts.baselineId = request.query.baselineId;
+      if (request.query.asOfDate !== undefined) opts.asOfDate = new Date(request.query.asOfDate);
+      return earnedValueService.computeEarnedValue(request.params.id, opts);
+    },
+  );
+
+  fastify.get(
+    '/api/projects/:id/s-curve',
+    {
+      preHandler: [requireAuth, requirePermission('baseline.view')],
+      schema: {
+        params: ProjectIdParams,
+        querystring: SCurveQuerySchema,
+      },
+    },
+    async (request) => {
+      const opts: { baselineId?: string; granularityDays?: number } = {};
+      if (request.query.baselineId !== undefined) opts.baselineId = request.query.baselineId;
+      if (request.query.granularityDays !== undefined) {
+        opts.granularityDays = request.query.granularityDays;
+      }
+      return earnedValueService.computeSCurve(request.params.id, opts);
+    },
   );
 
   fastify.get(

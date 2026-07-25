@@ -309,27 +309,45 @@ export async function updateAssignment(
       .limit(1);
     if (!resource) throw new NotFoundError('Resource not found');
 
-    if (resource.resourceType !== 'work') {
-      throw new BadRequestError(
-        'units may only be updated on work-resource assignments (material/cost resources have no % allocation)',
-      );
+    const patch: {
+      units?: string | null;
+      workMinutes?: number;
+      cost?: string;
+      actualWorkMinutes?: number | null;
+      actualCost?: string | null;
+    } = {};
+
+    if (input.units !== undefined) {
+      if (resource.resourceType !== 'work') {
+        throw new BadRequestError(
+          'units may only be updated on work-resource assignments (material/cost resources have no % allocation)',
+        );
+      }
+      const { workMinutes, cost } = computeWorkAndCost(task, resource, input.units);
+      patch.units = numericToDb(input.units) ?? null;
+      patch.workMinutes = workMinutes;
+      patch.cost = String(cost);
     }
 
-    const { workMinutes, cost } = computeWorkAndCost(task, resource, input.units);
+    if (input.actualWorkMinutes !== undefined) {
+      patch.actualWorkMinutes = input.actualWorkMinutes;
+    }
+    if (input.actualCost !== undefined) {
+      patch.actualCost = numericToDb(input.actualCost) ?? null;
+    }
 
     const [updated] = await tx
       .update(assignments)
-      .set({
-        units: numericToDb(input.units) ?? null,
-        workMinutes,
-        cost: String(cost),
-      })
+      .set(patch)
       .where(eq(assignments.id, id))
       .returning();
 
     if (!updated) throw new NotFoundError('Assignment not found');
 
-    await refreshTimephasedDistribution(tx, id);
+    // Timephased planned work depends on units/duration — only rebuild when units changed.
+    if (input.units !== undefined) {
+      await refreshTimephasedDistribution(tx, id);
+    }
 
     await writeAuditLog(tx, {
       userId: actorUserId,

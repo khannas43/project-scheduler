@@ -6,6 +6,7 @@ import { ProjectListPage } from './features/projects/index.js';
 import { ResourceSheet } from './features/resources/index.js';
 import { RolesPage } from './features/roles/index.js';
 import { ProjectDetailPage } from './features/tasks/index.js';
+import { BaselinesPage } from './features/tracking/index.js';
 import { useAuthStore } from './stores/authStore.js';
 
 const rootRoute = createRootRoute({
@@ -63,6 +64,12 @@ const projectResourcesRoute = createRoute({
   component: ResourceSheet,
 });
 
+const projectBaselinesRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/projects/$projectId/baselines',
+  component: BaselinesPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -72,6 +79,7 @@ const routeTree = rootRoute.addChildren([
       projectDetailRoute,
       projectRolesRoute,
       projectResourcesRoute,
+      projectBaselinesRoute,
     ]),
   ]),
 ]);

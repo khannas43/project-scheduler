@@ -42,7 +42,18 @@ describe('AssignmentUpdateInputSchema', () => {
     expect(AssignmentUpdateInputSchema.safeParse({ units: 1.25 }).success).toBe(true);
   });
 
-  it('rejects empty object', () => {
+  it('accepts actualWorkMinutes / actualCost without units', () => {
+    expect(
+      AssignmentUpdateInputSchema.safeParse({ actualWorkMinutes: 120, actualCost: 50 }).success,
+    ).toBe(true);
+    expect(AssignmentUpdateInputSchema.safeParse({ actualCost: null }).success).toBe(true);
+  });
+
+  it('rejects empty object (at least one field required)', () => {
     expect(AssignmentUpdateInputSchema.safeParse({}).success).toBe(false);
+  });
+
+  it('rejects negative actualCost', () => {
+    expect(AssignmentUpdateInputSchema.safeParse({ actualCost: -1 }).success).toBe(false);
   });
 });
