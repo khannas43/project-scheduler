@@ -231,6 +231,8 @@ export function toDependencyInputs(rows: Array<typeof taskDependencies.$inferSel
     successorId: asTaskId(d.successorId),
     linkType: d.linkType as LinkType,
     lagMinutes: d.lagMinutes,
+    // numeric() columns come back as string | null from Drizzle.
+    lagPercent: d.lagPercent === null ? null : Number(d.lagPercent),
   }));
 }
 

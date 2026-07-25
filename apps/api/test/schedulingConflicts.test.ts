@@ -156,6 +156,43 @@ describe('cycle-rejection SchedulingConflictError', () => {
   });
 });
 
+describe('toDependencyInputs lagPercent conversion', () => {
+  it('converts a numeric() string lagPercent row into a JS number', () => {
+    const [dep] = toDependencyInputs([
+      {
+        id: 'd1',
+        predecessorId: 'a',
+        successorId: 'b',
+        linkType: 'FS',
+        lagMinutes: 0,
+        lagPercent: '50',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+
+    expect(dep!.lagPercent).toBe(50);
+    expect(typeof dep!.lagPercent).toBe('number');
+  });
+
+  it('passes through a null lagPercent unchanged', () => {
+    const [dep] = toDependencyInputs([
+      {
+        id: 'd1',
+        predecessorId: 'a',
+        successorId: 'b',
+        linkType: 'FS',
+        lagMinutes: 0,
+        lagPercent: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+
+    expect(dep!.lagPercent).toBeNull();
+  });
+});
+
 describe('computedFieldsEqual (affected-set filter)', () => {
   it('treats identical snapshots as unchanged', () => {
     const snap = {
