@@ -8,6 +8,7 @@ import { registerErrorHandler } from './middleware/errors.js';
 import './middleware/auth.js'; // FastifyRequest.user module augmentation
 import './middleware/permissions.js'; // FastifyRequest.permissionsCache module augmentation
 import { authRoutes } from './routes/auth.js';
+import { calendarRoutes } from './routes/calendars.js';
 import { dependencyRoutes } from './routes/dependencies.js';
 import { healthRoutes } from './routes/health.js';
 import { projectRoutes } from './routes/projects.js';
@@ -57,6 +58,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(taskRoutes);
   await fastify.register(dependencyRoutes);
   await fastify.register(roleRoutes);
+  await fastify.register(calendarRoutes);
 
   return fastify;
 }

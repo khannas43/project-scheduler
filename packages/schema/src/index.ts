@@ -8,8 +8,10 @@ export {
 export {
   CalendarCreateInputSchema,
   CalendarUpdateInputSchema,
+  CalendarExceptionCreateInputSchema,
   type CalendarCreateInput,
   type CalendarUpdateInput,
+  type CalendarExceptionCreateInput,
 } from './calendar.js';
 
 export {

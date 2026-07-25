@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import type { FastifyRequest } from 'fastify';
 
 import { db } from '../db/client.js';
-import { taskDependencies, tasks } from '../db/schema/index.js';
+import { calendarExceptions, calendars, taskDependencies, tasks } from '../db/schema/index.js';
 import { getEffectivePermissions } from '../services/permissionService.js';
 import { ForbiddenError, UnauthorizedError } from './errors.js';
 
@@ -62,6 +62,30 @@ export async function resolveProjectId(request: FastifyRequest): Promise<string 
       .where(eq(taskDependencies.id, id))
       .limit(1);
     return row?.projectId;
+  }
+
+  // GET/POST /api/calendars/:id/exceptions — :id is a calendar id.
+  if (routePath.startsWith('/api/calendars/')) {
+    if (!id) return undefined;
+    const [calendar] = await db
+      .select({ projectId: calendars.projectId })
+      .from(calendars)
+      .where(eq(calendars.id, id))
+      .limit(1);
+    // May be null for global templates — requirePermission fails closed on falsy.
+    return calendar?.projectId ?? undefined;
+  }
+
+  // DELETE /api/calendar-exceptions/:id — :id is an exception id.
+  if (routePath.startsWith('/api/calendar-exceptions/')) {
+    if (!id) return undefined;
+    const [row] = await db
+      .select({ projectId: calendars.projectId })
+      .from(calendarExceptions)
+      .innerJoin(calendars, eq(calendarExceptions.calendarId, calendars.id))
+      .where(eq(calendarExceptions.id, id))
+      .limit(1);
+    return row?.projectId ?? undefined;
   }
 
   return undefined;

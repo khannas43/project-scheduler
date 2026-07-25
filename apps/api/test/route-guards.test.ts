@@ -78,6 +78,17 @@ describe('route-guard drift (§6.4)', () => {
     // POST /api/projects is intentionally auth-only (no project to resolve yet).
     expect(authOnlyPaths).toContain('POST /api/projects');
 
+    // Calendar-exception mutators (and the list GET) must use calendar.manage.
+    const byKey = (method: string, path: string) => {
+      const route = fastify.routeTable.find((r) => r.method === method && r.path === path);
+      expect(route, `${method} ${path} should be registered`).toBeDefined();
+      const guard = route!.preHandlers.find(isPermissionPreHandler);
+      expect(guard?.permissionKey).toBe(PERMISSIONS.CALENDAR_MANAGE.key);
+    };
+    byKey('GET', '/api/calendars/:id/exceptions');
+    byKey('POST', '/api/calendars/:id/exceptions');
+    byKey('DELETE', '/api/calendar-exceptions/:id');
+
     await fastify.close();
   });
 });

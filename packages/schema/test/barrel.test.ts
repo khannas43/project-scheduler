@@ -8,6 +8,8 @@ describe('@pkg/schema barrel', () => {
     expect(schema.ProjectUpdateInputSchema).toBeDefined();
     expect(schema.CalendarCreateInputSchema).toBeDefined();
     expect(schema.CalendarUpdateInputSchema).toBeDefined();
+    expect(schema.CalendarExceptionCreateInputSchema).toBeDefined();
+
     expect(schema.TaskCreateInputSchema).toBeDefined();
     expect(schema.TaskUpdateInputSchema).toBeDefined();
     expect(schema.TaskMoveInputSchema).toBeDefined();

@@ -110,3 +110,66 @@ describe('resolveProjectId — dependency branches', () => {
     expect(projectId).toBeUndefined();
   });
 });
+
+describe('resolveProjectId — calendar exception branches', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    chain.from.mockReturnValue(chain);
+    chain.where.mockReturnValue(chain);
+    chain.innerJoin.mockReturnValue(chain);
+  });
+
+  it('GET/POST /api/calendars/:id/exceptions resolves via calendar.projectId', async () => {
+    limit.mockResolvedValueOnce([{ projectId: 'proj-cal' }]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/calendars/:id/exceptions',
+        id: '44444444-4444-4444-8444-444444444444',
+      }),
+    );
+
+    expect(projectId).toBe('proj-cal');
+    expect(db.select).toHaveBeenCalled();
+  });
+
+  it('returns undefined for a global template calendar (fail-closed for the guard)', async () => {
+    limit.mockResolvedValueOnce([{ projectId: null }]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/calendars/:id/exceptions',
+        id: '44444444-4444-4444-8444-444444444444',
+      }),
+    );
+
+    expect(projectId).toBeUndefined();
+  });
+
+  it('DELETE /api/calendar-exceptions/:id resolves via exception → calendar → project', async () => {
+    limit.mockResolvedValueOnce([{ projectId: 'proj-ex' }]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/calendar-exceptions/:id',
+        id: '55555555-5555-4555-8555-555555555555',
+      }),
+    );
+
+    expect(projectId).toBe('proj-ex');
+    expect(db.select).toHaveBeenCalled();
+  });
+
+  it('DELETE /api/calendar-exceptions/:id returns undefined when the exception is missing', async () => {
+    limit.mockResolvedValueOnce([]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/calendar-exceptions/:id',
+        id: '55555555-5555-4555-8555-555555555555',
+      }),
+    );
+
+    expect(projectId).toBeUndefined();
+  });
+});

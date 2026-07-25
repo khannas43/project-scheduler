@@ -16,5 +16,19 @@ export const CalendarCreateInputSchema = z.object({
 /** Calendars have no `version` column — update is a plain partial of create fields. */
 export const CalendarUpdateInputSchema = CalendarCreateInputSchema.partial();
 
+/**
+ * Calendar exception create (§3.2). No update schema — delete+recreate, same
+ * as `task_dependencies` (create/delete only).
+ */
+export const CalendarExceptionCreateInputSchema = z.object({
+  exceptionDate: z.iso.date(), // date-only (YYYY-MM-DD), not datetime
+  isWorking: z.boolean(),
+  startTime: z.iso.time().nullable().optional(),
+  finishTime: z.iso.time().nullable().optional(),
+  name: z.string().nullable().optional(),
+  recurrence: z.object({ type: z.literal('annual') }).nullable().optional(),
+});
+
 export type CalendarCreateInput = z.infer<typeof CalendarCreateInputSchema>;
 export type CalendarUpdateInput = z.infer<typeof CalendarUpdateInputSchema>;
+export type CalendarExceptionCreateInput = z.infer<typeof CalendarExceptionCreateInputSchema>;

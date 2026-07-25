@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { CalendarCreateInputSchema, CalendarUpdateInputSchema } from '../src/calendar.js';
+import {
+  CalendarCreateInputSchema,
+  CalendarExceptionCreateInputSchema,
+  CalendarUpdateInputSchema,
+} from '../src/calendar.js';
+
 
 const PROJECT_ID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -88,5 +93,36 @@ describe('CalendarUpdateInputSchema', () => {
     if (result.success) {
       expect(result.data).not.toHaveProperty('version');
     }
+  });
+});
+
+describe('CalendarExceptionCreateInputSchema', () => {
+  it('accepts a date-only exception with annual recurrence', () => {
+    const result = CalendarExceptionCreateInputSchema.safeParse({
+      exceptionDate: '2024-12-25',
+      isWorking: false,
+      name: 'Christmas',
+      recurrence: { type: 'annual' },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects a datetime for exceptionDate (date-only via z.iso.date)', () => {
+    expect(
+      CalendarExceptionCreateInputSchema.safeParse({
+        exceptionDate: '2024-12-25T00:00:00Z',
+        isWorking: false,
+      }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an unknown recurrence type', () => {
+    expect(
+      CalendarExceptionCreateInputSchema.safeParse({
+        exceptionDate: '2024-12-25',
+        isWorking: false,
+        recurrence: { type: 'weekly' },
+      }).success,
+    ).toBe(false);
   });
 });
