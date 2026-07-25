@@ -5,7 +5,7 @@ import { useErrorBanner } from '../stores/errorBanner.js';
 
 export function AppShell() {
   const { user, logout } = useAuth();
-  const { message, code, clear } = useErrorBanner();
+  const { message, code, actionLabel, onAction, clear } = useErrorBanner();
 
   return (
     <div className="app-shell">
@@ -26,9 +26,23 @@ export function AppShell() {
             {message}
             {code ? <code className="error-code">{code}</code> : null}
           </span>
-          <button type="button" className="btn-link" onClick={clear}>
-            Dismiss
-          </button>
+          <span className="error-banner-actions">
+            {actionLabel && onAction ? (
+              <button
+                type="button"
+                className="btn-link"
+                onClick={() => {
+                  onAction();
+                  clear();
+                }}
+              >
+                {actionLabel}
+              </button>
+            ) : null}
+            <button type="button" className="btn-link" onClick={clear}>
+              Dismiss
+            </button>
+          </span>
         </div>
       ) : null}
       <main className="app-main">

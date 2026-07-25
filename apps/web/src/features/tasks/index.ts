@@ -1,0 +1,15 @@
+export { getTaskTree, patchTask } from './api.js';
+export { ProjectDetailPage } from './components/ProjectDetailPage.js';
+export { TaskGrid } from './components/TaskGrid.js';
+export { GanttPanel } from './components/GanttPanel.js';
+export { useTaskTree, tasksQueryKey } from './hooks/useTaskTree.js';
+export { useTaskEdit, projectQueryKey } from './hooks/useTaskEdit.js';
+export { TaskIdAdapter } from './idAdapter.js';
+export type {
+  TaskRow,
+  DependencyRow,
+  CalendarRow,
+  TaskTreeResponse,
+  TaskMutationResponse,
+  TaskEditPatch,
+} from './types.js';

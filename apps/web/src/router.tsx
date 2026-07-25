@@ -2,7 +2,8 @@ import { Outlet, createRootRoute, createRoute, createRouter, redirect } from '@t
 
 import { AppShell } from './components/AppShell.js';
 import { LoginPage, RequireAuth } from './features/auth/index.js';
-import { ProjectListPage, ProjectPlaceholderPage } from './features/projects/index.js';
+import { ProjectListPage } from './features/projects/index.js';
+import { ProjectDetailPage } from './features/tasks/index.js';
 import { useAuthStore } from './stores/authStore.js';
 
 const rootRoute = createRootRoute({
@@ -45,7 +46,7 @@ const projectsRoute = createRoute({
 const projectDetailRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/projects/$projectId',
-  component: ProjectPlaceholderPage,
+  component: ProjectDetailPage,
 });
 
 const routeTree = rootRoute.addChildren([
