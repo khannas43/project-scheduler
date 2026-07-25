@@ -7,7 +7,7 @@ import { rollupSummaries } from './summaryRollup.js';
 import type { DependencyInput, TaskInput } from './taskTypes.js';
 import { asEpochMinutes, type CalendarId, type EpochMinutes, type TaskId } from './types.js';
 
-export type { DependencyInput, LinkType, TaskInput } from './taskTypes.js';
+export type { ConstraintType, DependencyInput, LinkType, TaskInput } from './taskTypes.js';
 
 export interface SchedulerInput {
   readonly projectStart: EpochMinutes;
@@ -17,7 +17,6 @@ export interface SchedulerInput {
   readonly defaultCalendarId: CalendarId;
 }
 
-/** Not yet populated by anything (constraint types are Phase 2) — shape settled now so Phase 2 is additive, not a breaking change. */
 export interface SchedulingWarning {
   readonly code: string;
   readonly taskIds: readonly TaskId[];
@@ -58,7 +57,7 @@ export function schedule(input: SchedulerInput): SchedulerOutput {
 
   validateGraph(tasks, dependencies);
 
-  const forward = runForwardPass(projectStart, tasks, dependencies, calendars);
+  const { results: forward, warnings } = runForwardPass(projectStart, tasks, dependencies, calendars);
 
   let projectFinishValue = projectStart as number;
   for (const { earlyFinish } of forward.values()) {
@@ -109,5 +108,5 @@ export function schedule(input: SchedulerInput): SchedulerOutput {
     });
   }
 
-  return { tasks: resultTasks, projectFinish, criticalPath, warnings: [] };
+  return { tasks: resultTasks, projectFinish, criticalPath, warnings };
 }

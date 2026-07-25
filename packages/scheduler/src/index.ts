@@ -7,13 +7,14 @@ export type { RawCalendarException } from './calendarRecurrence.js';
 export { computeFloat, extractCriticalPath } from './float.js';
 export type { FloatResult } from './float.js';
 export { runForwardPass } from './forwardPass.js';
-export type { ComputedSchedule } from './forwardPass.js';
+export type { ComputedSchedule, ForwardPassResult } from './forwardPass.js';
 export { computeTopologicalOrder } from './graphOrdering.js';
 export type { GraphEdge } from './graphOrdering.js';
 export { SchedulingError, validateGraph } from './graphValidation.js';
 export { schedule } from './schedule.js';
 export type {
   ComputedTaskSchedule,
+  ConstraintType,
   DependencyInput,
   LinkType,
   SchedulerInput,

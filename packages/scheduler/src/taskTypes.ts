@@ -1,6 +1,8 @@
-import type { CalendarId, TaskId } from './types.js';
+import type { CalendarId, EpochMinutes, TaskId } from './types.js';
 
 export type LinkType = 'FS' | 'SS' | 'FF' | 'SF';
+
+export type ConstraintType = 'asap' | 'alap' | 'snet' | 'snlt' | 'fnet' | 'fnlt' | 'mso' | 'mfo';
 
 /**
  * The canonical task shape (§4.1's `TaskInput`), shared by every pass.
@@ -15,6 +17,12 @@ export interface TaskInput {
   readonly isSummary: boolean;
   readonly durationMinutes: number;
   readonly calendarId: CalendarId;
+  /**
+   * Optional for call-site compatibility (apps/api's `toTaskInputs` doesn't
+   * pass these yet). Absent/`null`/`'asap'` are all unconstrained.
+   */
+  readonly constraintType?: ConstraintType | null;
+  readonly constraintDate?: EpochMinutes | null;
 }
 
 export interface DependencyInput {

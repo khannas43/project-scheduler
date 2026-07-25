@@ -1,0 +1,34 @@
+{
+  "projectFinish": 6780,
+  "criticalPath": [
+    "B"
+  ],
+  "tasks": {
+    "A": {
+      "earlyStart": 6300,
+      "earlyFinish": 6540,
+      "lateStart": 6480,
+      "lateFinish": 6720,
+      "totalFloatMinutes": 180,
+      "freeFloatMinutes": 180,
+      "isCritical": false
+    },
+    "B": {
+      "earlyStart": 6720,
+      "earlyFinish": 6780,
+      "lateStart": 6720,
+      "lateFinish": 6780,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    }
+  },
+  "warnings": [
+    {
+      "code": "CONSTRAINT_OVERRIDES_DEPENDENCY",
+      "taskIds": [
+        "B"
+      ]
+    }
+  ]
+}

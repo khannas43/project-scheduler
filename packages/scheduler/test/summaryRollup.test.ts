@@ -59,7 +59,7 @@ describe('rollupSummaries (§4.7)', () => {
   it('a summary spans the earliest start and latest finish of its direct children', () => {
     const tasks = [summary('S', null), leaf('A', 'S', 60), leaf('B', 'S', 120)];
     const deps: DependencyInput[] = [];
-    const forward = runForwardPass(projectStart, tasks, deps, calendars);
+    const { results: forward } = runForwardPass(projectStart, tasks, deps, calendars);
     const float = computeFloat(forward, new Map([...forward].map(([id, f]) => [id, { ...f, lateStart: f.earlyStart, lateFinish: f.earlyFinish }])), deps);
 
     const rollup = rollupSummaries(tasks, forward, float, calendars);
@@ -76,7 +76,7 @@ describe('rollupSummaries (§4.7)', () => {
     // the point is this is *computed from the span*, not summed directly.
     const tasks = [summary('S', null), leaf('A', 'S', 60), leaf('B', 'S', 60)];
     const deps = [fs('A', 'B')];
-    const forward = runForwardPass(projectStart, tasks, deps, calendars);
+    const { results: forward } = runForwardPass(projectStart, tasks, deps, calendars);
     const float = computeFloat(forward, new Map([...forward].map(([id, f]) => [id, { ...f, lateStart: f.earlyStart, lateFinish: f.earlyFinish }])), deps);
 
     const rollup = rollupSummaries(tasks, forward, float, calendars);
@@ -88,7 +88,7 @@ describe('rollupSummaries (§4.7)', () => {
   it('a summary is critical if any direct child is critical', () => {
     const tasks = [summary('S', null), leaf('Critical', 'S', 240), leaf('Slack', 'S', 60)];
     const deps: DependencyInput[] = [];
-    const forward = runForwardPass(projectStart, tasks, deps, calendars);
+    const { results: forward } = runForwardPass(projectStart, tasks, deps, calendars);
     // Give Critical zero float (late === early) and Slack plenty of float.
     const backward = new Map([
       [asTaskId('Critical'), { lateStart: forward.get(asTaskId('Critical'))!.earlyStart, lateFinish: forward.get(asTaskId('Critical'))!.earlyFinish }],
@@ -102,7 +102,7 @@ describe('rollupSummaries (§4.7)', () => {
 
   it('a summary is not critical when no direct child is critical', () => {
     const tasks = [summary('S', null), leaf('A', 'S', 60)];
-    const forward = runForwardPass(projectStart, tasks, [], calendars);
+    const { results: forward } = runForwardPass(projectStart, tasks, [], calendars);
     const backward = new Map([
       [asTaskId('A'), { lateStart: asEpochMinutes(forward.get(asTaskId('A'))!.earlyStart + 10_000), lateFinish: asEpochMinutes(forward.get(asTaskId('A'))!.earlyFinish + 10_000) }],
     ]);
@@ -120,7 +120,7 @@ describe('rollupSummaries (§4.7)', () => {
       leaf('Leaf2', 'Mid', 120),
       leaf('Sibling', 'Root', 30),
     ];
-    const forward = runForwardPass(projectStart, tasks, [], calendars);
+    const { results: forward } = runForwardPass(projectStart, tasks, [], calendars);
     const float = computeFloat(forward, new Map([...forward].map(([id, f]) => [id, { ...f, lateStart: f.earlyStart, lateFinish: f.earlyFinish }])), []);
 
     const rollup = rollupSummaries(tasks, forward, float, calendars);

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { compileCalendar, type CalendarCompilationInput } from '../src/calendar.js';
 import { schedule } from '../src/schedule.js';
-import type { DependencyInput, LinkType, TaskInput } from '../src/taskTypes.js';
+import type { ConstraintType, DependencyInput, LinkType, TaskInput } from '../src/taskTypes.js';
 import { asCalendarId, asEpochMinutes, asTaskId } from '../src/types.js';
 
 const GOLDEN_DIR = join(dirname(fileURLToPath(import.meta.url)), 'golden');
@@ -17,6 +17,8 @@ interface GoldenTaskInput {
   isSummary: boolean;
   durationMinutes: number;
   calendarId: string;
+  constraintType?: ConstraintType | null;
+  constraintDate?: number | null;
 }
 
 interface GoldenDependencyInput {
@@ -45,10 +47,17 @@ interface GoldenExpectedTask {
   isCritical: boolean;
 }
 
+interface GoldenExpectedWarning {
+  code: string;
+  taskIds: string[];
+  message?: string;
+}
+
 interface GoldenExpected {
   projectFinish: number;
   criticalPath: string[];
   tasks: Record<string, GoldenExpectedTask>;
+  warnings?: GoldenExpectedWarning[];
 }
 
 const caseNames = readdirSync(GOLDEN_DIR, { withFileTypes: true })
@@ -89,6 +98,8 @@ describe('golden-file corpus (§11.1)', () => {
         isSummary: t.isSummary,
         durationMinutes: t.durationMinutes,
         calendarId: asCalendarId(t.calendarId),
+        constraintType: t.constraintType ?? null,
+        constraintDate: t.constraintDate === undefined || t.constraintDate === null ? null : asEpochMinutes(t.constraintDate),
       }));
 
       const dependencies: DependencyInput[] = input.dependencies.map((d) => ({
@@ -114,6 +125,17 @@ describe('golden-file corpus (§11.1)', () => {
         const actual = output.tasks.get(asTaskId(id));
         expect(actual, `task ${id} missing from schedule() output`).toBeDefined();
         expect(actual).toEqual(expectedTask);
+      }
+
+      if (expected.warnings !== undefined) {
+        expect(
+          output.warnings.map((w) => ({
+            code: w.code,
+            taskIds: w.taskIds.map(String),
+          })),
+        ).toEqual(expected.warnings.map((w) => ({ code: w.code, taskIds: w.taskIds })));
+      } else {
+        expect(output.warnings).toEqual([]);
       }
     });
   }

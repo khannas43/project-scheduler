@@ -150,7 +150,7 @@ describe('runBackwardPass — all link types + lag (§4.5)', () => {
     const projectStart = asEpochMinutes(MONDAY + NINE_AM);
     const finish = asEpochMinutes(MONDAY + FIVE_PM);
 
-    const forward = runForwardPass(projectStart, tasks, deps, calendars);
+    const { results: forward } = runForwardPass(projectStart, tasks, deps, calendars);
     const backward = runBackwardPass(finish, tasks, deps, calendars);
 
     // The chain exactly fills the working day with no slack, so early == late for every task.

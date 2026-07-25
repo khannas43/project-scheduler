@@ -40,7 +40,7 @@ const projectStart = asEpochMinutes(MONDAY + NINE_AM);
 
 /** Runs both passes and computeFloat together — the shape every test here needs. */
 function schedule(tasks: TaskInput[], deps: DependencyInput[], projectFinish: ReturnType<typeof asEpochMinutes>) {
-  const forward = runForwardPass(projectStart, tasks, deps, calendars);
+  const { results: forward } = runForwardPass(projectStart, tasks, deps, calendars);
   const backward = runBackwardPass(projectFinish, tasks, deps, calendars);
   return { forward, backward, float: computeFloat(forward, backward, deps) };
 }
@@ -121,7 +121,7 @@ describe('computeFloat (§4.6)', () => {
       { id: asTaskId('A'), parentId: null, isSummary: false, durationMinutes: 480, calendarId: wideCal },
     ];
 
-    const forward = runForwardPass(projectStart, tasks, [], wideCalendars);
+    const { results: forward } = runForwardPass(projectStart, tasks, [], wideCalendars);
     // Finish the project at 1pm, but A needs until 5pm -> negative float.
     const backward = runBackwardPass(asEpochMinutes(MONDAY + 13 * 60), tasks, [], wideCalendars);
     const float = computeFloat(forward, backward, []);
