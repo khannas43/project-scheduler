@@ -7,6 +7,7 @@ export type { SpatialBar } from './hitTest.js';
 export { generateSyntheticProject } from './synthetic.js';
 export type { SyntheticProject } from './synthetic.js';
 export { buildTaskById, lookupTask } from './taskIndex.js';
+export { snapMinutesToDay } from './drag.js';
 export { GanttView } from './ganttView.js';
 export type { GanttViewOptions } from './ganttView.js';
 export { drawBackground } from './layers/background.js';

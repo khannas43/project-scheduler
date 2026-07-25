@@ -9,10 +9,12 @@ import {
   validateGraph,
   type CalendarExceptionInput,
   type CompiledCalendar,
+  type ConstraintType,
   type DependencyInput,
   type LinkType,
   type RawCalendarException,
   type SchedulerOutput,
+  type SchedulingWarning,
   type TaskInput,
 } from '@pkg/scheduler';
 import { eq, inArray, or, sql } from 'drizzle-orm';
@@ -43,10 +45,26 @@ export interface ComputedFieldSnapshot {
   readonly isCritical: boolean;
 }
 
+/** JSON-safe form of `@pkg/scheduler` SchedulingWarning (TaskId → string). */
+export interface MutationWarning {
+  readonly code: string;
+  readonly taskIds: readonly string[];
+  readonly message: string;
+}
+
 export interface MutationResult {
   readonly task: typeof tasks.$inferSelect | null;
   readonly affected: Array<typeof tasks.$inferSelect>;
   readonly projectVersion: number;
+  readonly warnings: readonly MutationWarning[];
+}
+
+function toMutationWarnings(warnings: readonly SchedulingWarning[]): MutationWarning[] {
+  return warnings.map((w) => ({
+    code: w.code,
+    taskIds: w.taskIds.map(String),
+    message: w.message,
+  }));
 }
 
 function dateToEpochMinutes(d: Date): ReturnType<typeof asEpochMinutes> {
@@ -200,6 +218,10 @@ export function toTaskInputs(
       isSummary: t.isSummary,
       durationMinutes: t.isSummary ? 0 : (t.durationMinutes ?? 0),
       calendarId: asCalendarId(t.calendarId ?? defaultCalendarId),
+      // Required so schedule() can emit CONSTRAINT_OVERRIDES_DEPENDENCY etc.
+      constraintType: (t.constraintType as ConstraintType | null) ?? null,
+      constraintDate: t.constraintDate ? dateToEpochMinutes(t.constraintDate) : null,
+      deadline: t.deadline ? dateToEpochMinutes(t.deadline) : null,
     }));
 }
 
@@ -390,6 +412,7 @@ export async function rescheduleProject(
     task: focus,
     affected: refreshed,
     projectVersion: bumped?.version ?? project.version + 1,
+    warnings: toMutationWarnings(output.warnings),
   };
 }
 

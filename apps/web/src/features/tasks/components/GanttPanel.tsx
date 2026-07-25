@@ -3,14 +3,20 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import type { Project } from '../../projects/index.js';
 import { TaskIdAdapter } from '../idAdapter.js';
-import { isoToEpochMinutes, projectStartEpochMinutes, sortTasksForGrid } from '../optimisticEdit.js';
-import type { DependencyRow, TaskRow } from '../types.js';
+import {
+  epochMinutesToIso,
+  isoToEpochMinutes,
+  projectStartEpochMinutes,
+  sortTasksForGrid,
+} from '../optimisticEdit.js';
+import type { DependencyRow, TaskEditPatch, TaskRow } from '../types.js';
 
 export interface GanttPanelProps {
   readonly project: Project;
   readonly tasks: readonly TaskRow[];
   readonly dependencies: readonly DependencyRow[];
   readonly onHoverTask: (taskId: string | null) => void;
+  readonly onCommitMove?: (patch: TaskEditPatch) => void;
 }
 
 function buildGanttData(
@@ -38,6 +44,7 @@ function buildGanttData(
       durationMinutes: task.durationMinutes ?? 0,
       progress: 0,
       isCritical: task.isCritical,
+      isSummary: task.isSummary,
     });
   }
 
@@ -53,16 +60,27 @@ function buildGanttData(
 }
 
 /**
- * Thin imperative wrapper around @pkg/gantt GanttView — read-only (hover only).
+ * Imperative wrapper around @pkg/gantt GanttView — hover + drag-to-move (MSO).
  */
-export function GanttPanel({ project, tasks, dependencies, onHoverTask }: GanttPanelProps) {
+export function GanttPanel({
+  project,
+  tasks,
+  dependencies,
+  onHoverTask,
+  onCommitMove,
+}: GanttPanelProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GanttView | null>(null);
   const adapterRef = useRef<TaskIdAdapter>(new TaskIdAdapter([]));
+  const tasksRef = useRef(tasks);
+  tasksRef.current = tasks;
+  const projectRef = useRef(project);
+  projectRef.current = project;
   const onHoverRef = useRef(onHoverTask);
   onHoverRef.current = onHoverTask;
+  const onCommitMoveRef = useRef(onCommitMove);
+  onCommitMoveRef.current = onCommitMove;
 
-  // Rebuild the adapter when the UUID set / order changes (tree load or structural edit).
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
   const adapter = useMemo(() => new TaskIdAdapter(taskIds), [taskIds]);
   adapterRef.current = adapter;
@@ -72,7 +90,6 @@ export function GanttPanel({ project, tasks, dependencies, onHoverTask }: GanttP
     [project, tasks, dependencies, adapter],
   );
 
-  // Mount once; hover resolves through refs so adapter/callback updates don't remount.
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
@@ -87,6 +104,20 @@ export function GanttPanel({ project, tasks, dependencies, onHoverTask }: GanttP
           return;
         }
         onHoverRef.current(adapterRef.current.toUuid(numericId) ?? null);
+      },
+      onCommitMove: (numericId, newStartMinutes) => {
+        const uuid = adapterRef.current.toUuid(numericId);
+        if (!uuid) return;
+        const task = tasksRef.current.find((t) => t.id === uuid);
+        if (!task) return;
+        const projectStart = projectStartEpochMinutes(projectRef.current);
+        const constraintDate = epochMinutesToIso(projectStart + newStartMinutes);
+        onCommitMoveRef.current?.({
+          taskId: uuid,
+          version: task.version,
+          constraintType: 'mso',
+          constraintDate,
+        });
       },
     });
     viewRef.current = view;

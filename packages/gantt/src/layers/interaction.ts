@@ -21,8 +21,7 @@ export interface DragGhost {
 
 /**
  * Layer 4 — drag ghost / hover. Redrawn on every pointer move (§8.2).
- * Drag/resize/link interaction itself is Phase 2 — this layer only paints
- * the hover outline and an optional ghost so the invalidation model is real.
+ * Drag-to-move lives in GanttView; this layer paints the hover outline and ghost.
  */
 export function drawInteraction(input: InteractionDrawInput): void {
   const { ctx, viewport, tasksById, hoverTaskId, dragGhost } = input;

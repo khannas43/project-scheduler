@@ -84,6 +84,11 @@ export function useTaskEdit(projectId: string) {
         queryClient.setQueryData(key, mergeAffectedIntoTree(current, res));
       }
 
+      const override = res.warnings?.find((w) => w.code === 'CONSTRAINT_OVERRIDES_DEPENDENCY');
+      if (override) {
+        useErrorBanner.getState().showInfo(override.message, override.code);
+      }
+
       const source = vars.source ?? 'user';
       if (source !== 'user') return;
 

@@ -65,11 +65,18 @@ export interface TaskTreeResponse {
   readonly projectVersion: number;
 }
 
+export interface SchedulingWarningView {
+  readonly code: string;
+  readonly taskIds: readonly string[];
+  readonly message: string;
+}
+
 /** §5.4 */
 export interface TaskMutationResponse {
   readonly task: TaskRow | null;
   readonly affected: readonly TaskRow[];
   readonly projectVersion: number;
+  readonly warnings: readonly SchedulingWarningView[];
 }
 
 /** Editable fields + optimistic-lock version (§9.1). */
@@ -78,4 +85,6 @@ export interface TaskEditPatch {
   readonly version: number;
   readonly name?: string;
   readonly durationMinutes?: number | null;
+  readonly constraintType?: string | null;
+  readonly constraintDate?: string | null;
 }

@@ -5,7 +5,7 @@ import { useErrorBanner } from '../stores/errorBanner.js';
 
 export function AppShell() {
   const { user, logout } = useAuth();
-  const { message, code, actionLabel, onAction, clear } = useErrorBanner();
+  const { message, code, severity, actionLabel, onAction, clear } = useErrorBanner();
 
   return (
     <div className="app-shell">
@@ -21,7 +21,10 @@ export function AppShell() {
         </div>
       </header>
       {message ? (
-        <div className="error-banner" role="alert">
+        <div
+          className={severity === 'info' ? 'info-banner' : 'error-banner'}
+          role={severity === 'info' ? 'status' : 'alert'}
+        >
           <span>
             {message}
             {code ? <code className="error-code">{code}</code> : null}

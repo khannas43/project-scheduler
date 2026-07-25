@@ -10,6 +10,7 @@ function task(partial: Pick<GanttTask, 'id' | 'name' | 'row'>): GanttTask {
     durationMinutes: 1440,
     progress: 0,
     isCritical: false,
+    isSummary: false,
     ...partial,
   };
 }

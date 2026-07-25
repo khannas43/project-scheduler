@@ -123,6 +123,7 @@ export function ProjectDetailPage() {
             tasks={tasks}
             dependencies={dependencies}
             onHoverTask={setHighlightedTaskId}
+            onCommitMove={onEdit}
           />
         </section>
       </div>

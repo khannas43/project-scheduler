@@ -89,6 +89,7 @@ describe('calendarExceptionService', () => {
       task: null,
       affected: [{ id: 'task-1', isCritical: true }],
       projectVersion: 7,
+      warnings: [],
     });
     writeAuditLog.mockResolvedValue(undefined);
   });
@@ -154,6 +155,7 @@ describe('calendarExceptionService', () => {
       task: null,
       affected: [{ id: 'task-2' }],
       projectVersion: 9,
+      warnings: [],
     });
 
     const result = await deleteException('ex-1', 'user-1');

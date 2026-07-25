@@ -45,6 +45,7 @@ export function generateSyntheticProject(n = 10_000, seed = 1): SyntheticProject
       durationMinutes: durationDays * MINUTES_PER_DAY,
       progress: rand(),
       isCritical: rand() < 0.12,
+      isSummary: false,
     });
   }
 

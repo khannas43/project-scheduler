@@ -8,6 +8,8 @@ const MAX_STACK = 50;
 export type TaskEditFields = {
   readonly name?: string;
   readonly durationMinutes?: number | null;
+  readonly constraintType?: string | null;
+  readonly constraintDate?: string | null;
 };
 
 export interface UndoCommand {
@@ -98,18 +100,41 @@ export const useUndoStack = create<UndoStackState>((set, get) => ({
   canRedo: () => get().pointer < get().history.length,
 }));
 
+function hasEditFields(fields: TaskEditFields): boolean {
+  return (
+    fields.name !== undefined ||
+    fields.durationMinutes !== undefined ||
+    fields.constraintType !== undefined ||
+    fields.constraintDate !== undefined
+  );
+}
+
 /** Capture only fields present on the outbound patch. */
 export function captureAfterFields(patch: TaskEditPatch): TaskEditFields {
-  const after: { name?: string; durationMinutes?: number | null } = {};
+  const after: {
+    name?: string;
+    durationMinutes?: number | null;
+    constraintType?: string | null;
+    constraintDate?: string | null;
+  } = {};
   if (patch.name !== undefined) after.name = patch.name;
   if (patch.durationMinutes !== undefined) after.durationMinutes = patch.durationMinutes;
+  if (patch.constraintType !== undefined) after.constraintType = patch.constraintType;
+  if (patch.constraintDate !== undefined) after.constraintDate = patch.constraintDate;
   return after;
 }
 
 export function captureBeforeFields(task: TaskRow, patch: TaskEditPatch): TaskEditFields {
-  const before: { name?: string; durationMinutes?: number | null } = {};
+  const before: {
+    name?: string;
+    durationMinutes?: number | null;
+    constraintType?: string | null;
+    constraintDate?: string | null;
+  } = {};
   if (patch.name !== undefined) before.name = task.name;
   if (patch.durationMinutes !== undefined) before.durationMinutes = task.durationMinutes;
+  if (patch.constraintType !== undefined) before.constraintType = task.constraintType;
+  if (patch.constraintDate !== undefined) before.constraintDate = task.constraintDate;
   return before;
 }
 
@@ -118,7 +143,7 @@ export function buildUndoCommand(
   patch: TaskEditPatch,
 ): UndoCommand | null {
   const after = captureAfterFields(patch);
-  if (after.name === undefined && after.durationMinutes === undefined) {
+  if (!hasEditFields(after)) {
     return null;
   }
   return {

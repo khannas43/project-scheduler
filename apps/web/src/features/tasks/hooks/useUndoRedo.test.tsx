@@ -124,6 +124,7 @@ describe('useUndoRedo + useTaskEdit', () => {
       task: { ...baseTask(body.version + 1), name: body.name ?? 'Foundation', id },
       affected: [],
       projectVersion: 2,
+      warnings: [],
     }));
 
     const { result } = renderHook(
@@ -160,6 +161,7 @@ describe('useUndoRedo + useTaskEdit', () => {
       task: { ...baseTask(8), name: 'Foundation' },
       affected: [],
       projectVersion: 3,
+      warnings: [],
     });
 
     await act(async () => {

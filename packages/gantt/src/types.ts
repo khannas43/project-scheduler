@@ -14,6 +14,8 @@ export interface GanttTask {
   /** 0..1 progress for the bars-layer progress fill. */
   readonly progress: number;
   readonly isCritical: boolean;
+  /** Summary bars refuse drag-to-move (matches API rejectSummaryDurationOrConstraint). */
+  readonly isSummary: boolean;
 }
 
 export interface GanttDependency {

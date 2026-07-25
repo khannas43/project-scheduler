@@ -4,6 +4,7 @@ import {
   asTaskId,
   compileCalendar,
   schedule,
+  type ConstraintType,
   type LinkType,
 } from '@pkg/scheduler';
 
@@ -52,6 +53,8 @@ export function applyPatchToTree(tree: TaskTreeResponse, patch: TaskEditPatch): 
       ...task,
       ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.durationMinutes !== undefined ? { durationMinutes: patch.durationMinutes } : {}),
+      ...(patch.constraintType !== undefined ? { constraintType: patch.constraintType } : {}),
+      ...(patch.constraintDate !== undefined ? { constraintDate: patch.constraintDate } : {}),
     };
   });
   return { ...tree, tasks };
@@ -104,6 +107,9 @@ export function recomputeOptimisticTree(
       isSummary: t.isSummary,
       durationMinutes: t.isSummary ? 0 : (t.durationMinutes ?? 0),
       calendarId: asCalendarId(t.calendarId ?? project.calendarId),
+      // Pass constraints so a drag-move (MSO) optimistic preview matches the server.
+      constraintType: (t.constraintType as ConstraintType | null) ?? null,
+      constraintDate: t.constraintDate ? asEpochMinutes(isoToEpochMinutes(t.constraintDate)) : null,
     }));
 
   const dependencies = tree.dependencies.map((d) => ({

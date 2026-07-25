@@ -21,6 +21,7 @@ function misalignedTasks(): GanttTask[] {
       durationMinutes: 1440,
       progress: 0.5,
       isCritical: false,
+      isSummary: false,
     },
     {
       id: 100,
@@ -30,6 +31,7 @@ function misalignedTasks(): GanttTask[] {
       durationMinutes: 2880,
       progress: 0.2,
       isCritical: true,
+      isSummary: false,
     },
     {
       id: 200,
@@ -39,6 +41,7 @@ function misalignedTasks(): GanttTask[] {
       durationMinutes: 1440,
       progress: 0,
       isCritical: false,
+      isSummary: false,
     },
   ];
 }

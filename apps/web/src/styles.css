@@ -212,15 +212,25 @@ button:disabled {
   font-size: 0.95rem;
 }
 
-.error-banner {
+.error-banner,
+.info-banner {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
   align-items: center;
   padding: 0.7rem 1.5rem;
+  border-bottom: 1px solid #f2c7c7;
+}
+
+.error-banner {
   background: var(--danger-bg);
   color: var(--danger);
-  border-bottom: 1px solid #f2c7c7;
+}
+
+.info-banner {
+  background: #e8f0ea;
+  color: var(--brand-ink);
+  border-bottom-color: #c5d9cc;
 }
 
 .error-code {

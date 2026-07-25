@@ -1,11 +1,13 @@
 import { MINUTES_PER_DAY, PIXELS_PER_DAY, ROW_HEIGHT } from './constants.js';
+import { snapMinutesToDay } from './drag.js';
 import { hitTest } from './hitTest.js';
 import { drawArrows } from './layers/arrows.js';
 import { drawBackground } from './layers/background.js';
 import { drawBars } from './layers/bars.js';
 import { drawInteraction, type DragGhost } from './layers/interaction.js';
-import { buildTaskById } from './taskIndex.js';
+import { buildTaskById, lookupTask } from './taskIndex.js';
 import type { GanttDependency, GanttTask, ViewportState } from './types.js';
+import { xToMinutes } from './viewport.js';
 
 export interface GanttViewOptions {
   readonly container: HTMLElement;
@@ -13,9 +15,20 @@ export interface GanttViewOptions {
   readonly dependencies: readonly GanttDependency[];
   readonly pixelsPerMinute?: number;
   readonly onHover?: (taskId: number | null) => void;
+  /** Fired on pointerup when a non-summary bar was dragged to a new day-snapped start. */
+  readonly onCommitMove?: (taskId: number, newStartMinutes: number) => void;
 }
 
 type LayerName = 'background' | 'arrows' | 'bars' | 'interaction';
+
+interface ActiveDrag {
+  readonly pointerId: number;
+  readonly taskId: number;
+  readonly originStartMinutes: number;
+  /** Pointer minutes − bar start at pointerdown (keeps grab point under the cursor). */
+  readonly grabOffsetMinutes: number;
+  currentStartMinutes: number;
+}
 
 /**
  * Four-layer canvas Gantt (§8.2). Each layer is its own `<canvas>`; dirty
@@ -42,16 +55,20 @@ export class GanttView {
   private dependencies: readonly GanttDependency[];
   private readonly pixelsPerMinute: number;
   private readonly onHover: ((taskId: number | null) => void) | undefined;
+  private readonly onCommitMove: ((taskId: number, newStartMinutes: number) => void) | undefined;
 
   private viewport: ViewportState = { scrollTop: 0, scrollLeft: 0, width: 0, height: 0 };
   private spatialIndex: Float32Array = new Float32Array(0);
   private hoverTaskId: number | null = null;
   private dragGhost: DragGhost | null = null;
+  private drag: ActiveDrag | null = null;
   private raf = 0;
   private dpr = 1;
 
   private readonly onWheel: (e: WheelEvent) => void;
+  private readonly onPointerDown: (e: PointerEvent) => void;
   private readonly onPointerMove: (e: PointerEvent) => void;
+  private readonly onPointerUp: (e: PointerEvent) => void;
   private readonly onPointerLeave: () => void;
   private readonly onResize: () => void;
 
@@ -62,6 +79,7 @@ export class GanttView {
     this.dependencies = options.dependencies;
     this.pixelsPerMinute = options.pixelsPerMinute ?? PIXELS_PER_DAY / MINUTES_PER_DAY;
     this.onHover = options.onHover;
+    this.onCommitMove = options.onCommitMove;
 
     this.stack = document.createElement('div');
     this.stack.style.cssText =
@@ -85,12 +103,19 @@ export class GanttView {
       e.preventDefault();
       this.scrollBy(e.deltaX, e.deltaY);
     };
-    this.onPointerMove = (e) => this.handlePointer(e);
-    this.onPointerLeave = () => this.setHover(null);
+    this.onPointerDown = (e) => this.handlePointerDown(e);
+    this.onPointerMove = (e) => this.handlePointerMove(e);
+    this.onPointerUp = (e) => this.handlePointerUp(e);
+    this.onPointerLeave = () => {
+      if (!this.drag) this.setHover(null);
+    };
     this.onResize = () => this.resize();
 
     this.stack.addEventListener('wheel', this.onWheel, { passive: false });
+    this.stack.addEventListener('pointerdown', this.onPointerDown);
     this.stack.addEventListener('pointermove', this.onPointerMove);
+    this.stack.addEventListener('pointerup', this.onPointerUp);
+    this.stack.addEventListener('pointercancel', this.onPointerUp);
     this.stack.addEventListener('pointerleave', this.onPointerLeave);
     window.addEventListener('resize', this.onResize);
 
@@ -107,6 +132,11 @@ export class GanttView {
 
   getViewport(): ViewportState {
     return this.viewport;
+  }
+
+  /** Test seam — active drag state, if any. */
+  getActiveDrag(): Readonly<ActiveDrag> | null {
+    return this.drag;
   }
 
   setData(tasks: readonly GanttTask[], dependencies: readonly GanttDependency[]): void {
@@ -163,7 +193,10 @@ export class GanttView {
   destroy(): void {
     if (this.raf) cancelAnimationFrame(this.raf);
     this.stack.removeEventListener('wheel', this.onWheel);
+    this.stack.removeEventListener('pointerdown', this.onPointerDown);
     this.stack.removeEventListener('pointermove', this.onPointerMove);
+    this.stack.removeEventListener('pointerup', this.onPointerUp);
+    this.stack.removeEventListener('pointercancel', this.onPointerUp);
     this.stack.removeEventListener('pointerleave', this.onPointerLeave);
     window.removeEventListener('resize', this.onResize);
     this.stack.remove();
@@ -199,12 +232,69 @@ export class GanttView {
     this.schedule();
   }
 
-  private handlePointer(e: PointerEvent): void {
+  private pointerLocal(e: PointerEvent): { x: number; y: number } {
     const rect = this.stack.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  private handlePointerDown(e: PointerEvent): void {
+    if (this.drag) return;
+    // Ensure spatial index is current before hit-testing.
+    this.paint();
+
+    const { x, y } = this.pointerLocal(e);
+    const taskId = hitTest(this.spatialIndex, x, y);
+    if (taskId === null) return;
+
+    const task = lookupTask(this.tasksById, taskId);
+    if (!task || task.isSummary) return;
+
+    const pointerMinutes = xToMinutes(x, this.viewport.scrollLeft, this.pixelsPerMinute);
+    const grabOffsetMinutes = pointerMinutes - task.startMinutes;
+
+    this.stack.setPointerCapture(e.pointerId);
+    this.drag = {
+      pointerId: e.pointerId,
+      taskId,
+      originStartMinutes: task.startMinutes,
+      grabOffsetMinutes,
+      currentStartMinutes: task.startMinutes,
+    };
+    this.setDragGhost({ taskId, startMinutes: task.startMinutes });
+    e.preventDefault();
+  }
+
+  private handlePointerMove(e: PointerEvent): void {
+    if (this.drag && e.pointerId === this.drag.pointerId) {
+      const { x } = this.pointerLocal(e);
+      const pointerMinutes = xToMinutes(x, this.viewport.scrollLeft, this.pixelsPerMinute);
+      const snapped = snapMinutesToDay(pointerMinutes - this.drag.grabOffsetMinutes);
+      if (snapped !== this.drag.currentStartMinutes) {
+        this.drag.currentStartMinutes = snapped;
+        this.setDragGhost({ taskId: this.drag.taskId, startMinutes: snapped });
+      }
+      return;
+    }
+
+    const { x, y } = this.pointerLocal(e);
     const id = hitTest(this.spatialIndex, x, y);
     this.setHover(id);
+  }
+
+  private handlePointerUp(e: PointerEvent): void {
+    if (!this.drag || e.pointerId !== this.drag.pointerId) return;
+
+    const { taskId, originStartMinutes, currentStartMinutes, pointerId } = this.drag;
+    this.drag = null;
+
+    if (this.stack.hasPointerCapture(pointerId)) {
+      this.stack.releasePointerCapture(pointerId);
+    }
+    this.setDragGhost(null);
+
+    if (currentStartMinutes !== originStartMinutes) {
+      this.onCommitMove?.(taskId, currentStartMinutes);
+    }
   }
 
   private schedule(): void {
