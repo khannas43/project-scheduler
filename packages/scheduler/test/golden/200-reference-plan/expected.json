@@ -1,0 +1,1990 @@
+{
+  "projectFinish": 68700,
+  "criticalPath": [
+    "P1T01",
+    "P1T02",
+    "P1T03",
+    "P1T04",
+    "P1T05",
+    "P1T06",
+    "P1T07",
+    "P1T08",
+    "P1T09",
+    "P1T10",
+    "P1T11",
+    "P1T12",
+    "P1T13",
+    "P1T14",
+    "P1T15",
+    "P1T16",
+    "P1T17",
+    "P1T18",
+    "P1T19",
+    "P1T20",
+    "P1T21",
+    "P1T22",
+    "P1T23",
+    "P1T24",
+    "P1T25",
+    "P1T26",
+    "P1T27",
+    "P1T28",
+    "P1T29",
+    "P1T30",
+    "P2NT01",
+    "P2NT02",
+    "P2NT03",
+    "P2NT04",
+    "P2NT05",
+    "P2NT06",
+    "P2NT07",
+    "P2NT08",
+    "P2NT09",
+    "P2NT10",
+    "P2NT11",
+    "P2NT12",
+    "P2NT13",
+    "P2NT14",
+    "P2NT15",
+    "P2NT16",
+    "P2NT17",
+    "P2NT18",
+    "P2NT19",
+    "P2NT20",
+    "P2NT21",
+    "P2NT22",
+    "P2NT23",
+    "P2NT24",
+    "P2NT25",
+    "P2NT26",
+    "P2NT27",
+    "P2NT28",
+    "P2NT29",
+    "P2NT30",
+    "P2NT31",
+    "P2NT32",
+    "P2NT33",
+    "P2NT34",
+    "P3AT01",
+    "P3AT02",
+    "P3AT03",
+    "P3AT04",
+    "P3AT05",
+    "P3AT06",
+    "P3AT07",
+    "P3AT08",
+    "P3AT09",
+    "P3AT10",
+    "P3AT11",
+    "P3AT12",
+    "P3AT13",
+    "P3AT14",
+    "P3AT15",
+    "P3AT16",
+    "P3AT17",
+    "P3AT18",
+    "P3AT19",
+    "P3AT20",
+    "P3AT21",
+    "P3AT22",
+    "P3AT23",
+    "P3AT24",
+    "P3AT25",
+    "P3AT26",
+    "P3AT27",
+    "P3AT28",
+    "P4T01",
+    "P4T02",
+    "P4T03",
+    "P4T04",
+    "P4T05",
+    "P4T06",
+    "P4T07",
+    "P4T08",
+    "P4T09",
+    "P4T10",
+    "P4T11",
+    "P4T12",
+    "P4T13",
+    "P4T14",
+    "P4T15",
+    "P4T16",
+    "P4T17",
+    "P4T18",
+    "P4T19",
+    "P4T20",
+    "P4T21",
+    "P4T22",
+    "P5T01",
+    "P5T02",
+    "P5T03",
+    "P5T04",
+    "P5T05",
+    "P5T06",
+    "P5T07",
+    "P5T08",
+    "P5T09",
+    "P5T10",
+    "P5T11",
+    "P5T12",
+    "P5T13",
+    "P5T14",
+    "P5T15",
+    "P5T16"
+  ],
+  "tasks": {
+    "ROOT": {
+      "earlyStart": 6300,
+      "earlyFinish": 68700,
+      "lateStart": null,
+      "lateFinish": null,
+      "totalFloatMinutes": null,
+      "freeFloatMinutes": null,
+      "isCritical": true
+    },
+    "P1": {
+      "earlyStart": 6300,
+      "earlyFinish": 20700,
+      "lateStart": null,
+      "lateFinish": null,
+      "totalFloatMinutes": null,
+      "freeFloatMinutes": null,
+      "isCritical": true
+    },
+    "P2": {
+      "earlyStart": 6300,
+      "earlyFinish": 37020,
+      "lateStart": null,
+      "lateFinish": null,
+      "totalFloatMinutes": null,
+      "freeFloatMinutes": null,
+      "isCritical": true
+    },
+    "P2N": {
+      "earlyStart": 20700,
+      "earlyFinish": 37020,
+      "lateStart": null,
+      "lateFinish": null,
+      "totalFloatMinutes": null,
+      "freeFloatMinutes": null,
+      "isCritical": true
+    },
+    "P2C": {
+      "earlyStart": 6300,
+      "earlyFinish": 36900,
+      "lateStart": null,
+      "lateFinish": null,
+      "totalFloatMinutes": null,
+      "freeFloatMinutes": null,
+      "isCritical": false
+    },
+    "P3": {
+      "earlyStart": 20940,
+      "earlyFinish": 50460,
+      "lateStart": null,
+      "lateFinish": null,
+      "totalFloatMinutes": null,
+      "freeFloatMinutes": null,
+      "isCritical": true
+    },
+    "P3A": {
+      "earlyStart": 37020,
+      "earlyFinish": 50460,
+      "lateStart": null,
+      "lateFinish": null,
+      "totalFloatMinutes": null,
+      "freeFloatMinutes": null,
+      "isCritical": true
+    },
+    "P3B": {
+      "earlyStart": 20940,
+      "earlyFinish": 41160,
+      "lateStart": null,
+      "lateFinish": null,
+      "totalFloatMinutes": null,
+      "freeFloatMinutes": null,
+      "isCritical": false
+    },
+    "P4": {
+      "earlyStart": 50460,
+      "earlyFinish": 61020,
+      "lateStart": null,
+      "lateFinish": null,
+      "totalFloatMinutes": null,
+      "freeFloatMinutes": null,
+      "isCritical": true
+    },
+    "P5": {
+      "earlyStart": 61020,
+      "earlyFinish": 68700,
+      "lateStart": null,
+      "lateFinish": null,
+      "totalFloatMinutes": null,
+      "freeFloatMinutes": null,
+      "isCritical": true
+    },
+    "P1T01": {
+      "earlyStart": 6300,
+      "earlyFinish": 6780,
+      "lateStart": 6300,
+      "lateFinish": 6780,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T02": {
+      "earlyStart": 6780,
+      "earlyFinish": 7260,
+      "lateStart": 6780,
+      "lateFinish": 7260,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T03": {
+      "earlyStart": 7260,
+      "earlyFinish": 7740,
+      "lateStart": 7260,
+      "lateFinish": 7740,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T04": {
+      "earlyStart": 7740,
+      "earlyFinish": 8220,
+      "lateStart": 7740,
+      "lateFinish": 8220,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T05": {
+      "earlyStart": 8220,
+      "earlyFinish": 8700,
+      "lateStart": 8220,
+      "lateFinish": 8700,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T06": {
+      "earlyStart": 8700,
+      "earlyFinish": 9180,
+      "lateStart": 8700,
+      "lateFinish": 9180,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T07": {
+      "earlyStart": 9180,
+      "earlyFinish": 9660,
+      "lateStart": 9180,
+      "lateFinish": 9660,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T08": {
+      "earlyStart": 9660,
+      "earlyFinish": 10140,
+      "lateStart": 9660,
+      "lateFinish": 10140,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T09": {
+      "earlyStart": 10140,
+      "earlyFinish": 10620,
+      "lateStart": 10140,
+      "lateFinish": 10620,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T10": {
+      "earlyStart": 10620,
+      "earlyFinish": 11100,
+      "lateStart": 10620,
+      "lateFinish": 11100,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T11": {
+      "earlyStart": 11100,
+      "earlyFinish": 11580,
+      "lateStart": 11100,
+      "lateFinish": 11580,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T12": {
+      "earlyStart": 11580,
+      "earlyFinish": 12060,
+      "lateStart": 11580,
+      "lateFinish": 12060,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T13": {
+      "earlyStart": 12060,
+      "earlyFinish": 12540,
+      "lateStart": 12060,
+      "lateFinish": 12540,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T14": {
+      "earlyStart": 12540,
+      "earlyFinish": 13020,
+      "lateStart": 12540,
+      "lateFinish": 13020,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T15": {
+      "earlyStart": 13020,
+      "earlyFinish": 13500,
+      "lateStart": 13020,
+      "lateFinish": 13500,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T16": {
+      "earlyStart": 13500,
+      "earlyFinish": 13980,
+      "lateStart": 13500,
+      "lateFinish": 13980,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T17": {
+      "earlyStart": 13980,
+      "earlyFinish": 14460,
+      "lateStart": 13980,
+      "lateFinish": 14460,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T18": {
+      "earlyStart": 14460,
+      "earlyFinish": 14940,
+      "lateStart": 14460,
+      "lateFinish": 14940,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T19": {
+      "earlyStart": 14940,
+      "earlyFinish": 15420,
+      "lateStart": 14940,
+      "lateFinish": 15420,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T20": {
+      "earlyStart": 15420,
+      "earlyFinish": 15900,
+      "lateStart": 15420,
+      "lateFinish": 15900,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T21": {
+      "earlyStart": 15900,
+      "earlyFinish": 16380,
+      "lateStart": 15900,
+      "lateFinish": 16380,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T22": {
+      "earlyStart": 16380,
+      "earlyFinish": 16860,
+      "lateStart": 16380,
+      "lateFinish": 16860,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T23": {
+      "earlyStart": 16860,
+      "earlyFinish": 17340,
+      "lateStart": 16860,
+      "lateFinish": 17340,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T24": {
+      "earlyStart": 17340,
+      "earlyFinish": 17820,
+      "lateStart": 17340,
+      "lateFinish": 17820,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T25": {
+      "earlyStart": 17820,
+      "earlyFinish": 18300,
+      "lateStart": 17820,
+      "lateFinish": 18300,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T26": {
+      "earlyStart": 18300,
+      "earlyFinish": 18780,
+      "lateStart": 18300,
+      "lateFinish": 18780,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T27": {
+      "earlyStart": 18780,
+      "earlyFinish": 19260,
+      "lateStart": 18780,
+      "lateFinish": 19260,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T28": {
+      "earlyStart": 19260,
+      "earlyFinish": 19740,
+      "lateStart": 19260,
+      "lateFinish": 19740,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T29": {
+      "earlyStart": 19740,
+      "earlyFinish": 20220,
+      "lateStart": 19740,
+      "lateFinish": 20220,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P1T30": {
+      "earlyStart": 20220,
+      "earlyFinish": 20700,
+      "lateStart": 20220,
+      "lateFinish": 20700,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT01": {
+      "earlyStart": 20700,
+      "earlyFinish": 21180,
+      "lateStart": 20700,
+      "lateFinish": 21180,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT02": {
+      "earlyStart": 21180,
+      "earlyFinish": 21660,
+      "lateStart": 21180,
+      "lateFinish": 21660,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT03": {
+      "earlyStart": 21660,
+      "earlyFinish": 22140,
+      "lateStart": 21660,
+      "lateFinish": 22140,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT04": {
+      "earlyStart": 22140,
+      "earlyFinish": 22620,
+      "lateStart": 22140,
+      "lateFinish": 22620,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT05": {
+      "earlyStart": 22620,
+      "earlyFinish": 23100,
+      "lateStart": 22620,
+      "lateFinish": 23100,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT06": {
+      "earlyStart": 23100,
+      "earlyFinish": 23580,
+      "lateStart": 23100,
+      "lateFinish": 23580,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT07": {
+      "earlyStart": 23580,
+      "earlyFinish": 24060,
+      "lateStart": 23580,
+      "lateFinish": 24060,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT08": {
+      "earlyStart": 24060,
+      "earlyFinish": 24540,
+      "lateStart": 24060,
+      "lateFinish": 24540,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT09": {
+      "earlyStart": 24540,
+      "earlyFinish": 25020,
+      "lateStart": 24540,
+      "lateFinish": 25020,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT10": {
+      "earlyStart": 25020,
+      "earlyFinish": 25500,
+      "lateStart": 25020,
+      "lateFinish": 25500,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT11": {
+      "earlyStart": 25500,
+      "earlyFinish": 25980,
+      "lateStart": 25500,
+      "lateFinish": 25980,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT12": {
+      "earlyStart": 25980,
+      "earlyFinish": 26460,
+      "lateStart": 25980,
+      "lateFinish": 26460,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT13": {
+      "earlyStart": 26460,
+      "earlyFinish": 26940,
+      "lateStart": 26460,
+      "lateFinish": 26940,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT14": {
+      "earlyStart": 26940,
+      "earlyFinish": 27420,
+      "lateStart": 26940,
+      "lateFinish": 27420,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT15": {
+      "earlyStart": 27420,
+      "earlyFinish": 27900,
+      "lateStart": 27420,
+      "lateFinish": 27900,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT16": {
+      "earlyStart": 27900,
+      "earlyFinish": 28380,
+      "lateStart": 27900,
+      "lateFinish": 28380,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT17": {
+      "earlyStart": 28380,
+      "earlyFinish": 28860,
+      "lateStart": 28380,
+      "lateFinish": 28860,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT18": {
+      "earlyStart": 28860,
+      "earlyFinish": 29340,
+      "lateStart": 28860,
+      "lateFinish": 29340,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT19": {
+      "earlyStart": 29340,
+      "earlyFinish": 29820,
+      "lateStart": 29340,
+      "lateFinish": 29820,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT20": {
+      "earlyStart": 29820,
+      "earlyFinish": 30300,
+      "lateStart": 29820,
+      "lateFinish": 30300,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT21": {
+      "earlyStart": 30300,
+      "earlyFinish": 30780,
+      "lateStart": 30300,
+      "lateFinish": 30780,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT22": {
+      "earlyStart": 30780,
+      "earlyFinish": 31260,
+      "lateStart": 30780,
+      "lateFinish": 31260,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT23": {
+      "earlyStart": 31260,
+      "earlyFinish": 31740,
+      "lateStart": 31260,
+      "lateFinish": 31740,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT24": {
+      "earlyStart": 31740,
+      "earlyFinish": 32220,
+      "lateStart": 31740,
+      "lateFinish": 32220,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT25": {
+      "earlyStart": 32220,
+      "earlyFinish": 32700,
+      "lateStart": 32220,
+      "lateFinish": 32700,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT26": {
+      "earlyStart": 32700,
+      "earlyFinish": 33180,
+      "lateStart": 32700,
+      "lateFinish": 33180,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT27": {
+      "earlyStart": 33180,
+      "earlyFinish": 33660,
+      "lateStart": 33180,
+      "lateFinish": 33660,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT28": {
+      "earlyStart": 33660,
+      "earlyFinish": 34140,
+      "lateStart": 33660,
+      "lateFinish": 34140,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT29": {
+      "earlyStart": 34140,
+      "earlyFinish": 34620,
+      "lateStart": 34140,
+      "lateFinish": 34620,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT30": {
+      "earlyStart": 34620,
+      "earlyFinish": 35100,
+      "lateStart": 34620,
+      "lateFinish": 35100,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT31": {
+      "earlyStart": 35100,
+      "earlyFinish": 35580,
+      "lateStart": 35100,
+      "lateFinish": 35580,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT32": {
+      "earlyStart": 35580,
+      "earlyFinish": 36060,
+      "lateStart": 35580,
+      "lateFinish": 36060,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT33": {
+      "earlyStart": 36060,
+      "earlyFinish": 36540,
+      "lateStart": 36060,
+      "lateFinish": 36540,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2NT34": {
+      "earlyStart": 36540,
+      "earlyFinish": 37020,
+      "lateStart": 36540,
+      "lateFinish": 37020,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT01": {
+      "earlyStart": 37020,
+      "earlyFinish": 37500,
+      "lateStart": 37020,
+      "lateFinish": 37500,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT02": {
+      "earlyStart": 37500,
+      "earlyFinish": 37980,
+      "lateStart": 37500,
+      "lateFinish": 37980,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT03": {
+      "earlyStart": 37980,
+      "earlyFinish": 38460,
+      "lateStart": 37980,
+      "lateFinish": 38460,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT04": {
+      "earlyStart": 38460,
+      "earlyFinish": 38940,
+      "lateStart": 38460,
+      "lateFinish": 38940,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT05": {
+      "earlyStart": 38940,
+      "earlyFinish": 39420,
+      "lateStart": 38940,
+      "lateFinish": 39420,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT06": {
+      "earlyStart": 39420,
+      "earlyFinish": 39900,
+      "lateStart": 39420,
+      "lateFinish": 39900,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT07": {
+      "earlyStart": 39900,
+      "earlyFinish": 40380,
+      "lateStart": 39900,
+      "lateFinish": 40380,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT08": {
+      "earlyStart": 40380,
+      "earlyFinish": 40860,
+      "lateStart": 40380,
+      "lateFinish": 40860,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT09": {
+      "earlyStart": 40860,
+      "earlyFinish": 41340,
+      "lateStart": 40860,
+      "lateFinish": 41340,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT10": {
+      "earlyStart": 41340,
+      "earlyFinish": 41820,
+      "lateStart": 41340,
+      "lateFinish": 41820,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT11": {
+      "earlyStart": 41820,
+      "earlyFinish": 42300,
+      "lateStart": 41820,
+      "lateFinish": 42300,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT12": {
+      "earlyStart": 42300,
+      "earlyFinish": 42780,
+      "lateStart": 42300,
+      "lateFinish": 42780,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT13": {
+      "earlyStart": 42780,
+      "earlyFinish": 43260,
+      "lateStart": 42780,
+      "lateFinish": 43260,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT14": {
+      "earlyStart": 43260,
+      "earlyFinish": 43740,
+      "lateStart": 43260,
+      "lateFinish": 43740,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT15": {
+      "earlyStart": 43740,
+      "earlyFinish": 44220,
+      "lateStart": 43740,
+      "lateFinish": 44220,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT16": {
+      "earlyStart": 44220,
+      "earlyFinish": 44700,
+      "lateStart": 44220,
+      "lateFinish": 44700,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT17": {
+      "earlyStart": 44700,
+      "earlyFinish": 45180,
+      "lateStart": 44700,
+      "lateFinish": 45180,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT18": {
+      "earlyStart": 45180,
+      "earlyFinish": 45660,
+      "lateStart": 45180,
+      "lateFinish": 45660,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT19": {
+      "earlyStart": 45660,
+      "earlyFinish": 46140,
+      "lateStart": 45660,
+      "lateFinish": 46140,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT20": {
+      "earlyStart": 46140,
+      "earlyFinish": 46620,
+      "lateStart": 46140,
+      "lateFinish": 46620,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT21": {
+      "earlyStart": 46620,
+      "earlyFinish": 47100,
+      "lateStart": 46620,
+      "lateFinish": 47100,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT22": {
+      "earlyStart": 47100,
+      "earlyFinish": 47580,
+      "lateStart": 47100,
+      "lateFinish": 47580,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT23": {
+      "earlyStart": 47580,
+      "earlyFinish": 48060,
+      "lateStart": 47580,
+      "lateFinish": 48060,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT24": {
+      "earlyStart": 48060,
+      "earlyFinish": 48540,
+      "lateStart": 48060,
+      "lateFinish": 48540,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT25": {
+      "earlyStart": 48540,
+      "earlyFinish": 49020,
+      "lateStart": 48540,
+      "lateFinish": 49020,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT26": {
+      "earlyStart": 49020,
+      "earlyFinish": 49500,
+      "lateStart": 49020,
+      "lateFinish": 49500,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT27": {
+      "earlyStart": 49500,
+      "earlyFinish": 49980,
+      "lateStart": 49500,
+      "lateFinish": 49980,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P3AT28": {
+      "earlyStart": 49980,
+      "earlyFinish": 50460,
+      "lateStart": 49980,
+      "lateFinish": 50460,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T01": {
+      "earlyStart": 50460,
+      "earlyFinish": 50940,
+      "lateStart": 50460,
+      "lateFinish": 50940,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T02": {
+      "earlyStart": 50940,
+      "earlyFinish": 51420,
+      "lateStart": 50940,
+      "lateFinish": 51420,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T03": {
+      "earlyStart": 51420,
+      "earlyFinish": 51900,
+      "lateStart": 51420,
+      "lateFinish": 51900,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T04": {
+      "earlyStart": 51900,
+      "earlyFinish": 52380,
+      "lateStart": 51900,
+      "lateFinish": 52380,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T05": {
+      "earlyStart": 52380,
+      "earlyFinish": 52860,
+      "lateStart": 52380,
+      "lateFinish": 52860,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T06": {
+      "earlyStart": 52860,
+      "earlyFinish": 53340,
+      "lateStart": 52860,
+      "lateFinish": 53340,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T07": {
+      "earlyStart": 53340,
+      "earlyFinish": 53820,
+      "lateStart": 53340,
+      "lateFinish": 53820,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T08": {
+      "earlyStart": 53820,
+      "earlyFinish": 54300,
+      "lateStart": 53820,
+      "lateFinish": 54300,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T09": {
+      "earlyStart": 54300,
+      "earlyFinish": 54780,
+      "lateStart": 54300,
+      "lateFinish": 54780,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T10": {
+      "earlyStart": 54780,
+      "earlyFinish": 55260,
+      "lateStart": 54780,
+      "lateFinish": 55260,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T11": {
+      "earlyStart": 55260,
+      "earlyFinish": 55740,
+      "lateStart": 55260,
+      "lateFinish": 55740,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T12": {
+      "earlyStart": 55740,
+      "earlyFinish": 56220,
+      "lateStart": 55740,
+      "lateFinish": 56220,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T13": {
+      "earlyStart": 56220,
+      "earlyFinish": 56700,
+      "lateStart": 56220,
+      "lateFinish": 56700,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T14": {
+      "earlyStart": 56700,
+      "earlyFinish": 57180,
+      "lateStart": 56700,
+      "lateFinish": 57180,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T15": {
+      "earlyStart": 57180,
+      "earlyFinish": 57660,
+      "lateStart": 57180,
+      "lateFinish": 57660,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T16": {
+      "earlyStart": 57660,
+      "earlyFinish": 58140,
+      "lateStart": 57660,
+      "lateFinish": 58140,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T17": {
+      "earlyStart": 58140,
+      "earlyFinish": 58620,
+      "lateStart": 58140,
+      "lateFinish": 58620,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T18": {
+      "earlyStart": 58620,
+      "earlyFinish": 59100,
+      "lateStart": 58620,
+      "lateFinish": 59100,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T19": {
+      "earlyStart": 59100,
+      "earlyFinish": 59580,
+      "lateStart": 59100,
+      "lateFinish": 59580,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T20": {
+      "earlyStart": 59580,
+      "earlyFinish": 60060,
+      "lateStart": 59580,
+      "lateFinish": 60060,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T21": {
+      "earlyStart": 60060,
+      "earlyFinish": 60540,
+      "lateStart": 60060,
+      "lateFinish": 60540,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P4T22": {
+      "earlyStart": 60540,
+      "earlyFinish": 61020,
+      "lateStart": 60540,
+      "lateFinish": 61020,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T01": {
+      "earlyStart": 61020,
+      "earlyFinish": 61500,
+      "lateStart": 61020,
+      "lateFinish": 61500,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T02": {
+      "earlyStart": 61500,
+      "earlyFinish": 61980,
+      "lateStart": 61500,
+      "lateFinish": 61980,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T03": {
+      "earlyStart": 61980,
+      "earlyFinish": 62460,
+      "lateStart": 61980,
+      "lateFinish": 62460,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T04": {
+      "earlyStart": 62460,
+      "earlyFinish": 62940,
+      "lateStart": 62460,
+      "lateFinish": 62940,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T05": {
+      "earlyStart": 62940,
+      "earlyFinish": 63420,
+      "lateStart": 62940,
+      "lateFinish": 63420,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T06": {
+      "earlyStart": 63420,
+      "earlyFinish": 63900,
+      "lateStart": 63420,
+      "lateFinish": 63900,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T07": {
+      "earlyStart": 63900,
+      "earlyFinish": 64380,
+      "lateStart": 63900,
+      "lateFinish": 64380,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T08": {
+      "earlyStart": 64380,
+      "earlyFinish": 64860,
+      "lateStart": 64380,
+      "lateFinish": 64860,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T09": {
+      "earlyStart": 64860,
+      "earlyFinish": 65340,
+      "lateStart": 64860,
+      "lateFinish": 65340,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T10": {
+      "earlyStart": 65340,
+      "earlyFinish": 65820,
+      "lateStart": 65340,
+      "lateFinish": 65820,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T11": {
+      "earlyStart": 65820,
+      "earlyFinish": 66300,
+      "lateStart": 65820,
+      "lateFinish": 66300,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T12": {
+      "earlyStart": 66300,
+      "earlyFinish": 66780,
+      "lateStart": 66300,
+      "lateFinish": 66780,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T13": {
+      "earlyStart": 66780,
+      "earlyFinish": 67260,
+      "lateStart": 66780,
+      "lateFinish": 67260,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T14": {
+      "earlyStart": 67260,
+      "earlyFinish": 67740,
+      "lateStart": 67260,
+      "lateFinish": 67740,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T15": {
+      "earlyStart": 67740,
+      "earlyFinish": 68220,
+      "lateStart": 67740,
+      "lateFinish": 68220,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P5T16": {
+      "earlyStart": 68220,
+      "earlyFinish": 68700,
+      "lateStart": 68220,
+      "lateFinish": 68700,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "P2CT01": {
+      "earlyStart": 6300,
+      "earlyFinish": 6540,
+      "lateStart": 32340,
+      "lateFinish": 32580,
+      "totalFloatMinutes": 26040,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT02": {
+      "earlyStart": 6540,
+      "earlyFinish": 6780,
+      "lateStart": 32580,
+      "lateFinish": 36660,
+      "totalFloatMinutes": 26040,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT03": {
+      "earlyStart": 6780,
+      "earlyFinish": 7980,
+      "lateStart": 36660,
+      "lateFinish": 36900,
+      "totalFloatMinutes": 29880,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT04": {
+      "earlyStart": 7980,
+      "earlyFinish": 8220,
+      "lateStart": 36900,
+      "lateFinish": 38100,
+      "totalFloatMinutes": 28920,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT05": {
+      "earlyStart": 8220,
+      "earlyFinish": 9300,
+      "lateStart": 38100,
+      "lateFinish": 38340,
+      "totalFloatMinutes": 29880,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT06": {
+      "earlyStart": 9300,
+      "earlyFinish": 9540,
+      "lateStart": 38340,
+      "lateFinish": 39540,
+      "totalFloatMinutes": 29040,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT07": {
+      "earlyStart": 9540,
+      "earlyFinish": 10740,
+      "lateStart": 39540,
+      "lateFinish": 39780,
+      "totalFloatMinutes": 30000,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT08": {
+      "earlyStart": 10740,
+      "earlyFinish": 10980,
+      "lateStart": 39780,
+      "lateFinish": 40980,
+      "totalFloatMinutes": 29040,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT09": {
+      "earlyStart": 10980,
+      "earlyFinish": 12180,
+      "lateStart": 40980,
+      "lateFinish": 41220,
+      "totalFloatMinutes": 30000,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT10": {
+      "earlyStart": 12180,
+      "earlyFinish": 12420,
+      "lateStart": 41220,
+      "lateFinish": 42300,
+      "totalFloatMinutes": 29040,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT11": {
+      "earlyStart": 12420,
+      "earlyFinish": 16500,
+      "lateStart": 42300,
+      "lateFinish": 42540,
+      "totalFloatMinutes": 29880,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT12": {
+      "earlyStart": 16500,
+      "earlyFinish": 16740,
+      "lateStart": 42540,
+      "lateFinish": 46620,
+      "totalFloatMinutes": 26040,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT13": {
+      "earlyStart": 16740,
+      "earlyFinish": 17940,
+      "lateStart": 46620,
+      "lateFinish": 46860,
+      "totalFloatMinutes": 29880,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT14": {
+      "earlyStart": 17940,
+      "earlyFinish": 18180,
+      "lateStart": 46860,
+      "lateFinish": 48000,
+      "totalFloatMinutes": 28920,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT15": {
+      "earlyStart": 18180,
+      "earlyFinish": 19260,
+      "lateStart": 48000,
+      "lateFinish": 48240,
+      "totalFloatMinutes": 29820,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT16": {
+      "earlyStart": 19260,
+      "earlyFinish": 20940,
+      "lateStart": 48240,
+      "lateFinish": 48480,
+      "totalFloatMinutes": 28980,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT17": {
+      "earlyStart": 20940,
+      "earlyFinish": 21180,
+      "lateStart": 52620,
+      "lateFinish": 56700,
+      "totalFloatMinutes": 31680,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT18": {
+      "earlyStart": 21180,
+      "earlyFinish": 22380,
+      "lateStart": 56700,
+      "lateFinish": 56940,
+      "totalFloatMinutes": 35520,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT19": {
+      "earlyStart": 22380,
+      "earlyFinish": 22620,
+      "lateStart": 56940,
+      "lateFinish": 57180,
+      "totalFloatMinutes": 34560,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT20": {
+      "earlyStart": 22620,
+      "earlyFinish": 23700,
+      "lateStart": 57180,
+      "lateFinish": 58260,
+      "totalFloatMinutes": 34560,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT21": {
+      "earlyStart": 23700,
+      "earlyFinish": 26700,
+      "lateStart": 58260,
+      "lateFinish": 58500,
+      "totalFloatMinutes": 34560,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT22": {
+      "earlyStart": 26700,
+      "earlyFinish": 26940,
+      "lateStart": 58500,
+      "lateFinish": 59700,
+      "totalFloatMinutes": 31800,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT23": {
+      "earlyStart": 26940,
+      "earlyFinish": 28140,
+      "lateStart": 59700,
+      "lateFinish": 59940,
+      "totalFloatMinutes": 32760,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT24": {
+      "earlyStart": 28140,
+      "earlyFinish": 28380,
+      "lateStart": 59940,
+      "lateFinish": 61140,
+      "totalFloatMinutes": 31800,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT25": {
+      "earlyStart": 28380,
+      "earlyFinish": 29460,
+      "lateStart": 61140,
+      "lateFinish": 61380,
+      "totalFloatMinutes": 32760,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT26": {
+      "earlyStart": 29460,
+      "earlyFinish": 29700,
+      "lateStart": 61380,
+      "lateFinish": 62580,
+      "totalFloatMinutes": 31920,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT27": {
+      "earlyStart": 29700,
+      "earlyFinish": 30900,
+      "lateStart": 62580,
+      "lateFinish": 62820,
+      "totalFloatMinutes": 32880,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT28": {
+      "earlyStart": 30900,
+      "earlyFinish": 31140,
+      "lateStart": 62820,
+      "lateFinish": 66900,
+      "totalFloatMinutes": 31920,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT29": {
+      "earlyStart": 31140,
+      "earlyFinish": 32340,
+      "lateStart": 66900,
+      "lateFinish": 67140,
+      "totalFloatMinutes": 35760,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT30": {
+      "earlyStart": 32340,
+      "earlyFinish": 32580,
+      "lateStart": 67140,
+      "lateFinish": 68220,
+      "totalFloatMinutes": 34800,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT31": {
+      "earlyStart": 32580,
+      "earlyFinish": 36660,
+      "lateStart": 68220,
+      "lateFinish": 68460,
+      "totalFloatMinutes": 35640,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P2CT32": {
+      "earlyStart": 36660,
+      "earlyFinish": 36900,
+      "lateStart": 68460,
+      "lateFinish": 68700,
+      "totalFloatMinutes": 31800,
+      "freeFloatMinutes": 31800,
+      "isCritical": false
+    },
+    "P3BT01": {
+      "earlyStart": 20940,
+      "earlyFinish": 21180,
+      "lateStart": 48480,
+      "lateFinish": 49680,
+      "totalFloatMinutes": 27540,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT02": {
+      "earlyStart": 21180,
+      "earlyFinish": 22440,
+      "lateStart": 49680,
+      "lateFinish": 50940,
+      "totalFloatMinutes": 28500,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT03": {
+      "earlyStart": 22440,
+      "earlyFinish": 22620,
+      "lateStart": 50940,
+      "lateFinish": 51120,
+      "totalFloatMinutes": 28500,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT04": {
+      "earlyStart": 22620,
+      "earlyFinish": 26700,
+      "lateStart": 51120,
+      "lateFinish": 51360,
+      "totalFloatMinutes": 28500,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT05": {
+      "earlyStart": 26700,
+      "earlyFinish": 27960,
+      "lateStart": 51360,
+      "lateFinish": 52620,
+      "totalFloatMinutes": 24660,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT06": {
+      "earlyStart": 27960,
+      "earlyFinish": 28140,
+      "lateStart": 52620,
+      "lateFinish": 52800,
+      "totalFloatMinutes": 24660,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT07": {
+      "earlyStart": 28140,
+      "earlyFinish": 28380,
+      "lateStart": 52800,
+      "lateFinish": 56880,
+      "totalFloatMinutes": 24660,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT08": {
+      "earlyStart": 28380,
+      "earlyFinish": 29640,
+      "lateStart": 56880,
+      "lateFinish": 58140,
+      "totalFloatMinutes": 28500,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT09": {
+      "earlyStart": 29640,
+      "earlyFinish": 29820,
+      "lateStart": 58140,
+      "lateFinish": 58320,
+      "totalFloatMinutes": 28500,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT10": {
+      "earlyStart": 29820,
+      "earlyFinish": 31020,
+      "lateStart": 58320,
+      "lateFinish": 58560,
+      "totalFloatMinutes": 28500,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT11": {
+      "earlyStart": 31020,
+      "earlyFinish": 32280,
+      "lateStart": 58560,
+      "lateFinish": 59820,
+      "totalFloatMinutes": 27540,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT12": {
+      "earlyStart": 32280,
+      "earlyFinish": 32460,
+      "lateStart": 59820,
+      "lateFinish": 60000,
+      "totalFloatMinutes": 27540,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT13": {
+      "earlyStart": 32460,
+      "earlyFinish": 32700,
+      "lateStart": 60000,
+      "lateFinish": 61200,
+      "totalFloatMinutes": 27540,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT14": {
+      "earlyStart": 32700,
+      "earlyFinish": 36840,
+      "lateStart": 61200,
+      "lateFinish": 62460,
+      "totalFloatMinutes": 28500,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT15": {
+      "earlyStart": 36840,
+      "earlyFinish": 37020,
+      "lateStart": 62460,
+      "lateFinish": 62640,
+      "totalFloatMinutes": 25620,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT16": {
+      "earlyStart": 37020,
+      "earlyFinish": 38220,
+      "lateStart": 62640,
+      "lateFinish": 62880,
+      "totalFloatMinutes": 25620,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT17": {
+      "earlyStart": 38220,
+      "earlyFinish": 39480,
+      "lateStart": 62880,
+      "lateFinish": 67020,
+      "totalFloatMinutes": 24660,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT18": {
+      "earlyStart": 39480,
+      "earlyFinish": 39660,
+      "lateStart": 67020,
+      "lateFinish": 67200,
+      "totalFloatMinutes": 27540,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT19": {
+      "earlyStart": 39660,
+      "earlyFinish": 39900,
+      "lateStart": 67200,
+      "lateFinish": 68400,
+      "totalFloatMinutes": 27540,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "P3BT20": {
+      "earlyStart": 39900,
+      "earlyFinish": 41160,
+      "lateStart": 68400,
+      "lateFinish": 68700,
+      "totalFloatMinutes": 28500,
+      "freeFloatMinutes": 28500,
+      "isCritical": false
+    },
+    "P1S01": {
+      "earlyStart": 6300,
+      "earlyFinish": 6540,
+      "lateStart": 68220,
+      "lateFinish": 68460,
+      "totalFloatMinutes": 61920,
+      "freeFloatMinutes": 60,
+      "isCritical": false
+    },
+    "P1S02": {
+      "earlyStart": 6600,
+      "earlyFinish": 6780,
+      "lateStart": 68520,
+      "lateFinish": 68700,
+      "totalFloatMinutes": 61920,
+      "freeFloatMinutes": 61920,
+      "isCritical": false
+    },
+    "SPEC_SNET": {
+      "earlyStart": 7740,
+      "earlyFinish": 7860,
+      "lateStart": 68280,
+      "lateFinish": 68400,
+      "totalFloatMinutes": 60540,
+      "freeFloatMinutes": 240,
+      "isCritical": false
+    },
+    "SPEC_FNET": {
+      "earlyStart": 8100,
+      "earlyFinish": 8220,
+      "lateStart": 68400,
+      "lateFinish": 68520,
+      "totalFloatMinutes": 60300,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "SPEC_SNLT": {
+      "earlyStart": 8220,
+      "earlyFinish": 9240,
+      "lateStart": 68520,
+      "lateFinish": 68580,
+      "totalFloatMinutes": 60300,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "SPEC_FNLT": {
+      "earlyStart": 9240,
+      "earlyFinish": 9300,
+      "lateStart": 68580,
+      "lateFinish": 68640,
+      "totalFloatMinutes": 59340,
+      "freeFloatMinutes": 0,
+      "isCritical": false
+    },
+    "SPEC_ASAP": {
+      "earlyStart": 9300,
+      "earlyFinish": 9360,
+      "lateStart": 68640,
+      "lateFinish": 68700,
+      "totalFloatMinutes": 59340,
+      "freeFloatMinutes": 59340,
+      "isCritical": false
+    },
+    "SPEC_MSO_A": {
+      "earlyStart": 8220,
+      "earlyFinish": 9420,
+      "lateStart": 68400,
+      "lateFinish": 68640,
+      "totalFloatMinutes": 60180,
+      "freeFloatMinutes": 120,
+      "isCritical": false
+    },
+    "SPEC_MSO_B": {
+      "earlyStart": 9540,
+      "earlyFinish": 9600,
+      "lateStart": 68640,
+      "lateFinish": 68700,
+      "totalFloatMinutes": 59100,
+      "freeFloatMinutes": 59100,
+      "isCritical": false
+    },
+    "SPEC_MFO": {
+      "earlyStart": 26820,
+      "earlyFinish": 26880,
+      "lateStart": 68640,
+      "lateFinish": 68700,
+      "totalFloatMinutes": 41820,
+      "freeFloatMinutes": 41820,
+      "isCritical": false
+    },
+    "SPEC_DEADLINE": {
+      "earlyStart": 53340,
+      "earlyFinish": 53580,
+      "lateStart": 68460,
+      "lateFinish": 68700,
+      "totalFloatMinutes": 15120,
+      "freeFloatMinutes": 15120,
+      "isCritical": false
+    }
+  },
+  "warnings": [
+    {
+      "code": "SOFT_CONSTRAINT_VIOLATED",
+      "taskIds": [
+        "SPEC_SNLT"
+      ]
+    },
+    {
+      "code": "CONSTRAINT_OVERRIDES_DEPENDENCY",
+      "taskIds": [
+        "SPEC_MSO_B"
+      ]
+    },
+    {
+      "code": "CONSTRAINT_OVERRIDES_DEPENDENCY",
+      "taskIds": [
+        "SPEC_MFO"
+      ]
+    },
+    {
+      "code": "DEADLINE_MISSED",
+      "taskIds": [
+        "SPEC_DEADLINE"
+      ]
+    }
+  ]
+}

@@ -30,10 +30,23 @@ interface GoldenDependencyInput {
   lagPercent?: number | null;
 }
 
+type GoldenCalendarJson = Omit<CalendarCompilationInput, 'horizonStart'> & {
+  horizonStart: number;
+  exceptions?: Array<{
+    date: number;
+    isWorking: boolean;
+    startMinute?: number;
+    finishMinute?: number;
+  }>;
+};
+
 interface GoldenInput {
   projectStart: number;
   defaultCalendarId: string;
-  calendar: Omit<CalendarCompilationInput, 'horizonStart'> & { horizonStart: number };
+  /** Legacy single-calendar shape used by cases 001–015. */
+  calendar?: GoldenCalendarJson;
+  /** Multi-calendar shape (e.g. 200-reference-plan). */
+  calendars?: Record<string, GoldenCalendarJson>;
   tasks: GoldenTaskInput[];
   dependencies: GoldenDependencyInput[];
 }
@@ -66,6 +79,40 @@ const caseNames = readdirSync(GOLDEN_DIR, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort();
 
+function compileGoldenCalendars(input: GoldenInput): Map<ReturnType<typeof asCalendarId>, ReturnType<typeof compileCalendar>> {
+  const calendars = new Map();
+
+  const compileOne = (id: string, cal: GoldenCalendarJson) => {
+    const exceptions = cal.exceptions?.map((ex) => ({
+      ...ex,
+      date: asEpochMinutes(ex.date),
+    }));
+    calendars.set(
+      asCalendarId(id),
+      compileCalendar({
+        horizonStart: asEpochMinutes(cal.horizonStart),
+        horizonDays: cal.horizonDays,
+        workingWeekdays: cal.workingWeekdays,
+        defaultStartMinute: cal.defaultStartMinute,
+        defaultFinishMinute: cal.defaultFinishMinute,
+        ...(exceptions !== undefined ? { exceptions } : {}),
+      }),
+    );
+  };
+
+  if (input.calendars !== undefined) {
+    for (const [id, cal] of Object.entries(input.calendars)) {
+      compileOne(id, cal);
+    }
+  } else if (input.calendar !== undefined) {
+    compileOne(input.defaultCalendarId, input.calendar);
+  } else {
+    throw new Error('golden input must provide `calendar` or `calendars`');
+  }
+
+  return calendars;
+}
+
 /**
  * §11.1: "The highest-value asset in the repository." These are currently
  * hand-computed and self-verified, not MS-Project-exported — see each
@@ -86,12 +133,7 @@ describe('golden-file corpus (§11.1)', () => {
       const expected = JSON.parse(readFileSync(join(caseDir, 'expected.json'), 'utf-8')) as GoldenExpected;
 
       const defaultCalendarId = asCalendarId(input.defaultCalendarId);
-      const calendars = new Map([
-        [
-          defaultCalendarId,
-          compileCalendar({ ...input.calendar, horizonStart: asEpochMinutes(input.calendar.horizonStart) }),
-        ],
-      ]);
+      const calendars = compileGoldenCalendars(input);
 
       const tasks: TaskInput[] = input.tasks.map((t) => ({
         id: asTaskId(t.id),
