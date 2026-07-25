@@ -78,9 +78,39 @@ export interface PermissionPreHandler {
   readonly permissionKey: PermissionKey;
 }
 
+async function assertHasPermission(
+  request: FastifyRequest,
+  key: PermissionKey,
+  projectId: string,
+): Promise<void> {
+  if (!request.user) {
+    throw new UnauthorizedError();
+  }
+
+  request.permissionsCache ??= new Map();
+  let granted = request.permissionsCache.get(projectId);
+  if (!granted) {
+    granted = await getEffectivePermissions(request.user.id, projectId);
+    request.permissionsCache.set(projectId, granted);
+  }
+
+  if (!granted.has(key)) {
+    throw new ForbiddenError(`Missing permission: ${key}`);
+  }
+}
+
+function tagPermissionPreHandler(
+  permissionGuard: (request: FastifyRequest) => Promise<void>,
+  key: PermissionKey,
+): PermissionPreHandler {
+  const tagged = permissionGuard as PermissionPreHandler;
+  Object.defineProperty(tagged, 'permissionKey', { value: key, enumerable: true });
+  return tagged;
+}
+
 /** §6.2/§6.3: fail closed — an unresolved project or missing permission is a 403, never a silent pass. */
 export function requirePermission(key: PermissionKey): PermissionPreHandler {
-  const permissionGuard = async function permissionGuard(request: FastifyRequest): Promise<void> {
+  return tagPermissionPreHandler(async function permissionGuard(request: FastifyRequest): Promise<void> {
     if (!request.user) {
       throw new UnauthorizedError();
     }
@@ -90,19 +120,31 @@ export function requirePermission(key: PermissionKey): PermissionPreHandler {
       throw new ForbiddenError('Could not resolve a project for this request');
     }
 
-    request.permissionsCache ??= new Map();
-    let granted = request.permissionsCache.get(projectId);
-    if (!granted) {
-      granted = await getEffectivePermissions(request.user.id, projectId);
-      request.permissionsCache.set(projectId, granted);
+    await assertHasPermission(request, key, projectId);
+  }, key);
+}
+
+/**
+ * Like requirePermission, but the project id comes from a caller-supplied
+ * extractor (query/body) rather than the route `:id`. Used for global
+ * resources (roles, permissions) that still authorize against a project
+ * membership — the projectId authorizes the caller only; it does not scope
+ * the returned/mutated data.
+ */
+export function requirePermissionForProject(
+  key: PermissionKey,
+  getProjectId: (request: FastifyRequest) => string | undefined,
+): PermissionPreHandler {
+  return tagPermissionPreHandler(async function permissionGuard(request: FastifyRequest): Promise<void> {
+    if (!request.user) {
+      throw new UnauthorizedError();
     }
 
-    if (!granted.has(key)) {
-      throw new ForbiddenError(`Missing permission: ${key}`);
+    const projectId = getProjectId(request);
+    if (!projectId) {
+      throw new ForbiddenError('Could not resolve a project for this request');
     }
-  } as PermissionPreHandler;
 
-  Object.defineProperty(permissionGuard, 'permissionKey', { value: key, enumerable: true });
-
-  return permissionGuard;
+    await assertHasPermission(request, key, projectId);
+  }, key);
 }

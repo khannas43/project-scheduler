@@ -11,6 +11,7 @@ import { authRoutes } from './routes/auth.js';
 import { dependencyRoutes } from './routes/dependencies.js';
 import { healthRoutes } from './routes/health.js';
 import { projectRoutes } from './routes/projects.js';
+import { roleRoutes } from './routes/roles.js';
 import { taskRoutes } from './routes/tasks.js';
 
 /** Separate from server.ts (which calls .listen()) so tests can `fastify.inject()` against it (§11). */
@@ -55,6 +56,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(projectRoutes);
   await fastify.register(taskRoutes);
   await fastify.register(dependencyRoutes);
+  await fastify.register(roleRoutes);
 
   return fastify;
 }
