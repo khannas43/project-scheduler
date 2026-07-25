@@ -14,14 +14,13 @@ export interface InteractionDrawInput {
   readonly pixelsPerMinute?: number;
 }
 
-export interface DragGhost {
-  readonly taskId: number;
-  readonly startMinutes: number;
-}
+export type DragGhost =
+  | { readonly kind: 'move'; readonly taskId: number; readonly startMinutes: number }
+  | { readonly kind: 'resize'; readonly taskId: number; readonly durationMinutes: number };
 
 /**
  * Layer 4 — drag ghost / hover. Redrawn on every pointer move (§8.2).
- * Drag-to-move lives in GanttView; this layer paints the hover outline and ghost.
+ * Move/resize interaction lives in GanttView; this layer paints the outline + ghost.
  */
 export function drawInteraction(input: InteractionDrawInput): void {
   const { ctx, viewport, tasksById, hoverTaskId, dragGhost } = input;
@@ -43,8 +42,11 @@ export function drawInteraction(input: InteractionDrawInput): void {
   if (dragGhost) {
     const task = lookupTask(tasksById, dragGhost.taskId);
     if (task) {
-      const x = minutesToX(dragGhost.startMinutes, scrollLeft, ppm);
-      const w = Math.max(2, task.durationMinutes * ppm);
+      const startMinutes = dragGhost.kind === 'move' ? dragGhost.startMinutes : task.startMinutes;
+      const durationMinutes =
+        dragGhost.kind === 'resize' ? dragGhost.durationMinutes : task.durationMinutes;
+      const x = minutesToX(startMinutes, scrollLeft, ppm);
+      const w = Math.max(2, durationMinutes * ppm);
       const y = task.row * ROW_HEIGHT - scrollTop + BAR_VPAD;
       ctx.globalAlpha = 0.35;
       ctx.fillStyle = '#111827';

@@ -1,5 +1,5 @@
-import { MINUTES_PER_DAY, PIXELS_PER_DAY, ROW_HEIGHT } from './constants.js';
-import { snapMinutesToDay } from './drag.js';
+import { MINUTES_PER_DAY, PIXELS_PER_DAY, RESIZE_EDGE_PX, ROW_HEIGHT } from './constants.js';
+import { snapDurationMinutes, snapMinutesToDay } from './drag.js';
 import { hitTest } from './hitTest.js';
 import { drawArrows } from './layers/arrows.js';
 import { drawBackground } from './layers/background.js';
@@ -7,7 +7,7 @@ import { drawBars } from './layers/bars.js';
 import { drawInteraction, type DragGhost } from './layers/interaction.js';
 import { buildTaskById, lookupTask } from './taskIndex.js';
 import type { GanttDependency, GanttTask, ViewportState } from './types.js';
-import { xToMinutes } from './viewport.js';
+import { minutesToX, xToMinutes } from './viewport.js';
 
 export interface GanttViewOptions {
   readonly container: HTMLElement;
@@ -17,6 +17,8 @@ export interface GanttViewOptions {
   readonly onHover?: (taskId: number | null) => void;
   /** Fired on pointerup when a non-summary bar was dragged to a new day-snapped start. */
   readonly onCommitMove?: (taskId: number, newStartMinutes: number) => void;
+  /** Fired on pointerup when a non-summary bar's right edge was resized to a new duration. */
+  readonly onCommitResize?: (taskId: number, newDurationMinutes: number) => void;
 }
 
 type LayerName = 'background' | 'arrows' | 'bars' | 'interaction';
@@ -28,6 +30,14 @@ interface ActiveDrag {
   /** Pointer minutes − bar start at pointerdown (keeps grab point under the cursor). */
   readonly grabOffsetMinutes: number;
   currentStartMinutes: number;
+}
+
+interface ActiveResize {
+  readonly pointerId: number;
+  readonly taskId: number;
+  readonly startMinutes: number;
+  readonly originDurationMinutes: number;
+  currentDurationMinutes: number;
 }
 
 /**
@@ -56,12 +66,14 @@ export class GanttView {
   private readonly pixelsPerMinute: number;
   private readonly onHover: ((taskId: number | null) => void) | undefined;
   private readonly onCommitMove: ((taskId: number, newStartMinutes: number) => void) | undefined;
+  private readonly onCommitResize: ((taskId: number, newDurationMinutes: number) => void) | undefined;
 
   private viewport: ViewportState = { scrollTop: 0, scrollLeft: 0, width: 0, height: 0 };
   private spatialIndex: Float32Array = new Float32Array(0);
   private hoverTaskId: number | null = null;
   private dragGhost: DragGhost | null = null;
   private drag: ActiveDrag | null = null;
+  private resizeDrag: ActiveResize | null = null;
   private raf = 0;
   private dpr = 1;
 
@@ -80,6 +92,7 @@ export class GanttView {
     this.pixelsPerMinute = options.pixelsPerMinute ?? PIXELS_PER_DAY / MINUTES_PER_DAY;
     this.onHover = options.onHover;
     this.onCommitMove = options.onCommitMove;
+    this.onCommitResize = options.onCommitResize;
 
     this.stack = document.createElement('div');
     this.stack.style.cssText =
@@ -107,7 +120,10 @@ export class GanttView {
     this.onPointerMove = (e) => this.handlePointerMove(e);
     this.onPointerUp = (e) => this.handlePointerUp(e);
     this.onPointerLeave = () => {
-      if (!this.drag) this.setHover(null);
+      if (!this.drag && !this.resizeDrag) {
+        this.setHover(null);
+        this.stack.style.cursor = '';
+      }
     };
     this.onResize = () => this.resize();
 
@@ -134,9 +150,14 @@ export class GanttView {
     return this.viewport;
   }
 
-  /** Test seam — active drag state, if any. */
+  /** Test seam — active move-drag state, if any. */
   getActiveDrag(): Readonly<ActiveDrag> | null {
     return this.drag;
+  }
+
+  /** Test seam — active resize-drag state, if any. */
+  getActiveResize(): Readonly<ActiveResize> | null {
+    return this.resizeDrag;
   }
 
   setData(tasks: readonly GanttTask[], dependencies: readonly GanttDependency[]): void {
@@ -237,8 +258,31 @@ export class GanttView {
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   }
 
+  private barPixelGeometry(task: GanttTask): { x: number; w: number } {
+    const x = minutesToX(task.startMinutes, this.viewport.scrollLeft, this.pixelsPerMinute);
+    const w = Math.max(2, task.durationMinutes * this.pixelsPerMinute);
+    return { x, w };
+  }
+
+  /** True when the pointer is within RESIZE_EDGE_PX of the bar's right edge. */
+  private isNearRightResizeEdge(pointerX: number, task: GanttTask): boolean {
+    const { x, w } = this.barPixelGeometry(task);
+    return pointerX >= x + w - RESIZE_EDGE_PX && pointerX <= x + w;
+  }
+
+  private updateHoverCursor(x: number, y: number): void {
+    if (this.drag || this.resizeDrag) return;
+    const taskId = hitTest(this.spatialIndex, x, y);
+    const task = lookupTask(this.tasksById, taskId);
+    if (task && !task.isSummary && this.isNearRightResizeEdge(x, task)) {
+      this.stack.style.cursor = 'ew-resize';
+    } else {
+      this.stack.style.cursor = '';
+    }
+  }
+
   private handlePointerDown(e: PointerEvent): void {
-    if (this.drag) return;
+    if (this.drag || this.resizeDrag) return;
     // Ensure spatial index is current before hit-testing.
     this.paint();
 
@@ -249,10 +293,29 @@ export class GanttView {
     const task = lookupTask(this.tasksById, taskId);
     if (!task || task.isSummary) return;
 
+    this.stack.setPointerCapture(e.pointerId);
+
+    if (this.isNearRightResizeEdge(x, task)) {
+      this.resizeDrag = {
+        pointerId: e.pointerId,
+        taskId,
+        startMinutes: task.startMinutes,
+        originDurationMinutes: task.durationMinutes,
+        currentDurationMinutes: task.durationMinutes,
+      };
+      this.stack.style.cursor = 'ew-resize';
+      this.setDragGhost({
+        kind: 'resize',
+        taskId,
+        durationMinutes: task.durationMinutes,
+      });
+      e.preventDefault();
+      return;
+    }
+
     const pointerMinutes = xToMinutes(x, this.viewport.scrollLeft, this.pixelsPerMinute);
     const grabOffsetMinutes = pointerMinutes - task.startMinutes;
 
-    this.stack.setPointerCapture(e.pointerId);
     this.drag = {
       pointerId: e.pointerId,
       taskId,
@@ -260,18 +323,38 @@ export class GanttView {
       grabOffsetMinutes,
       currentStartMinutes: task.startMinutes,
     };
-    this.setDragGhost({ taskId, startMinutes: task.startMinutes });
+    this.stack.style.cursor = '';
+    this.setDragGhost({ kind: 'move', taskId, startMinutes: task.startMinutes });
     e.preventDefault();
   }
 
   private handlePointerMove(e: PointerEvent): void {
+    if (this.resizeDrag && e.pointerId === this.resizeDrag.pointerId) {
+      const { x } = this.pointerLocal(e);
+      const pointerMinutes = xToMinutes(x, this.viewport.scrollLeft, this.pixelsPerMinute);
+      const snapped = snapDurationMinutes(pointerMinutes - this.resizeDrag.startMinutes);
+      if (snapped !== this.resizeDrag.currentDurationMinutes) {
+        this.resizeDrag.currentDurationMinutes = snapped;
+        this.setDragGhost({
+          kind: 'resize',
+          taskId: this.resizeDrag.taskId,
+          durationMinutes: snapped,
+        });
+      }
+      return;
+    }
+
     if (this.drag && e.pointerId === this.drag.pointerId) {
       const { x } = this.pointerLocal(e);
       const pointerMinutes = xToMinutes(x, this.viewport.scrollLeft, this.pixelsPerMinute);
       const snapped = snapMinutesToDay(pointerMinutes - this.drag.grabOffsetMinutes);
       if (snapped !== this.drag.currentStartMinutes) {
         this.drag.currentStartMinutes = snapped;
-        this.setDragGhost({ taskId: this.drag.taskId, startMinutes: snapped });
+        this.setDragGhost({
+          kind: 'move',
+          taskId: this.drag.taskId,
+          startMinutes: snapped,
+        });
       }
       return;
     }
@@ -279,9 +362,26 @@ export class GanttView {
     const { x, y } = this.pointerLocal(e);
     const id = hitTest(this.spatialIndex, x, y);
     this.setHover(id);
+    this.updateHoverCursor(x, y);
   }
 
   private handlePointerUp(e: PointerEvent): void {
+    if (this.resizeDrag && e.pointerId === this.resizeDrag.pointerId) {
+      const { taskId, originDurationMinutes, currentDurationMinutes, pointerId } = this.resizeDrag;
+      this.resizeDrag = null;
+
+      if (this.stack.hasPointerCapture(pointerId)) {
+        this.stack.releasePointerCapture(pointerId);
+      }
+      this.setDragGhost(null);
+      this.stack.style.cursor = '';
+
+      if (currentDurationMinutes !== originDurationMinutes) {
+        this.onCommitResize?.(taskId, currentDurationMinutes);
+      }
+      return;
+    }
+
     if (!this.drag || e.pointerId !== this.drag.pointerId) return;
 
     const { taskId, originStartMinutes, currentStartMinutes, pointerId } = this.drag;

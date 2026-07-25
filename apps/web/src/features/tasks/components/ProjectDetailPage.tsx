@@ -124,6 +124,7 @@ export function ProjectDetailPage() {
             dependencies={dependencies}
             onHoverTask={setHighlightedTaskId}
             onCommitMove={onEdit}
+            onCommitResize={onEdit}
           />
         </section>
       </div>

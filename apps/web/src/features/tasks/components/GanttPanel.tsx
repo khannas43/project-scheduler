@@ -17,6 +17,7 @@ export interface GanttPanelProps {
   readonly dependencies: readonly DependencyRow[];
   readonly onHoverTask: (taskId: string | null) => void;
   readonly onCommitMove?: (patch: TaskEditPatch) => void;
+  readonly onCommitResize?: (patch: TaskEditPatch) => void;
 }
 
 function buildGanttData(
@@ -60,7 +61,7 @@ function buildGanttData(
 }
 
 /**
- * Imperative wrapper around @pkg/gantt GanttView — hover + drag-to-move (MSO).
+ * Imperative wrapper around @pkg/gantt GanttView — hover, drag-to-move (MSO), resize duration.
  */
 export function GanttPanel({
   project,
@@ -68,6 +69,7 @@ export function GanttPanel({
   dependencies,
   onHoverTask,
   onCommitMove,
+  onCommitResize,
 }: GanttPanelProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<GanttView | null>(null);
@@ -80,6 +82,8 @@ export function GanttPanel({
   onHoverRef.current = onHoverTask;
   const onCommitMoveRef = useRef(onCommitMove);
   onCommitMoveRef.current = onCommitMove;
+  const onCommitResizeRef = useRef(onCommitResize);
+  onCommitResizeRef.current = onCommitResize;
 
   const taskIds = useMemo(() => tasks.map((t) => t.id), [tasks]);
   const adapter = useMemo(() => new TaskIdAdapter(taskIds), [taskIds]);
@@ -117,6 +121,17 @@ export function GanttPanel({
           version: task.version,
           constraintType: 'mso',
           constraintDate,
+        });
+      },
+      onCommitResize: (numericId, newDurationMinutes) => {
+        const uuid = adapterRef.current.toUuid(numericId);
+        if (!uuid) return;
+        const task = tasksRef.current.find((t) => t.id === uuid);
+        if (!task) return;
+        onCommitResizeRef.current?.({
+          taskId: uuid,
+          version: task.version,
+          durationMinutes: newDurationMinutes,
         });
       },
     });
