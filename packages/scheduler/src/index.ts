@@ -2,6 +2,8 @@ export { runBackwardPass } from './backwardPass.js';
 export type { BackwardSchedule } from './backwardPass.js';
 export { addWorkingMinutes, compileCalendar, subtractWorkingMinutes, workingMinutesBetween } from './calendar.js';
 export type { CalendarCompilationInput, CalendarExceptionInput, CompiledCalendar } from './calendar.js';
+export { expandRecurringExceptions } from './calendarRecurrence.js';
+export type { RawCalendarException } from './calendarRecurrence.js';
 export { computeFloat, extractCriticalPath } from './float.js';
 export type { FloatResult } from './float.js';
 export { runForwardPass } from './forwardPass.js';

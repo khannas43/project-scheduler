@@ -3,12 +3,15 @@ import {
   asEpochMinutes,
   asTaskId,
   compileCalendar,
+  expandRecurringExceptions,
   schedule,
   SchedulingError,
   validateGraph,
+  type CalendarExceptionInput,
   type CompiledCalendar,
   type DependencyInput,
   type LinkType,
+  type RawCalendarException,
   type SchedulerOutput,
   type TaskInput,
 } from '@pkg/scheduler';
@@ -68,6 +71,70 @@ export function timeToMinutes(value: string): number {
     throw new RangeError(`Invalid time value: ${value}`);
   }
   return h * 60 + m;
+}
+
+function parseRecurrence(value: unknown): { readonly type: 'annual' } | null {
+  if (
+    value &&
+    typeof value === 'object' &&
+    'type' in value &&
+    (value as { type: unknown }).type === 'annual'
+  ) {
+    return { type: 'annual' };
+  }
+  return null;
+}
+
+/**
+ * Map DB `calendar_exceptions` rows → expanded `CalendarExceptionInput[]`
+ * (annual recurrence unrolled across the compile horizon).
+ */
+export function exceptionsFromDbRows(
+  rows: readonly {
+    exceptionDate: string;
+    isWorking: boolean;
+    startTime: string | null;
+    finishTime: string | null;
+    recurrence: unknown;
+  }[],
+  horizonStart: ReturnType<typeof asEpochMinutes>,
+  horizonDays: number,
+): CalendarExceptionInput[] {
+  const raw = rows.map((ex): RawCalendarException => {
+    const date = toUtcMidnightMinutes(new Date(`${ex.exceptionDate}T00:00:00Z`));
+    const recurrence = parseRecurrence(ex.recurrence);
+    if (ex.startTime && ex.finishTime) {
+      return {
+        date,
+        isWorking: ex.isWorking,
+        startMinute: timeToMinutes(ex.startTime),
+        finishMinute: timeToMinutes(ex.finishTime),
+        recurrence,
+      };
+    }
+    if (ex.startTime) {
+      return {
+        date,
+        isWorking: ex.isWorking,
+        startMinute: timeToMinutes(ex.startTime),
+        recurrence,
+      };
+    }
+    if (ex.finishTime) {
+      return {
+        date,
+        isWorking: ex.isWorking,
+        finishMinute: timeToMinutes(ex.finishTime),
+        recurrence,
+      };
+    }
+    return {
+      date,
+      isWorking: ex.isWorking,
+      recurrence,
+    };
+  });
+  return expandRecurringExceptions(raw, horizonStart, horizonDays);
 }
 
 function isSerializationFailure(error: unknown): boolean {
@@ -189,15 +256,11 @@ async function loadCompiledCalendars(
 
   for (const cal of calendarRows) {
     const id = asCalendarId(cal.id);
-    const exceptions = (exceptionsByCal.get(cal.id) ?? []).map((ex) => {
-      const date = toUtcMidnightMinutes(new Date(`${ex.exceptionDate}T00:00:00Z`));
-      return {
-        date,
-        isWorking: ex.isWorking,
-        ...(ex.startTime ? { startMinute: timeToMinutes(ex.startTime) } : {}),
-        ...(ex.finishTime ? { finishMinute: timeToMinutes(ex.finishTime) } : {}),
-      };
-    });
+    const exceptions = exceptionsFromDbRows(
+      exceptionsByCal.get(cal.id) ?? [],
+      horizonStart,
+      HORIZON_DAYS,
+    );
 
     map.set(
       id,
