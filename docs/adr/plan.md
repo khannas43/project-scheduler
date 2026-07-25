@@ -30,18 +30,17 @@ number, not a timeline estimate.
 |---|---|---|---|---|---|
 | 0 — Foundation | 12 | 12 | 0 | 0 | 100% |
 | 1 — Core planning | 14 | 14 | 0 | 0 | 100% |
-| 2 — Full scheduling | 8 | 2 (calendars; undo/redo) | 2 (link types+lag) | 4 | 25% |
+| 2 — Full scheduling | 8 | 4 (link types+lag; calendars; undo/redo) | 0 | 4 | 50% |
 | 3 — Resources | 6 | 0 | 0 | 6 | 0% |
 | 4 — Tracking | 6 | 0 | 0 | 6 | 0% |
 | 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **28** | **2** | **27** | **~49%** |
+| **Total** | **57** | **30** | **0** | **27** | **~53%** |
 
-**~49% done, ~47% pending, ~4% in progress** (28/57 done — Phases 0–1
-complete, plus Phase 2's calendar-exceptions/recurrence and undo/redo
-items; 2/57 in progress on terminal 2's `link-types-lag` branch;
-27/57 not started). Nothing in Phases 3–6 (resources, tracking,
-interop/reporting, agile) has started.
+**~53% done, ~47% pending** (30/57 done — Phases 0–1 complete, plus
+Phase 2's link types+lag, calendar-exceptions/recurrence, and undo/redo
+items; 27/57 not started, none currently in progress). Nothing in
+Phases 3–6 (resources, tracking, interop/reporting, agile) has started.
 
 ---
 
@@ -154,6 +153,24 @@ interop/reporting, agile) has started.
   exists as a schema column but nothing schedules against it yet, which
   naturally belongs with Phase 3 (Resources) once resource assignment
   itself is built, not before.
+- **SS/FF/SF link types, signed + percentage lag** (§13 items 27–28,
+  Cursor, `packages/scheduler`) — forward/backward pass were FS-only;
+  now all four link types per §4.4/§4.5's formula tables, via a shared
+  `applyLag`/`unapplyLag` (`lag.ts`) that picks `addWorkingMinutes` vs
+  `subtractWorkingMinutes` by lag sign. FF/SF's duration back-derivation
+  is calendar-aware (derive a candidate finish, then
+  `subtractWorkingMinutes` to the true start), not flat arithmetic — the
+  same technique the backward pass's SS/SF branches mirror going the
+  other direction. `lagPercent` (MS Project convention: percentage of
+  the *predecessor's* duration) resolved once via `resolveLagMinutes`
+  before either pass touches it. Golden corpus grew 2 → 7 cases
+  (003–007); one (007, percentage lag crossing a Monday→Tuesday working
+  boundary) independently re-derived by hand during review, not just
+  re-run. **Not yet wired**: `apps/api`'s `toDependencyInputs` doesn't
+  read `lagPercent` off the DB row, so the live server still silently
+  ignores it on a real dependency today — flagged explicitly, not
+  hidden, and `DependencyInput.lagPercent`'s type is optional
+  specifically so this doesn't block compilation until it's fixed.
 
 ## Next up
 
@@ -167,21 +184,30 @@ watch a 403) is fully reachable end-to-end today.
 
 Phase 2 (§13 items 27–34), status:
 
-1. **SS/FF/SF link types + golden cases** — **in progress** (Cursor,
-   branch `link-types-lag`, `packages/scheduler` only: `taskTypes.ts`,
-   `forwardPass.ts`, `backwardPass.ts`, `float.ts` + golden cases
-   003–004+). Nothing else should touch these files until it lands and is
-   reviewed/merged.
-2. **Lead/lag, including negative** — **in progress**, same branch as #1.
-3. **All eight constraint types + precedence rules + ADR** — blocked on
-   #1–2 landing (same files). `§12.4`'s own worked ADR example *is* this
-   feature ("hard constraints override dependencies"); write the real
+1. **SS/FF/SF link types + golden cases** — **done** (see Done section
+   above). Golden corpus grew 2 → 7 (003–007), each hand-verified — one
+   independently re-derived by hand during review (007's percentage lag
+   across a Monday→Tuesday working-day boundary, including the
+   free-float-under-zero-total-float subtlety), not just re-run.
+2. **Lead/lag, including negative and percentage** — **done**, same
+   commit as #1. **One flagged loose end**: `apps/api`'s
+   `scheduleRunner.ts#toDependencyInputs` doesn't read `lagPercent` off
+   the DB row yet, so a percentage-lag dependency set via the API is
+   silently ignored by the live server even though the engine, DB column,
+   and Zod schema all support it now. `DependencyInput.lagPercent` was
+   deliberately made optional so this doesn't break compilation in the
+   meantime — small, precise fix before item 3 leans on it further.
+3. **All eight constraint types + precedence rules + ADR** — next up now
+   that #1–2 have landed (same files: `taskTypes.ts` already has
+   `constraintType`/`constraintDate` stubbed optional on `TaskInput` for
+   this). `§12.4`'s own worked ADR example *is* this feature ("hard
+   constraints override dependencies"); write the real
    `docs/adr/002-*.md`, don't just reference the illustrative one in the
    design doc.
 4. **Deadlines + warnings** — not started. `SchedulingWarning`
    (`schedule.ts`) already has the shape reserved for this
    (`code`/`taskIds`/`message`, "not yet populated by anything"), so this
-   is largely filling it in. Blocked behind #1–3 the same way, same files.
+   is largely filling it in. Naturally follows #3.
 5. **Calendars** — **done** except the resource-calendar sub-piece (see
    Done section above; deferred to Phase 3).
 6. **Gantt interaction: drag-to-move, resize, drag-to-link** — not
@@ -189,38 +215,41 @@ Phase 2 (§13 items 27–34), status:
    `onHover`; there is no drag-commit callback yet (confirmed when scoping
    the task-grid round — that's why the Gantt panel shipped read-only).
    Needs a new callback shape on `GanttView`, plus `apps/web` wiring the
-   drag-end to `moveTask`/`patchTask`/dependency-create. Can start once
-   #1–2 land (drag-to-link needs to know which link types are valid to
-   offer).
+   drag-end to `moveTask`/`patchTask`/dependency-create. Drag-to-link can
+   now offer real link-type choices since #1 landed.
 7. **Undo/redo** — **done** (see Done section above).
 8. **200-task reference plan vs. MS Project** — not started; capstone
-   validation for 1–5, blocked until 1–4 land. Same constraint as golden
-   cases 001/002: no MS Project install in this environment, so "validated
+   validation for 1–5, blocked until 3–4 land. Same constraint as golden
+   cases 001–007: no MS Project install in this environment, so "validated
    against MS Project" will mean hand-computed/self-verified reference
    output unless real MS Project output is supplied from outside this
    environment.
 
-Not blocked on #1–3 and safe to pick up now: **#6** (an FS-only
-drag-to-move/resize slice, per the parallel-safety note below).
+Remaining work no longer has a "wait for terminal 2" blocker — #3/#4
+(`packages/scheduler`, sequential — same files) and #6
+(`packages/gantt`/`apps/web`) can run in separate terminals now.
 
 ## What can run in parallel (one terminal per Claude Code session)
 
-- **Items 1–4** share `packages/scheduler`'s pass/validation files closely
-  enough that they're one terminal's sequential work, not four parallel
-  ones — parallelizing them risks merge conflicts in the same functions.
-  Currently occupied: terminal 2 / Cursor, branch `link-types-lag`
-  (items 1–2). Don't start 1–4 elsewhere until that branch lands and is
-  reviewed/merged.
+- ~~Items 1–2~~ — done (link types + lag, merged from terminal 2's
+  `link-types-lag` branch).
 - ~~Item 5~~ — done (both halves landed: scheduler-side recurrence
   expansion and the `apps/api` CRUD routes).
 - ~~Item 7~~ — done (undo/redo).
+- **Items 3–4** still share `packages/scheduler`'s pass/validation files
+  closely enough to be one terminal's sequential work, not two parallel
+  ones.
 - **Item 6 (Gantt interaction)** touches `packages/gantt` + `apps/web`
-  only — no file overlap with 1–5 — but functionally wants #1–2 (link
-  types) in place first for drag-to-link to offer real choices. Not
-  blocked on the in-progress branch's files, so an FS-only drag-to-
-  move/resize slice can start now in a free terminal.
+  only — no file overlap with 3–4 — and can now offer real link-type
+  choices for drag-to-link since #1 is done. Safe to run in its own
+  terminal alongside 3–4.
 - **Item 8** depends on 1–5 being done — not parallelizable, it's testing
-  them, and 1–4 aren't done yet.
+  them, and 3–4 aren't done yet.
+- The small **`lagPercent` wiring gap** flagged under item 2 above lives
+  in `apps/api/src/services/scheduleRunner.ts`, not `packages/scheduler`
+  — doesn't conflict with items 3–4's files, so it can land from either
+  terminal (or the Gantt terminal, if it's between tasks) without
+  waiting on anything.
 
 ## Phases 3–6 (PROJECT_SCOPE.md §8) — not started
 
