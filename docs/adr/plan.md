@@ -30,18 +30,18 @@ number, not a timeline estimate.
 |---|---|---|---|---|---|
 | 0 — Foundation | 12 | 12 | 0 | 0 | 100% |
 | 1 — Core planning | 14 | 14 | 0 | 0 | 100% |
-| 2 — Full scheduling | 8 | 7 (link types+lag; constraints+ADR; deadlines; calendars; undo/redo; 200-task reference plan) | 1 (Gantt interaction — slices 1–2/3 done: move, resize; drag-to-link remains) | 0 | 88% |
+| 2 — Full scheduling | 8 | 8 (all items done) | 0 | 0 | 100% |
 | 3 — Resources | 6 | 0 | 0 | 6 | 0% |
 | 4 — Tracking | 6 | 0 | 0 | 6 | 0% |
 | 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **33** | **1** | **23** | **~58%** |
+| **Total** | **57** | **34** | **0** | **23** | **~60%** |
 
-**~58% done, ~40% pending, ~2% in progress** (33/57 done — Phases 0–1
-complete, plus seven of Phase 2's eight items; 1/57 in progress — Gantt
-drag interaction's final drag-to-link slice; 23/57 not started). Nothing
-in Phases 3–6 (resources, tracking, interop/reporting, agile) has
-started.
+**~60% done, ~40% pending, 0% in progress** (34/57 done — Phases 0–2
+fully complete; 23/57 not started, nothing currently in progress).
+Everything remaining is Phases 3–6 (resources, tracking,
+interop/reporting, agile) plus one small flagged item (`lagPercent`
+wiring in `apps/api`). Nothing in Phases 3–6 has started.
 
 ---
 
@@ -260,10 +260,37 @@ started.
   `useTaskEdit` mutation `TaskGrid`'s inline duration cell already
   uses — no new undo/optimistic-edit plumbing needed, unlike move's MSO
   mapping. Left-edge resize remains explicitly out of scope.
+- **Gantt drag-to-link** (item 6, slice 3 of 3 — closes item 6) —
+  Shift+right-edge starts a link-drag instead of a resize (checked
+  inside the existing resize-edge branch, before `resizeDrag` is set,
+  so it takes priority; plain right-edge is unaffected). Always creates
+  a plain FS dependency with `lagMinutes: 0` — no UI anywhere lets a
+  user choose link type/lag at creation time, deliberately out of scope
+  rather than invented here. `DragGhost` gained a third
+  `{ kind: 'link' }` variant (a live rubber-band line with an arrowhead
+  angle computed from the actual line direction, not copied from the
+  static arrows layer's fixed-direction assumption). Drop target
+  resolves via the same `hitTest` used for hover, cancelling silently
+  on empty space/same-task/summary-target, matching the existing
+  no-op convention from move/resize. `apps/web` had never called
+  `POST /api/dependencies` before this — added `createDependency`/
+  `useCreateDependency`, no optimistic preview (creating a dependency
+  needs the server's own graph/cycle validation, unlike a task edit's
+  cheap local `schedule()` re-derivation), a 409 cycle-rejection
+  surfaces through the existing error banner as a real, expected
+  outcome. **Not undoable this round** — dependency creation doesn't
+  fit the undo stack's single-task field-patch model.
+  First-round review caught a real gap (not a bug): the hook landed
+  with zero test coverage, including the 409 path explicitly called out
+  as needing one. Closed in an immediate, isolated follow-up
+  (`useDependencies.test.ts`, no production code changes) — success
+  merge, 409 cycle surfacing the server's exact `detail`/`code`, and
+  the no-cache-yet fallback to `invalidateQueries`, including an
+  unprompted but valuable addition: asserting the query cache is
+  provably unchanged after a failed mutation.
 
 **Phase 2 (TECHNICAL_DESIGN.md §13, all eight build-order items) is now
-fully done**, except item 6's final drag-to-link slice (always scoped
-as a follow-up) and the small flagged `lagPercent` wiring gap.
+fully done**, except the small flagged `lagPercent` wiring gap (item 2).
 
 ## Next up
 
@@ -292,12 +319,11 @@ Phase 2 (§13 items 27–34), status:
 5. **Calendars** — **done** except the resource-calendar sub-piece
    (deferred to Phase 3, `resources.calendar_id` exists but nothing
    schedules against it yet).
-6. **Gantt interaction: drag-to-move, resize, drag-to-link** — **slices 1–2
-   of 3 done** (drag-to-move → MSO constraint; right-edge resize →
-   `durationMinutes`). **Drag-to-link remains** — the only Phase 2 item
-   not yet done. `apps/web` has never called `POST /api/dependencies` —
-   `createDependency` doesn't exist yet in `features/tasks/api.ts`, so
-   this slice also adds that, not just the Gantt-side gesture.
+6. **Gantt interaction: drag-to-move, resize, drag-to-link** — **done**
+   (all three slices: drag-to-move → MSO constraint; right-edge resize →
+   `durationMinutes`; Shift+right-edge drag-to-link → plain FS
+   dependency via a new `createDependency`/`useCreateDependency`,
+   `apps/web`'s first-ever call to `POST /api/dependencies`).
 7. **Undo/redo** — **done**.
 8. **200-task reference plan vs. MS Project** — **done**. No MS Project
    install in this environment (same standing caveat as every other
