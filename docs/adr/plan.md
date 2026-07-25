@@ -12,6 +12,39 @@ sequences within it, it doesn't override it).
 
 ---
 
+## Overall progress
+
+Counted by **build-order item**, not effort — TECHNICAL_DESIGN.md §13's
+numbered list for Phases 0–2, this plan's own 8-item sequencing for Phase 2,
+and one count per bullet in PROJECT_SCOPE.md §8's Phase 3–6 feature lists
+(counting Phase 5's `MS Project XML round-trip / CSV/Excel/PDF/PNG export /
+report builder / dashboards` as 4, matching how the source bullet is
+already segmented). **Items are not equal size** — a Phase 0 step like
+"CI: lint, typecheck, test, build" and a Phase 2 step like "Gantt drag-to-
+move, resize, drag-to-link" both count as 1. Phases 3–6 in particular are
+each roughly as large as Phase 0+1 combined, so this % likely *overstates*
+true completion, not understates it — treat it as a checklist-coverage
+number, not a timeline estimate.
+
+| Phase | Items | Done | In progress | Pending | % done |
+|---|---|---|---|---|---|
+| 0 — Foundation | 12 | 12 | 0 | 0 | 100% |
+| 1 — Core planning | 14 | 14 | 0 | 0 | 100% |
+| 2 — Full scheduling | 8 | 2 (calendars; undo/redo) | 2 (link types+lag) | 4 | 25% |
+| 3 — Resources | 6 | 0 | 0 | 6 | 0% |
+| 4 — Tracking | 6 | 0 | 0 | 6 | 0% |
+| 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
+| 6 — Agile | 7 | 0 | 0 | 7 | 0% |
+| **Total** | **57** | **28** | **2** | **27** | **~49%** |
+
+**~49% done, ~47% pending, ~4% in progress** (28/57 done — Phases 0–1
+complete, plus Phase 2's calendar-exceptions/recurrence and undo/redo
+items; 2/57 in progress on terminal 2's `link-types-lag` branch;
+27/57 not started). Nothing in Phases 3–6 (resources, tracking,
+interop/reporting, agile) has started.
+
+---
+
 ## Done
 
 - Monorepo scaffold (pnpm + Turborepo + ESLint boundary rules)
@@ -92,6 +125,35 @@ sequences within it, it doesn't override it).
 - 260+ tests passing across the whole workspace (`packages/schema` 45,
   `packages/scheduler` 88, `packages/gantt` 19, `apps/api` 25, `apps/web`
   18, plus `packages/rbac`/`packages/ui`).
+- **Undo/redo for task edits** (§13 item 33) — command-pattern stack
+  (`apps/web/src/features/tasks/undoStack.ts`), capped at 50, replays the
+  inverse/forward patch through the same `useTaskEdit` mutation (not a
+  cache rollback) using the task's *live* current version, not one
+  captured when the command was pushed — regression-tested by bumping the
+  cached version between the edit and the undo. Cmd/Ctrl+Z, scoped to
+  `ProjectDetailPage`'s mount lifecycle.
+- **Recurring calendar exceptions** (part of §13 item 5) —
+  `packages/scheduler/src/calendarRecurrence.ts`'s `expandRecurringExceptions`
+  unrolls an annual-recurrence exception into one instance per year in the
+  compile horizon, pure integer proleptic-Gregorian date math (no `Date`,
+  per the package's purity rule), Feb 29 anchors skip non-leap years.
+  `calendar_exceptions.recurrence` existed in the schema since the
+  original design but was silently ignored until now — `scheduleRunner`'s
+  `exceptionsFromDbRows` wires it through `compileCalendar`, proven with a
+  test showing a *later* year's Dec 25 (not just the anchor) actually
+  zeros working minutes.
+- **Calendar exception CRUD routes** (rest of §13 item 5) —
+  `GET/POST /api/calendars/:id/exceptions`, `DELETE
+  /api/calendar-exceptions/:id`, `calendar.manage`. Scoped to
+  project-owned calendars only — global template calendars
+  (`calendar_id = null`) are deliberately rejected rather than guessing at
+  an authorization model this codebase doesn't have (no superadmin
+  concept). Create/delete trigger `rescheduleProject` and are
+  audit-logged, same pattern as task/dependency mutations. Item 5's
+  "resource calendars" sub-piece remains open — `resources.calendar_id`
+  exists as a schema column but nothing schedules against it yet, which
+  naturally belongs with Phase 3 (Resources) once resource assignment
+  itself is built, not before.
 
 ## Next up
 
@@ -103,66 +165,62 @@ client-side create-prefill, `/projects/$projectId/roles`).
 **Phase 0's exit demo** (`docker compose up`, log in, create a custom role,
 watch a 403) is fully reachable end-to-end today.
 
-Phase 2 (§13 items 27–34) is next, in order:
+Phase 2 (§13 items 27–34), status:
 
-1. **SS/FF/SF link types + golden cases** — `packages/scheduler`'s
-   forward/backward pass are FS-only today (`graphValidation.ts`,
-   `forwardPass.ts`, `backwardPass.ts` all scope to it explicitly). Extend
-   each link-type's date-propagation rule, add golden cases alongside the
-   existing 001/002 (hand-computed/self-verified — no MS Project access in
-   this environment, see item 8).
-2. **Lead/lag, including negative** — same files as #1; do together, since
-   lag interacts with every link type's propagation formula.
-3. **All eight constraint types + precedence rules + ADR** — `§12.4`'s own
-   worked ADR example *is* this feature ("hard constraints override
-   dependencies"); write the real `docs/adr/002-*.md`, don't just reference
-   the illustrative one in the design doc.
-4. **Deadlines + warnings** — smaller; `SchedulingWarning` (`schedule.ts`)
-   already has the shape reserved for this (`code`/`taskIds`/`message`,
-   "not yet populated by anything"), so this is largely filling it in.
-5. **Calendars: exceptions, recurrence, resource/task calendars** — spans
-   two packages. `compileCalendar` already accepts an `exceptions` array
-   (`packages/scheduler/src/calendar.ts`); recurrence is new. On the API
-   side there are currently **no calendar or calendar-exception routes at
-   all** (`calendar_exceptions` is a real table with zero CRUD surface) —
-   this closes that gap, and also closes the documented approximation in
-   `apps/web`'s optimistic edit cycle (`optimisticEdit.ts` passes
-   `exceptions: []` today specifically because the task-tree endpoint has
-   nothing to return).
-6. **Gantt interaction: drag-to-move, resize, drag-to-link** —
-   `packages/gantt`'s `GanttView` currently only exposes `onHover`; there is
-   no drag-commit callback yet (confirmed when scoping the task-grid round —
-   that's why the Gantt panel shipped read-only). Needs a new callback shape
-   on `GanttView`, plus `apps/web` wiring the drag-end to `moveTask`/
-   `patchTask`/dependency-create. Can start once #1–2 land (drag-to-link
-   needs to know which link types are valid to offer).
-7. **Undo/redo (command pattern over the mutation queue)** — `apps/web`
-   only, orthogonal to the scheduler internals. Safe to parallelize against
-   1–6.
-8. **200-task reference plan vs. MS Project** — capstone validation for
-   1–5. Same constraint as golden cases 001/002: no MS Project install in
-   this environment, so "validated against MS Project" will mean
-   hand-computed/self-verified reference output unless real MS Project
-   output is supplied from outside this environment.
+1. **SS/FF/SF link types + golden cases** — **in progress** (Cursor,
+   branch `link-types-lag`, `packages/scheduler` only: `taskTypes.ts`,
+   `forwardPass.ts`, `backwardPass.ts`, `float.ts` + golden cases
+   003–004+). Nothing else should touch these files until it lands and is
+   reviewed/merged.
+2. **Lead/lag, including negative** — **in progress**, same branch as #1.
+3. **All eight constraint types + precedence rules + ADR** — blocked on
+   #1–2 landing (same files). `§12.4`'s own worked ADR example *is* this
+   feature ("hard constraints override dependencies"); write the real
+   `docs/adr/002-*.md`, don't just reference the illustrative one in the
+   design doc.
+4. **Deadlines + warnings** — not started. `SchedulingWarning`
+   (`schedule.ts`) already has the shape reserved for this
+   (`code`/`taskIds`/`message`, "not yet populated by anything"), so this
+   is largely filling it in. Blocked behind #1–3 the same way, same files.
+5. **Calendars** — **done** except the resource-calendar sub-piece (see
+   Done section above; deferred to Phase 3).
+6. **Gantt interaction: drag-to-move, resize, drag-to-link** — not
+   started. `packages/gantt`'s `GanttView` currently only exposes
+   `onHover`; there is no drag-commit callback yet (confirmed when scoping
+   the task-grid round — that's why the Gantt panel shipped read-only).
+   Needs a new callback shape on `GanttView`, plus `apps/web` wiring the
+   drag-end to `moveTask`/`patchTask`/dependency-create. Can start once
+   #1–2 land (drag-to-link needs to know which link types are valid to
+   offer).
+7. **Undo/redo** — **done** (see Done section above).
+8. **200-task reference plan vs. MS Project** — not started; capstone
+   validation for 1–5, blocked until 1–4 land. Same constraint as golden
+   cases 001/002: no MS Project install in this environment, so "validated
+   against MS Project" will mean hand-computed/self-verified reference
+   output unless real MS Project output is supplied from outside this
+   environment.
+
+Not blocked on #1–3 and safe to pick up now: **#6** (an FS-only
+drag-to-move/resize slice, per the parallel-safety note below).
 
 ## What can run in parallel (one terminal per Claude Code session)
 
 - **Items 1–4** share `packages/scheduler`'s pass/validation files closely
   enough that they're one terminal's sequential work, not four parallel
   ones — parallelizing them risks merge conflicts in the same functions.
-- **Item 5's `packages/scheduler` half** (calendar recurrence) can run
-  alongside 1–4 — `calendar.ts` isn't touched by the link-type/constraint
-  work. Its `apps/api` half (routes) should wait until the recurrence data
-  shape is settled, to avoid building routes around a shape that's still
-  moving.
-- **Item 7 (undo/redo)** has no code-level dependency on 1–6 and can start
-  immediately in its own terminal.
-- **Item 6 (Gantt interaction)** touches `packages/gantt` + `apps/web` only
-  — no file overlap with 1–5 — but functionally wants #1–2 (link types) in
-  place first for drag-to-link to offer real choices; an FS-only drag-to-
-  move/resize slice could still start early if a terminal is free.
+  Currently occupied: terminal 2 / Cursor, branch `link-types-lag`
+  (items 1–2). Don't start 1–4 elsewhere until that branch lands and is
+  reviewed/merged.
+- ~~Item 5~~ — done (both halves landed: scheduler-side recurrence
+  expansion and the `apps/api` CRUD routes).
+- ~~Item 7~~ — done (undo/redo).
+- **Item 6 (Gantt interaction)** touches `packages/gantt` + `apps/web`
+  only — no file overlap with 1–5 — but functionally wants #1–2 (link
+  types) in place first for drag-to-link to offer real choices. Not
+  blocked on the in-progress branch's files, so an FS-only drag-to-
+  move/resize slice can start now in a free terminal.
 - **Item 8** depends on 1–5 being done — not parallelizable, it's testing
-  them.
+  them, and 1–4 aren't done yet.
 
 ## Phases 3–6 (PROJECT_SCOPE.md §8) — not started
 
