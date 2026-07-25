@@ -32,15 +32,15 @@ number, not a timeline estimate.
 | 1 — Core planning | 14 | 14 | 0 | 0 | 100% |
 | 2 — Full scheduling | 8 | 8 (all items done) | 0 | 0 | 100% |
 | 3 — Resources | 6 | 6 (all items done) | 0 | 0 | 100% |
-| 4 — Tracking | 6 | 4 (baselines; actuals; status date; variance) | 0 | 2 (earned value; S-curve) | 67% |
+| 4 — Tracking | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **44** | **0** | **13** | **~77%** |
+| **Total** | **57** | **46** | **0** | **11** | **~81%** |
 
-**~77% done, ~23% pending, 0% in progress** (44/57 done — Phases 0–3
-fully complete, plus four of Phase 4's six items; 13/57 not started,
-nothing currently in progress). Remaining: Phase 4's earned value +
-S-curve slice, then Phases 5–6 (interop/reporting, agile) untouched.
+**~81% done, ~19% pending, 0% in progress** (46/57 done — Phases 0–4
+fully complete; 11/57 not started, nothing currently in progress).
+Remaining: Phases 5–6 (interop/reporting, agile), plus the small
+Gantt progress-line item noted under Phase 4.
 
 ---
 
@@ -396,8 +396,36 @@ sheet/usage views) is now fully done.**
   baseline-slot exhaustion rejected with `BadRequestError`;
   `getBaselineDetail` computes start/finish/duration/cost variance
   against the live task. Independently reviewed in full — no bugs
-  found. **Earned value (PV/EV/AC/SPI/CPI) and the S-curve are the
-  next slice.**
+  found.
+- **Earned value metrics + S-curve** (Phase 4 slice 2 of 2, closes
+  Phase 4) — `AssignmentUpdateInputSchema` makes `units` optional and
+  adds `actualWorkMinutes`/`actualCost` — a genuine gap closed here:
+  those columns existed since Phase 0 but nothing let a user set them,
+  so CPI could never have real Actual Cost behind it.
+  `earnedValueService` computes BAC/PV/EV/AC/SPI/CPI summed over leaf
+  tasks only (`!isSummary`, tested against an adversarial case — a
+  summary row carrying a huge baseline cost, proven not to leak into
+  any sum). PV is a genuine time series interpolated from baseline
+  start/finish dates (a milestone is a start-equals-finish step
+  function, not a divide-by-zero); **EV and AC are single
+  point-in-time values only** — this codebase has no historical
+  `percentComplete`/`actualCost` tracking, so a fabricated EV/AC curve
+  would misrepresent real data as history; that's a deliberate,
+  explicit scope boundary, not an oversight. SPI/CPI resolve to `null`
+  on divide-by-zero, never `NaN`/`Infinity`. `resolveBaseline`
+  validates a caller-supplied `baselineId` actually belongs to the
+  requested project before using it — prevents leaking another
+  project's cost data via an arbitrary baseline id, a real check I
+  didn't explicitly ask for. `apps/web/src/features/tracking/`:
+  `BaselinesPage` (save/list/variance), `EarnedValuePanel` (the six
+  stats), `SCurveChart` — a hand-rolled inline SVG (no new charting
+  dependency) with a real PV polyline and distinct point markers for
+  EV/AC, not fabricated curve data. Independently hand-verified the
+  test's worked BAC/PV/EV/AC/SPI/CPI scenario — matches exactly.
+  Reviewed in full — no bugs found.
+
+**Phase 4 (PROJECT_SCOPE.md §8: baselines, actuals, status date,
+variance columns, earned value metrics, S-curve) is now fully done.**
 
 ## Next up
 
@@ -407,11 +435,11 @@ avoid two copies drifting out of sync). **Phase 0's exit demo**
 (`docker compose up`, log in, create a custom role, watch a 403) is
 fully reachable end-to-end today.
 
-**Phase 3 (Resources) is also entirely done** — see the "Phase 3 —
-Resources" section below. **Phase 4 (Tracking) is half done** — see
-the "Phase 4 — Tracking" section below. The actual next work is
-Phase 4's second slice: **earned value metrics (PV/EV/AC/SPI/CPI) and
-the S-curve.**
+**Phases 3 and 4 (Resources, Tracking) are also entirely done** — see
+their sections below. The actual next work is **Phase 5 — Interop &
+reporting** (MS Project XML round-trip, CSV/Excel/PDF/PNG export,
+report builder, dashboards), not yet broken down into individual
+build-order items the way Phases 0–4 have been.
 
 ## What can run in parallel (one terminal per Claude Code session)
 
@@ -448,10 +476,9 @@ task-assignment UI in `apps/web` making all of the above visible.
 overallocations surface" — verifiable end-to-end today via
 `/projects/$projectId/resources` and the per-task "Resources" panel.
 
-## Phase 4 — Tracking (PROJECT_SCOPE.md §8, in progress — 4/6 done)
+## Phase 4 — Tracking (PROJECT_SCOPE.md §8) — done
 
-1. **Baselines** (capture/list/detail-with-variance/clear) — **done**
-   (see Done section above).
+1. **Baselines** (capture/list/detail-with-variance/clear) — **done**.
 2. **Actuals capture** (`percentComplete`, `actualStart`/`actualFinish`,
    `actualDurationMinutes`, `remainingDurationMinutes`) — **done**.
    Pure recording fields this round — editing an actual does not feed
@@ -461,12 +488,18 @@ overallocations surface" — verifiable end-to-end today via
 3. **Status date** (`projects.status_date`) — **done**.
 4. **Variance columns** (baseline vs. current start/finish/duration/cost)
    — **done**, via `getBaselineDetail`.
-5. **Earned value metrics** (PV/EV/AC/SPI/CPI) — not started. Needs
-   `status_date` (done) and baseline cost snapshots (done) as inputs —
-   both prerequisites are now in place.
-6. **S-curve** (+ progress line on the Gantt at the status date) — not
-   started. A charting/`apps/web` concern once the backend can produce
-   a PV/EV/AC time series.
+5. **Earned value metrics** (PV/EV/AC/SPI/CPI) — **done**.
+6. **S-curve** — **done** as a standalone chart in `EarnedValuePanel`.
+   **Not built**: a progress-line overlay directly on the Gantt canvas
+   at the status date — `PROJECT_SCOPE.md`'s phrasing groups this with
+   the S-curve, but it's really a separate `packages/gantt` rendering
+   feature (a vertical marker line, akin to the existing hover/drag
+   ghost layer) that was never scoped into either Cursor round. Small,
+   easy pickup whenever a Gantt-focused round happens next.
+
+**Exit criterion met**: "A baselined plan reports accurate SPI/CPI
+against recorded actuals" — verifiable end-to-end via
+`/projects/$projectId/baselines`.
 
 ## Phases 5–6 (PROJECT_SCOPE.md §8) — not started
 
