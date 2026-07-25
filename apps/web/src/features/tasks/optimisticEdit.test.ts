@@ -92,6 +92,7 @@ function baseTree(): TaskTreeResponse {
         updatedAt: '2026-01-01T00:00:00.000Z',
       },
     ],
+    assignments: [],
     tasks: [
       task({ id: taskA, name: 'Foundation', wbsPath: '1', wbsCode: '1', sortOrder: 0, durationMinutes: 480 }),
       task({

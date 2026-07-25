@@ -96,6 +96,7 @@ function baseTree(version: number): TaskTreeResponse {
       },
     ],
     dependencies: [],
+    assignments: [],
     tasks: [baseTask(version)],
   };
 }

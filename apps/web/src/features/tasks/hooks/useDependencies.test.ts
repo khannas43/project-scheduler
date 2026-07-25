@@ -75,6 +75,7 @@ function baseTree(): TaskTreeResponse {
       },
     ],
     dependencies: [],
+    assignments: [],
     tasks: [baseTask(predId), baseTask(succId)],
   };
 }

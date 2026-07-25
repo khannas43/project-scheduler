@@ -29,3 +29,21 @@ export {
   type DependencyCreateInput,
   type DependencyUpdateInput,
 } from './dependency.js';
+
+export {
+  ResourceTypeSchema,
+  AccrualTypeSchema,
+  ResourceCreateInputSchema,
+  ResourceUpdateInputSchema,
+  type ResourceCreateInput,
+  type ResourceUpdateInput,
+  type ResourceType,
+  type AccrualType,
+} from './resource.js';
+
+export {
+  AssignmentCreateInputSchema,
+  AssignmentUpdateInputSchema,
+  type AssignmentCreateInput,
+  type AssignmentUpdateInput,
+} from './assignment.js';

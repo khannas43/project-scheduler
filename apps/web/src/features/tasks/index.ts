@@ -11,6 +11,7 @@ export { TaskIdAdapter } from './idAdapter.js';
 export type {
   TaskRow,
   DependencyRow,
+  AssignmentRow,
   CalendarRow,
   TaskTreeResponse,
   TaskMutationResponse,

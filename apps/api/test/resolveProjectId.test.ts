@@ -111,6 +111,70 @@ describe('resolveProjectId — dependency branches', () => {
   });
 });
 
+describe('resolveProjectId — assignment branches', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    chain.from.mockReturnValue(chain);
+    chain.where.mockReturnValue(chain);
+    chain.innerJoin.mockReturnValue(chain);
+  });
+
+  it('POST /api/assignments resolves via body.taskId → tasks.projectId', async () => {
+    limit.mockResolvedValueOnce([{ projectId: 'proj-asg' }]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/assignments',
+        body: {
+          taskId: '11111111-1111-4111-8111-111111111111',
+          resourceId: '22222222-2222-4222-8222-222222222222',
+        },
+      }),
+    );
+
+    expect(projectId).toBe('proj-asg');
+    expect(db.select).toHaveBeenCalled();
+  });
+
+  it('POST /api/assignments returns undefined for a malformed body (fail-closed)', async () => {
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/assignments',
+        body: { resourceId: '22222222-2222-4222-8222-222222222222' },
+      }),
+    );
+    expect(projectId).toBeUndefined();
+    expect(db.select).not.toHaveBeenCalled();
+  });
+
+  it('PATCH/DELETE /api/assignments/:id resolves via assignment → task → project', async () => {
+    limit.mockResolvedValueOnce([{ projectId: 'proj-asg-2' }]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/assignments/:id',
+        id: '33333333-3333-4333-8333-333333333333',
+      }),
+    );
+
+    expect(projectId).toBe('proj-asg-2');
+    expect(db.select).toHaveBeenCalled();
+  });
+
+  it('DELETE /api/assignments/:id returns undefined when the assignment is missing', async () => {
+    limit.mockResolvedValueOnce([]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/assignments/:id',
+        id: '33333333-3333-4333-8333-333333333333',
+      }),
+    );
+
+    expect(projectId).toBeUndefined();
+  });
+});
+
 describe('resolveProjectId — calendar exception branches', () => {
   beforeEach(() => {
     vi.clearAllMocks();

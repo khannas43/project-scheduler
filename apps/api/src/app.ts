@@ -7,11 +7,13 @@ import type { RegisteredRouteInfo } from './lib/routeMeta.js';
 import { registerErrorHandler } from './middleware/errors.js';
 import './middleware/auth.js'; // FastifyRequest.user module augmentation
 import './middleware/permissions.js'; // FastifyRequest.permissionsCache module augmentation
+import { assignmentRoutes } from './routes/assignments.js';
 import { authRoutes } from './routes/auth.js';
 import { calendarRoutes } from './routes/calendars.js';
 import { dependencyRoutes } from './routes/dependencies.js';
 import { healthRoutes } from './routes/health.js';
 import { projectRoutes } from './routes/projects.js';
+import { resourceRoutes } from './routes/resources.js';
 import { roleRoutes } from './routes/roles.js';
 import { taskRoutes } from './routes/tasks.js';
 
@@ -59,6 +61,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(dependencyRoutes);
   await fastify.register(roleRoutes);
   await fastify.register(calendarRoutes);
+  await fastify.register(resourceRoutes);
+  await fastify.register(assignmentRoutes);
 
   return fastify;
 }

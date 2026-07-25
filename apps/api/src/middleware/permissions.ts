@@ -3,7 +3,13 @@ import { eq } from 'drizzle-orm';
 import type { FastifyRequest } from 'fastify';
 
 import { db } from '../db/client.js';
-import { calendarExceptions, calendars, taskDependencies, tasks } from '../db/schema/index.js';
+import {
+  assignments,
+  calendarExceptions,
+  calendars,
+  taskDependencies,
+  tasks,
+} from '../db/schema/index.js';
 import { getEffectivePermissions } from '../services/permissionService.js';
 import { ForbiddenError, UnauthorizedError } from './errors.js';
 
@@ -60,6 +66,31 @@ export async function resolveProjectId(request: FastifyRequest): Promise<string 
       .from(taskDependencies)
       .innerJoin(tasks, eq(taskDependencies.predecessorId, tasks.id))
       .where(eq(taskDependencies.id, id))
+      .limit(1);
+    return row?.projectId;
+  }
+
+  // POST /api/assignments — no :id; project comes from body.taskId → task.
+  // PATCH/DELETE /api/assignments/:id — :id is an assignment id.
+  if (routePath.startsWith('/api/assignments')) {
+    if (!id) {
+      const body = request.body as Record<string, unknown> | null | undefined;
+      const taskId =
+        body && typeof body === 'object' && typeof body.taskId === 'string' ? body.taskId : undefined;
+      if (!taskId) return undefined;
+      const [task] = await db
+        .select({ projectId: tasks.projectId })
+        .from(tasks)
+        .where(eq(tasks.id, taskId))
+        .limit(1);
+      return task?.projectId;
+    }
+
+    const [row] = await db
+      .select({ projectId: tasks.projectId })
+      .from(assignments)
+      .innerJoin(tasks, eq(assignments.taskId, tasks.id))
+      .where(eq(assignments.id, id))
       .limit(1);
     return row?.projectId;
   }

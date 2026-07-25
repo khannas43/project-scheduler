@@ -2,7 +2,7 @@ import type { TaskCreateInput, TaskMoveInput, TaskUpdateInput } from '@pkg/schem
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 
 import { db } from '../db/client.js';
-import { calendars, projects, taskDependencies, tasks } from '../db/schema/index.js';
+import { assignments, calendars, projects, taskDependencies, tasks } from '../db/schema/index.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../middleware/errors.js';
 import {
   rescheduleProject,
@@ -61,11 +61,12 @@ async function nextSiblingPlacement(
   return { sortOrder, wbsPath: childWbsPath(parentPath, siblings.length + 1) };
 }
 
-/** §5.3: full tree in one response — flat array + parent pointers. */
+/** §5.3: full tree in one response — flat array + parent pointers + assignments. */
 export async function listProjectTasks(projectId: string): Promise<{
   tasks: Array<typeof tasks.$inferSelect>;
   dependencies: Array<typeof taskDependencies.$inferSelect>;
   calendars: Array<typeof calendars.$inferSelect>;
+  assignments: Array<typeof assignments.$inferSelect>;
   projectVersion: number;
 }> {
   const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
@@ -83,6 +84,11 @@ export async function listProjectTasks(projectId: string): Promise<{
       ? []
       : await db.select().from(taskDependencies).where(inArray(taskDependencies.predecessorId, taskIds));
 
+  const assignmentRows =
+    taskIds.length === 0
+      ? []
+      : await db.select().from(assignments).where(inArray(assignments.taskId, taskIds));
+
   const projectCalendars = await db
     .select()
     .from(calendars)
@@ -92,6 +98,7 @@ export async function listProjectTasks(projectId: string): Promise<{
     tasks: taskRows,
     dependencies,
     calendars: projectCalendars,
+    assignments: assignmentRows,
     projectVersion: project.version,
   };
 }

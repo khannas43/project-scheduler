@@ -45,6 +45,20 @@ export interface DependencyRow {
   readonly updatedAt: string;
 }
 
+/** Assignment row from §5.3 tree — numeric() columns arrive as strings from Drizzle/JSON. */
+export interface AssignmentRow {
+  readonly id: string;
+  readonly taskId: string;
+  readonly resourceId: string;
+  readonly units: string | null;
+  readonly workMinutes: number | null;
+  readonly actualWorkMinutes: number | null;
+  readonly cost: string | null;
+  readonly actualCost: string | null;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+}
+
 export interface CalendarRow {
   readonly id: string;
   readonly name: string;
@@ -62,6 +76,7 @@ export interface TaskTreeResponse {
   readonly tasks: readonly TaskRow[];
   readonly dependencies: readonly DependencyRow[];
   readonly calendars: readonly CalendarRow[];
+  readonly assignments: readonly AssignmentRow[];
   readonly projectVersion: number;
 }
 

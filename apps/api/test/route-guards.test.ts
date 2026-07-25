@@ -79,15 +79,25 @@ describe('route-guard drift (§6.4)', () => {
     expect(authOnlyPaths).toContain('POST /api/projects');
 
     // Calendar-exception mutators (and the list GET) must use calendar.manage.
-    const byKey = (method: string, path: string) => {
+    const byKey = (method: string, path: string, key: PermissionKey) => {
       const route = fastify.routeTable.find((r) => r.method === method && r.path === path);
       expect(route, `${method} ${path} should be registered`).toBeDefined();
       const guard = route!.preHandlers.find(isPermissionPreHandler);
-      expect(guard?.permissionKey).toBe(PERMISSIONS.CALENDAR_MANAGE.key);
+      expect(guard?.permissionKey).toBe(key);
     };
-    byKey('GET', '/api/calendars/:id/exceptions');
-    byKey('POST', '/api/calendars/:id/exceptions');
-    byKey('DELETE', '/api/calendar-exceptions/:id');
+    byKey('GET', '/api/calendars/:id/exceptions', PERMISSIONS.CALENDAR_MANAGE.key);
+    byKey('POST', '/api/calendars/:id/exceptions', PERMISSIONS.CALENDAR_MANAGE.key);
+    byKey('DELETE', '/api/calendar-exceptions/:id', PERMISSIONS.CALENDAR_MANAGE.key);
+
+    // Resource pool + assignment mutators (and their GETs that carry guards).
+    byKey('POST', '/api/resources', PERMISSIONS.RESOURCE_CREATE.key);
+    byKey('PATCH', '/api/resources/:id', PERMISSIONS.RESOURCE_EDIT.key);
+    byKey('DELETE', '/api/resources/:id', PERMISSIONS.RESOURCE_EDIT.key);
+    byKey('GET', '/api/resources', PERMISSIONS.RESOURCE_VIEW.key);
+    byKey('GET', '/api/resources/:id/overallocations', PERMISSIONS.RESOURCE_VIEW.key);
+    byKey('POST', '/api/assignments', PERMISSIONS.RESOURCE_ASSIGN.key);
+    byKey('PATCH', '/api/assignments/:id', PERMISSIONS.RESOURCE_ASSIGN.key);
+    byKey('DELETE', '/api/assignments/:id', PERMISSIONS.RESOURCE_ASSIGN.key);
 
     await fastify.close();
   });
