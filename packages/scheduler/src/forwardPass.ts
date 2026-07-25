@@ -28,9 +28,11 @@ const DATE_REQUIRED: ReadonlySet<ConstraintType> = new Set(['snet', 'snlt', 'fne
 
 /**
  * §4.4 forward pass — all four link types (FS/SS/FF/SF), signed/percentage
- * lag (§13 items 27–28), and seven of the eight constraint types (§13 item
- * 29: asap/snet/snlt/fnet/fnlt/mso/mfo). ALAP is deliberately deferred —
- * see docs/adr/002-constraint-precedence.md.
+ * lag (§13 items 27–28), seven of the eight constraint types (§13 item 29:
+ * asap/snet/snlt/fnet/fnlt/mso/mfo; ALAP deferred — see
+ * docs/adr/002-constraint-precedence.md), and per-task deadline checks
+ * (§13 item 30: never move a task, emit `DEADLINE_MISSED` when earlyFinish
+ * exceeds the deadline).
  *
  * Summary tasks are excluded entirely; dependencies touching one are ignored
  * for this pass — their dates come from rollup (§4.7) after both passes.
@@ -113,6 +115,17 @@ export function runForwardPass(
       hasSuccessors: hasSuccessor.has(id),
     });
     warnings.push(...constrained.warnings);
+
+    // Deadline is independent of constraintType (§4.4 rule 4): observational
+    // only, applied to the constraint-adjusted earlyFinish.
+    if (t.deadline != null && constrained.earlyFinish > t.deadline) {
+      warnings.push({
+        code: 'DEADLINE_MISSED',
+        taskIds: [id],
+        message: `Deadline missed on task ${id}: early finish ${constrained.earlyFinish} is later than deadline ${t.deadline}`,
+      });
+    }
+
     results.set(id, { earlyStart: constrained.earlyStart, earlyFinish: constrained.earlyFinish });
   }
 

@@ -43,6 +43,7 @@ function task(
   isSummary = false,
   constraintType: ConstraintType | null = null,
   constraintDate: EpochMinutes | null = null,
+  deadline: EpochMinutes | null = null,
 ): TaskInput {
   return {
     id: asTaskId(id),
@@ -52,6 +53,7 @@ function task(
     calendarId,
     constraintType,
     constraintDate,
+    deadline,
   };
 }
 
@@ -336,5 +338,47 @@ describe('runForwardPass — constraints (§4.4 / §13 item 29)', () => {
   it('ALAP with no successors also throws (not half-implemented)', () => {
     const tasks = [task('A', 60, CAL, false, 'alap', null)];
     expect(() => runForwardPass(projectStart, tasks, [], calendars)).toThrow(/not yet implemented/);
+  });
+});
+
+describe('runForwardPass — deadlines (§4.4 rule 4 / §13 item 30)', () => {
+  it('emits no warning when earlyFinish meets the deadline', () => {
+    // A finishes Mon 1pm (6540); deadline Mon 5pm (6780).
+    const tasks = [task('A', 240, CAL, false, null, null, asEpochMinutes(MONDAY + FIVE_PM))];
+    const { results, warnings } = runForwardPass(projectStart, tasks, [], calendars);
+    expect(results.get(asTaskId('A'))!.earlyFinish).toBe(asEpochMinutes(MONDAY + ONE_PM));
+    expect(warnings).toEqual([]);
+  });
+
+  it('emits DEADLINE_MISSED when earlyFinish exceeds the deadline (dates unchanged)', () => {
+    // A finishes Mon 1pm (6540); deadline Mon 9am (6300).
+    const deadline = asEpochMinutes(MONDAY + NINE_AM);
+    const tasks = [task('A', 240, CAL, false, null, null, deadline)];
+    const { results, warnings } = runForwardPass(projectStart, tasks, [], calendars);
+    expect(results.get(asTaskId('A'))!.earlyFinish).toBe(asEpochMinutes(MONDAY + ONE_PM));
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.code).toBe('DEADLINE_MISSED');
+    expect(warnings[0]?.taskIds.map(String)).toEqual(['A']);
+    expect(warnings[0]?.message).toContain('A');
+    expect(warnings[0]?.message).toContain(String(asEpochMinutes(MONDAY + ONE_PM)));
+    expect(warnings[0]?.message).toContain(String(deadline));
+  });
+
+  it('skips the check when deadline is null', () => {
+    const tasks = [task('A', 240, CAL, false, null, null, null)];
+    const { warnings } = runForwardPass(projectStart, tasks, [], calendars);
+    expect(warnings).toEqual([]);
+  });
+
+  it('accumulates both CONSTRAINT_OVERRIDES_DEPENDENCY and DEADLINE_MISSED on one task', () => {
+    // B MSO Mon 3pm → finishes 4pm (6720); deadline Mon 1pm (6540) → missed.
+    const mso = asEpochMinutes(MONDAY + ONE_PM + 120);
+    const deadline = asEpochMinutes(MONDAY + ONE_PM);
+    const tasks = [task('A', 240), task('B', 60, CAL, false, 'mso', mso, deadline)];
+    const { results, warnings } = runForwardPass(projectStart, tasks, [fs('A', 'B')], calendars);
+    expect(results.get(asTaskId('B'))!.earlyStart).toBe(mso);
+    expect(results.get(asTaskId('B'))!.earlyFinish).toBe(asEpochMinutes(MONDAY + ONE_PM + 180));
+    expect(warnings.map((w) => w.code)).toEqual(['CONSTRAINT_OVERRIDES_DEPENDENCY', 'DEADLINE_MISSED']);
+    expect(warnings.every((w) => w.taskIds.map(String).includes('B'))).toBe(true);
   });
 });

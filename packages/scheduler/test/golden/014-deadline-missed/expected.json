@@ -1,0 +1,27 @@
+{
+  "projectFinish": 6600,
+  "criticalPath": ["A", "B"],
+  "tasks": {
+    "A": {
+      "earlyStart": 6300,
+      "earlyFinish": 6540,
+      "lateStart": 6300,
+      "lateFinish": 6540,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    },
+    "B": {
+      "earlyStart": 6540,
+      "earlyFinish": 6600,
+      "lateStart": 6540,
+      "lateFinish": 6600,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    }
+  },
+  "warnings": [
+    { "code": "DEADLINE_MISSED", "taskIds": ["B"] }
+  ]
+}

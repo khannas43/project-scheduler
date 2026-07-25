@@ -23,6 +23,12 @@ export interface TaskInput {
    */
   readonly constraintType?: ConstraintType | null;
   readonly constraintDate?: EpochMinutes | null;
+  /**
+   * Per-task observational deadline (§4.4 rule 4 / §13 item 30). Never moves
+   * the task — if `earlyFinish > deadline`, emit `DEADLINE_MISSED`. Optional
+   * so apps/api's `toTaskInputs` keeps compiling until it wires the column.
+   */
+  readonly deadline?: EpochMinutes | null;
 }
 
 export interface DependencyInput {

@@ -19,6 +19,7 @@ interface GoldenTaskInput {
   calendarId: string;
   constraintType?: ConstraintType | null;
   constraintDate?: number | null;
+  deadline?: number | null;
 }
 
 interface GoldenDependencyInput {
@@ -100,6 +101,7 @@ describe('golden-file corpus (§11.1)', () => {
         calendarId: asCalendarId(t.calendarId),
         constraintType: t.constraintType ?? null,
         constraintDate: t.constraintDate === undefined || t.constraintDate === null ? null : asEpochMinutes(t.constraintDate),
+        deadline: t.deadline === undefined || t.deadline === null ? null : asEpochMinutes(t.deadline),
       }));
 
       const dependencies: DependencyInput[] = input.dependencies.map((d) => ({
