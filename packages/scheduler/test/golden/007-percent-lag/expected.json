@@ -1,0 +1,24 @@
+{
+  "projectFinish": 7860,
+  "criticalPath": ["A", "B"],
+  "tasks": {
+    "A": {
+      "earlyStart": 6300,
+      "earlyFinish": 6540,
+      "lateStart": 6300,
+      "lateFinish": 6540,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 120,
+      "isCritical": true
+    },
+    "B": {
+      "earlyStart": 6660,
+      "earlyFinish": 7860,
+      "lateStart": 6660,
+      "lateFinish": 7860,
+      "totalFloatMinutes": 0,
+      "freeFloatMinutes": 0,
+      "isCritical": true
+    }
+  }
+}

@@ -22,6 +22,7 @@ function edge(predecessorId: string, successorId: string): DependencyInput {
     successorId: asTaskId(successorId),
     linkType: 'FS',
     lagMinutes: 0,
+    lagPercent: null,
   };
 }
 

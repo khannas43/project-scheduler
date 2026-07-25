@@ -9,10 +9,12 @@ export interface FloatResult {
 }
 
 /**
- * §4.6. Only considers FS edges between two tasks that both have a forward
- * result — same universe runForwardPass/runBackwardPass already settled on
- * (summary tasks and non-FS edges excluded), so no need to re-filter by
- * link type here.
+ * §4.6. Considers every dependency edge whose both ends have a forward
+ * result (summary tasks are already absent from those maps). The free-float
+ * formula itself is link-type-agnostic — `min(successor.early_start) −
+ * this.early_finish` — so there is no need to *filter* by link type; SS/FF/SF
+ * edges participate the same way FS edges do. (Negative free float can appear
+ * when a non-FS link lets a successor start before this task finishes.)
  *
  * A task with no successors has no `min(successor.early_start)` to compute
  * free float from; by convention it equals total float there (nothing after

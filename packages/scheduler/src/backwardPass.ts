@@ -1,6 +1,7 @@
-import { subtractWorkingMinutes, type CompiledCalendar } from './calendar.js';
-import type { DependencyInput, TaskInput } from './forwardPass.js';
+import { addWorkingMinutes, subtractWorkingMinutes, type CompiledCalendar } from './calendar.js';
+import type { DependencyInput, LinkType, TaskInput } from './forwardPass.js';
 import { computeTopologicalOrder } from './graphOrdering.js';
+import { resolveLagMinutes, unapplyLag } from './lag.js';
 import { asEpochMinutes, type CalendarId, type EpochMinutes, type TaskId } from './types.js';
 
 export interface BackwardSchedule {
@@ -8,15 +9,24 @@ export interface BackwardSchedule {
   readonly lateFinish: EpochMinutes;
 }
 
+interface SuccessorEdge {
+  readonly successorId: TaskId;
+  readonly linkType: LinkType;
+  readonly lagMinutes: number;
+  readonly lagPercent: number | null | undefined;
+}
+
 /**
- * §4.5, scoped identically to runForwardPass (§4.4's Phase 1 increment):
- * FS links only, non-negative lag only, no constraint types, summary tasks
- * excluded. See forwardPass.ts's doc comment for the full reasoning — every
- * restriction there applies here for the same reasons.
+ * §4.5 backward pass — all four link types (FS/SS/FF/SF) and signed lag,
+ * including percentage lag (§13 items 27–28). Scoped identically to
+ * `runForwardPass` on constraints (still ASAP-only) and summary exclusion.
  *
  * Processes tasks in the reverse of the forward pass's topological order
  * (§4.5: "reverse topological order"), so every task's successors are
  * already resolved by the time it's processed.
+ *
+ * The predecessor's own calendar (the task being computed) governs lag and
+ * the duration forward-derivation for SS/SF.
  */
 export function runBackwardPass(
   projectFinish: EpochMinutes,
@@ -32,21 +42,15 @@ export function runBackwardPass(
     (d) => schedulableIds.has(d.predecessorId) && schedulableIds.has(d.successorId),
   );
 
-  for (const dep of relevantDeps) {
-    if (dep.linkType !== 'FS') {
-      throw new Error(
-        `Unsupported link type '${dep.linkType}' on ${dep.predecessorId} -> ${dep.successorId}: only FS links are implemented so far`,
-      );
-    }
-    if (dep.lagMinutes < 0) {
-      throw new Error(`Negative lag on ${dep.predecessorId} -> ${dep.successorId} is not yet supported`);
-    }
-  }
-
-  const successorsOf = new Map<TaskId, { successorId: TaskId; lagMinutes: number }[]>();
+  const successorsOf = new Map<TaskId, SuccessorEdge[]>();
   for (const dep of relevantDeps) {
     const succs = successorsOf.get(dep.predecessorId) ?? [];
-    succs.push({ successorId: dep.successorId, lagMinutes: dep.lagMinutes });
+    succs.push({
+      successorId: dep.successorId,
+      linkType: dep.linkType,
+      lagMinutes: dep.lagMinutes,
+      lagPercent: dep.lagPercent,
+    });
     successorsOf.set(dep.predecessorId, succs);
   }
 
@@ -72,15 +76,14 @@ export function runBackwardPass(
       lateFinish = projectFinish;
     } else {
       let minFinish = Infinity;
-      for (const { successorId, lagMinutes } of succs) {
-        const succSchedule = results.get(successorId);
+      for (const edge of succs) {
+        const succSchedule = results.get(edge.successorId);
         if (!succSchedule) {
-          throw new Error(`Successor ${successorId} was not scheduled before its predecessor ${id}`);
+          throw new Error(`Successor ${edge.successorId} was not scheduled before its predecessor ${id}`);
         }
-        // Mirrors the forward pass's choice: the task being computed uses
-        // its own calendar for the lag adjustment toward it.
-        const candidateFinish =
-          lagMinutes === 0 ? succSchedule.lateStart : subtractWorkingMinutes(succSchedule.lateStart, lagMinutes, calendar);
+        // Percentage lag is of the *predecessor* duration — that's `t` here.
+        const lag = resolveLagMinutes(edge.lagMinutes, edge.lagPercent, t.durationMinutes);
+        const candidateFinish = candidateLateFinish(edge.linkType, succSchedule, lag, t.durationMinutes, calendar);
         minFinish = Math.min(minFinish, candidateFinish);
       }
       lateFinish = asEpochMinutes(minFinish);
@@ -91,4 +94,28 @@ export function runBackwardPass(
   }
 
   return results;
+}
+
+function candidateLateFinish(
+  linkType: LinkType,
+  succ: BackwardSchedule,
+  lag: number,
+  predecessorDurationMinutes: number,
+  calendar: CompiledCalendar,
+): EpochMinutes {
+  switch (linkType) {
+    case 'FS':
+      return unapplyLag(succ.lateStart, lag, calendar);
+    case 'FF':
+      return unapplyLag(succ.lateFinish, lag, calendar);
+    case 'SS': {
+      // §4.5: candidate late-start, then calendar-aware forward to late-finish.
+      const candidateStart = unapplyLag(succ.lateStart, lag, calendar);
+      return addWorkingMinutes(candidateStart, predecessorDurationMinutes, calendar);
+    }
+    case 'SF': {
+      const candidateStart = unapplyLag(succ.lateFinish, lag, calendar);
+      return addWorkingMinutes(candidateStart, predecessorDurationMinutes, calendar);
+    }
+  }
 }

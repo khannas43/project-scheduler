@@ -24,6 +24,7 @@ interface GoldenDependencyInput {
   successorId: string;
   linkType: LinkType;
   lagMinutes: number;
+  lagPercent?: number | null;
 }
 
 interface GoldenInput {
@@ -95,6 +96,7 @@ describe('golden-file corpus (§11.1)', () => {
         successorId: asTaskId(d.successorId),
         linkType: d.linkType,
         lagMinutes: d.lagMinutes,
+        lagPercent: d.lagPercent ?? null,
       }));
 
       const output = schedule({

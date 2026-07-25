@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { compileCalendar, type CalendarCompilationInput } from '../src/calendar.js';
+import { addWorkingMinutes, compileCalendar, subtractWorkingMinutes, type CalendarCompilationInput } from '../src/calendar.js';
 import { runBackwardPass } from '../src/backwardPass.js';
-import type { DependencyInput, TaskInput } from '../src/forwardPass.js';
+import type { DependencyInput, LinkType, TaskInput } from '../src/forwardPass.js';
 import { asCalendarId, asEpochMinutes, asTaskId, MINUTES_PER_DAY } from '../src/types.js';
 
 // Same anchor as the other test files: day 4 since epoch (1970-01-05) was a Monday.
@@ -26,13 +26,30 @@ function task(id: string, durationMinutes: number, calendarId = CAL, isSummary =
   return { id: asTaskId(id), parentId: null, isSummary, durationMinutes, calendarId };
 }
 
+function dep(
+  predecessorId: string,
+  successorId: string,
+  linkType: LinkType = 'FS',
+  lagMinutes = 0,
+  lagPercent: number | null = null,
+): DependencyInput {
+  return {
+    predecessorId: asTaskId(predecessorId),
+    successorId: asTaskId(successorId),
+    linkType,
+    lagMinutes,
+    lagPercent,
+  };
+}
+
 function fs(predecessorId: string, successorId: string, lagMinutes = 0): DependencyInput {
-  return { predecessorId: asTaskId(predecessorId), successorId: asTaskId(successorId), linkType: 'FS', lagMinutes };
+  return dep(predecessorId, successorId, 'FS', lagMinutes);
 }
 
 const projectFinish = asEpochMinutes(MONDAY + FIVE_PM); // Monday 5pm
+const cal = calendars.get(CAL)!;
 
-describe('runBackwardPass — FS links only (§4.5)', () => {
+describe('runBackwardPass — all link types + lag (§4.5)', () => {
   it('a single task with no successors finishes at projectFinish', () => {
     const tasks = [task('A', 480)]; // one full working day
     const result = runBackwardPass(projectFinish, tasks, [], calendars);
@@ -93,18 +110,37 @@ describe('runBackwardPass — FS links only (§4.5)', () => {
     expect(result.has(asTaskId('Leaf'))).toBe(true);
   });
 
-  it('rejects a non-FS link type (not yet implemented)', () => {
-    const tasks = [task('A', 60), task('B', 60)];
-    const deps: DependencyInput[] = [{ predecessorId: asTaskId('A'), successorId: asTaskId('B'), linkType: 'FF', lagMinutes: 0 }];
+  it('FF: predecessor late-finish matches successor late-finish (lag 0)', () => {
+    const tasks = [task('A', 480), task('B', 240)];
+    const deps = [dep('A', 'B', 'FF', 0)];
+    const result = runBackwardPass(projectFinish, tasks, deps, calendars);
 
-    expect(() => runBackwardPass(projectFinish, tasks, deps, calendars)).toThrow();
+    const a = result.get(asTaskId('A'))!;
+    const b = result.get(asTaskId('B'))!;
+    expect(a.lateFinish).toBe(b.lateFinish);
+    expect(a.lateStart).toBe(subtractWorkingMinutes(a.lateFinish, 480, cal));
   });
 
-  it('rejects negative lag (not yet implemented)', () => {
+  it('SS with positive lag: predecessor late-start derives from successor late-start − lag', () => {
+    const tasks = [task('A', 240), task('B', 240)];
+    const deps = [dep('A', 'B', 'SS', 60)];
+    const result = runBackwardPass(projectFinish, tasks, deps, calendars);
+
+    const a = result.get(asTaskId('A'))!;
+    const b = result.get(asTaskId('B'))!;
+    const candidateStart = subtractWorkingMinutes(b.lateStart, 60, cal);
+    expect(a.lateFinish).toBe(addWorkingMinutes(candidateStart, 240, cal));
+  });
+
+  it('negative lag (lead) on FS pushes the predecessor later', () => {
     const tasks = [task('A', 60), task('B', 60)];
     const deps = [fs('A', 'B', -30)];
+    const result = runBackwardPass(projectFinish, tasks, deps, calendars);
 
-    expect(() => runBackwardPass(projectFinish, tasks, deps, calendars)).toThrow();
+    const a = result.get(asTaskId('A'))!;
+    const b = result.get(asTaskId('B'))!;
+    // Unapplying a negative lag adds working minutes to the successor's late start.
+    expect(a.lateFinish).toBe(addWorkingMinutes(b.lateStart, 30, cal));
   });
 
   it('is consistent with the forward pass on a critical chain: no float when the chain exactly fills the horizon', async () => {

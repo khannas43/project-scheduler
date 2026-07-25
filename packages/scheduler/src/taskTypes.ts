@@ -22,4 +22,12 @@ export interface DependencyInput {
   readonly successorId: TaskId;
   readonly linkType: LinkType;
   readonly lagMinutes: number;
+  /**
+   * When a number, replaces `lagMinutes` as a percentage of the predecessor's
+   * duration (MS Project convention). `null`/absent means use `lagMinutes`
+   * literally. Optional so existing call sites (e.g. apps/api's
+   * `toDependencyInputs`) keep compiling until they start passing the column
+   * through — absent and `null` are equivalent.
+   */
+  readonly lagPercent?: number | null;
 }

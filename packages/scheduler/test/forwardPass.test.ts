@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { compileCalendar, type CalendarCompilationInput } from '../src/calendar.js';
-import { runForwardPass, type DependencyInput, type TaskInput } from '../src/forwardPass.js';
+import { addWorkingMinutes, compileCalendar, subtractWorkingMinutes, type CalendarCompilationInput } from '../src/calendar.js';
+import { runForwardPass, type DependencyInput, type LinkType, type TaskInput } from '../src/forwardPass.js';
 import { asCalendarId, asEpochMinutes, asTaskId, MINUTES_PER_DAY } from '../src/types.js';
 
 // Same anchor as calendar.test.ts: day 4 since epoch (1970-01-05) was a Monday.
@@ -39,13 +39,30 @@ function task(id: string, durationMinutes: number, calendarId = CAL, isSummary =
   return { id: asTaskId(id), parentId: null, isSummary, durationMinutes, calendarId };
 }
 
+function dep(
+  predecessorId: string,
+  successorId: string,
+  linkType: LinkType = 'FS',
+  lagMinutes = 0,
+  lagPercent: number | null = null,
+): DependencyInput {
+  return {
+    predecessorId: asTaskId(predecessorId),
+    successorId: asTaskId(successorId),
+    linkType,
+    lagMinutes,
+    lagPercent,
+  };
+}
+
 function fs(predecessorId: string, successorId: string, lagMinutes = 0): DependencyInput {
-  return { predecessorId: asTaskId(predecessorId), successorId: asTaskId(successorId), linkType: 'FS', lagMinutes };
+  return dep(predecessorId, successorId, 'FS', lagMinutes);
 }
 
 const projectStart = asEpochMinutes(MONDAY + NINE_AM); // Monday 9am, a working instant
+const cal = calendars.get(CAL)!;
 
-describe('runForwardPass — FS links only (§4.4)', () => {
+describe('runForwardPass — all link types + lag (§4.4)', () => {
   it('a single task with no predecessors starts at projectStart', () => {
     const tasks = [task('A', 480)]; // 8 hours = one full working day
     const result = runForwardPass(projectStart, tasks, [], calendars);
@@ -127,18 +144,59 @@ describe('runForwardPass — FS links only (§4.4)', () => {
     expect(result.has(asTaskId('Leaf'))).toBe(true);
   });
 
-  it('rejects a non-FS link type (not yet implemented)', () => {
-    const tasks = [task('A', 60), task('B', 60)];
-    const deps: DependencyInput[] = [{ predecessorId: asTaskId('A'), successorId: asTaskId('B'), linkType: 'SS', lagMinutes: 0 }];
+  it('SS with positive lag: successor starts lag after predecessor starts', () => {
+    const tasks = [task('A', 240), task('B', 240)];
+    const deps = [dep('A', 'B', 'SS', 60)];
+    const result = runForwardPass(projectStart, tasks, deps, calendars);
 
-    expect(() => runForwardPass(projectStart, tasks, deps, calendars)).toThrow();
+    const a = result.get(asTaskId('A'))!;
+    const b = result.get(asTaskId('B'))!;
+    expect(b.earlyStart).toBe(addWorkingMinutes(a.earlyStart, 60, cal));
+    expect(b.earlyFinish).toBe(addWorkingMinutes(b.earlyStart, 240, cal));
   });
 
-  it('rejects negative lag (not yet implemented)', () => {
-    const tasks = [task('A', 60), task('B', 60)];
-    const deps = [fs('A', 'B', -30)];
+  it('FF: successor early-finish matches predecessor early-finish (lag 0)', () => {
+    const tasks = [task('A', 480), task('B', 240)];
+    const deps = [dep('A', 'B', 'FF', 0)];
+    const result = runForwardPass(projectStart, tasks, deps, calendars);
 
-    expect(() => runForwardPass(projectStart, tasks, deps, calendars)).toThrow();
+    const a = result.get(asTaskId('A'))!;
+    const b = result.get(asTaskId('B'))!;
+    expect(b.earlyFinish).toBe(a.earlyFinish);
+    expect(b.earlyStart).toBe(subtractWorkingMinutes(a.earlyFinish, 240, cal));
+  });
+
+  it('SF with positive lag: successor finish is driven from predecessor start + lag', () => {
+    const tasks = [task('A', 240), task('B', 120)];
+    const deps = [dep('A', 'B', 'SF', 240)];
+    const result = runForwardPass(projectStart, tasks, deps, calendars);
+
+    const a = result.get(asTaskId('A'))!;
+    const b = result.get(asTaskId('B'))!;
+    const candidateFinish = addWorkingMinutes(a.earlyStart, 240, cal);
+    expect(b.earlyFinish).toBe(candidateFinish);
+    expect(b.earlyStart).toBe(subtractWorkingMinutes(candidateFinish, 120, cal));
+  });
+
+  it('negative lag (lead) on FS pulls the successor earlier', () => {
+    const tasks = [task('A', 240), task('B', 240)];
+    const deps = [fs('A', 'B', -60)];
+    const result = runForwardPass(projectStart, tasks, deps, calendars);
+
+    const a = result.get(asTaskId('A'))!;
+    const b = result.get(asTaskId('B'))!;
+    expect(b.earlyStart).toBe(subtractWorkingMinutes(a.earlyFinish, 60, cal));
+  });
+
+  it('lagPercent replaces lagMinutes as a percentage of predecessor duration', () => {
+    const tasks = [task('A', 240), task('B', 60)];
+    // 50% of 240 = 120; lagMinutes is ignored when lagPercent is set.
+    const deps = [dep('A', 'B', 'FS', 9999, 50)];
+    const result = runForwardPass(projectStart, tasks, deps, calendars);
+
+    const a = result.get(asTaskId('A'))!;
+    const b = result.get(asTaskId('B'))!;
+    expect(b.earlyStart).toBe(addWorkingMinutes(a.earlyFinish, 120, cal));
   });
 
   it('throws when a task references a calendar that was not compiled', () => {

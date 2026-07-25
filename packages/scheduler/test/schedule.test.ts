@@ -44,7 +44,13 @@ function summary(id: string, parentId: string | null): TaskInput {
 }
 
 function fs(predecessorId: string, successorId: string): DependencyInput {
-  return { predecessorId: asTaskId(predecessorId), successorId: asTaskId(successorId), linkType: 'FS', lagMinutes: 0 };
+  return {
+    predecessorId: asTaskId(predecessorId),
+    successorId: asTaskId(successorId),
+    linkType: 'FS',
+    lagMinutes: 0,
+    lagPercent: null,
+  };
 }
 
 function baseInput(overrides: Partial<SchedulerInput> = {}): SchedulerInput {
