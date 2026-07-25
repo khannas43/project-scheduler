@@ -463,6 +463,12 @@ button:disabled {
   max-width: none;
 }
 
+.undo-redo-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
 .project-detail-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);

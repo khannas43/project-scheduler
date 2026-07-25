@@ -4,6 +4,8 @@ export { TaskGrid } from './components/TaskGrid.js';
 export { GanttPanel } from './components/GanttPanel.js';
 export { useTaskTree, tasksQueryKey } from './hooks/useTaskTree.js';
 export { useTaskEdit, projectQueryKey } from './hooks/useTaskEdit.js';
+export { useUndoRedo } from './hooks/useUndoRedo.js';
+export { useUndoStack, type UndoCommand, type TaskEditVariables } from './undoStack.js';
 export { TaskIdAdapter } from './idAdapter.js';
 export type {
   TaskRow,

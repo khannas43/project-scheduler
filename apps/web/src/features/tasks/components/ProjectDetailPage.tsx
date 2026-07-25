@@ -5,6 +5,7 @@ import { useCallback, useState } from 'react';
 import { projectsApi } from '../../projects/index.js';
 import { projectQueryKey, useTaskEdit } from '../hooks/useTaskEdit.js';
 import { useTaskTree } from '../hooks/useTaskTree.js';
+import { useUndoRedo } from '../hooks/useUndoRedo.js';
 import type { TaskEditPatch } from '../types.js';
 import { GanttPanel } from './GanttPanel.js';
 import { TaskGrid } from './TaskGrid.js';
@@ -27,6 +28,10 @@ export function ProjectDetailPage() {
     },
     [edit.mutate],
   );
+
+  const { undo, redo, canUndo, canRedo } = useUndoRedo(projectId, edit.mutate, {
+    enabled: Boolean(projectQuery.data && taskTree.data),
+  });
 
   if (projectQuery.isLoading || taskTree.isLoading) {
     return (
@@ -80,6 +85,26 @@ export function ProjectDetailPage() {
               Manage roles
             </Link>
           </p>
+        </div>
+        <div className="undo-redo-actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={undo}
+            disabled={!canUndo || edit.isPending}
+            aria-keyshortcuts="Meta+Z Control+Z"
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={redo}
+            disabled={!canRedo || edit.isPending}
+            aria-keyshortcuts="Meta+Shift+Z Control+Shift+Z"
+          >
+            Redo
+          </button>
         </div>
       </header>
 
