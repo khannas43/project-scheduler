@@ -30,18 +30,18 @@ number, not a timeline estimate.
 |---|---|---|---|---|---|
 | 0 — Foundation | 12 | 12 | 0 | 0 | 100% |
 | 1 — Core planning | 14 | 14 | 0 | 0 | 100% |
-| 2 — Full scheduling | 8 | 5 (link types+lag; constraints+ADR; calendars; undo/redo) | 0 | 3 | 63% |
+| 2 — Full scheduling | 8 | 6 (link types+lag; constraints+ADR; deadlines; calendars; undo/redo) | 2 (Gantt interaction — slice 1/3; 200-task reference plan) | 0 | 75% |
 | 3 — Resources | 6 | 0 | 0 | 6 | 0% |
 | 4 — Tracking | 6 | 0 | 0 | 6 | 0% |
 | 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **31** | **0** | **26** | **~54%** |
+| **Total** | **57** | **32** | **2** | **23** | **~56%** |
 
-**~54% done, ~46% pending** (31/57 done — Phases 0–1 complete, plus
-Phase 2's link types+lag, constraints+ADR, calendar-exceptions/recurrence,
-and undo/redo items; 26/57 not started, none currently in progress).
-Nothing in Phases 3–6 (resources, tracking, interop/reporting, agile)
-has started.
+**~56% done, ~40% pending, ~4% in progress** (32/57 done — Phases 0–1
+complete, plus six of Phase 2's eight items; 2/57 in progress — Gantt
+drag interaction's remaining slices and terminal 2's 200-task reference
+plan; 23/57 not started). Nothing in Phases 3–6 (resources, tracking,
+interop/reporting, agile) has started.
 
 ---
 
@@ -195,6 +195,43 @@ has started.
   hand, including confirming the backward pass/float/criticality all
   correctly use the *post-constraint* early dates, not the pre-constraint
   dependency candidate.
+- **Task deadlines + `DEADLINE_MISSED`** (§13 item 30, Cursor,
+  `packages/scheduler`) — observational only (never moves a task),
+  checked against the *constraint-adjusted* `earlyFinish` (not a
+  pre-constraint value) as one more step in the existing per-task forward
+  pass loop; no backward-pass/float/schedule.ts changes needed since the
+  warning-collection plumbing already existed from item 29. A task can
+  carry both `CONSTRAINT_OVERRIDES_DEPENDENCY`/`SOFT_CONSTRAINT_VIOLATED`
+  and `DEADLINE_MISSED` in the same warnings array — independent checks,
+  not exclusive. Golden corpus grew 13 → 15 (014–015); 014 independently
+  re-derived by hand during review, matches exactly. Same flagged-gap
+  pattern as `lagPercent`: `apps/api`'s `toTaskInputs` didn't read the
+  `deadline` column at merge time — closed opportunistically in the very
+  next commit (Gantt drag-to-move) while that function was already being
+  touched for `constraintType`/`constraintDate`.
+- **Gantt drag-to-move** (§13 item 6, slice 1 of 3) — task dates are
+  computed (ASAP from dependencies), not directly settable, so dragging
+  a bar sets an MSO constraint at the drop date via the existing
+  `PATCH /api/tasks/:id`, reusing item 29's constraint system rather
+  than inventing new engine/API surface. `GanttView` gained a real
+  pointer-down/move/up state machine (previously only `onHover`
+  existed): preserves the grab offset so the bar doesn't jump to align
+  its edge with the cursor, snaps to whole-day boundaries, uses
+  `setPointerCapture`/`releasePointerCapture` with `pointercancel`
+  wired to the same handler so an OS-interrupted drag can't leave the
+  state stuck, forces a synchronous paint before hit-testing so the
+  spatial index can't be stale, and refuses to start a drag on a
+  summary bar (`GanttTask` gained `isSummary`). `MutationResult` gained
+  a `warnings` field (previously `schedule()`'s warnings were computed
+  and silently discarded by *every* mutation, not just this one) —
+  `CONSTRAINT_OVERRIDES_DEPENDENCY` now surfaces through the web app's
+  error banner with a new distinct info (green, `role="status"`)
+  styling rather than the red error treatment. Undo/redo's
+  `TaskEditFields` widened to cover constraints so a drag-move is
+  undoable via the same Cmd/Ctrl+Z stack as a grid edit — this also
+  fixed a latent bug where the old hardcoded name/duration-only check
+  would have silently dropped a constraint-only undo command. **Resize
+  and drag-to-link remain out of scope** — separate follow-up rounds.
 
 ## Next up
 
@@ -208,65 +245,52 @@ watch a 403) is fully reachable end-to-end today.
 
 Phase 2 (§13 items 27–34), status:
 
-1. **SS/FF/SF link types + golden cases** — **done** (see Done section
-   above). Golden corpus grew 2 → 7 (003–007), each hand-verified — one
-   independently re-derived by hand during review (007's percentage lag
-   across a Monday→Tuesday working-day boundary, including the
-   free-float-under-zero-total-float subtlety), not just re-run.
-2. **Lead/lag, including negative and percentage** — **done**, same
-   commit as #1. **One flagged loose end**: `apps/api`'s
-   `scheduleRunner.ts#toDependencyInputs` doesn't read `lagPercent` off
-   the DB row yet, so a percentage-lag dependency set via the API is
-   silently ignored by the live server even though the engine, DB column,
-   and Zod schema all support it now. `DependencyInput.lagPercent` was
-   deliberately made optional so this doesn't break compilation in the
-   meantime — small, precise fix before item 3 leans on it further.
+1. **SS/FF/SF link types + golden cases** — **done**.
+2. **Lead/lag, including negative and percentage** — **done**. **Loose
+   end still open**: `apps/api`'s `scheduleRunner.ts#toDependencyInputs`
+   still doesn't read `lagPercent` off the DB row (confirmed still true
+   as of this check), so a percentage-lag dependency set via the API is
+   silently ignored by the live server even though the engine, DB
+   column, and Zod schema all support it. Small, precise, `apps/api`-only
+   fix — good pickup for a spare terminal.
 3. **All eight constraint types + precedence rules + ADR** — **done**
-   (seven of eight — ALAP deliberately throws; see Done section above
-   and `docs/adr/002-constraint-precedence.md`).
-4. **Deadlines + warnings** — next up. `SchedulingWarning`
-   (`schedule.ts`) already has the shape (`code`/`taskIds`/`message`)
-   and is now actually threaded through to `SchedulerOutput.warnings`
-   (item 3's work), so this is filling in the deadline-specific warning
-   path ADR 002 explicitly scoped out ("Deadlines... are out of scope
-   here"). Same files as items 1–3 (`forwardPass.ts` most likely).
-5. **Calendars** — **done** except the resource-calendar sub-piece (see
-   Done section above; deferred to Phase 3).
-6. **Gantt interaction: drag-to-move, resize, drag-to-link** — not
-   started. `packages/gantt`'s `GanttView` currently only exposes
-   `onHover`; there is no drag-commit callback yet (confirmed when scoping
-   the task-grid round — that's why the Gantt panel shipped read-only).
-   Needs a new callback shape on `GanttView`, plus `apps/web` wiring the
-   drag-end to `moveTask`/`patchTask`/dependency-create. Drag-to-link can
-   now offer real link-type choices since #1 landed.
-7. **Undo/redo** — **done** (see Done section above).
-8. **200-task reference plan vs. MS Project** — not started; capstone
-   validation for 1–5, blocked until #4 lands. Same constraint as golden
-   cases 001–013: no MS Project install in this environment, so "validated
+   (seven of eight — ALAP deliberately throws; `docs/adr/002-constraint-precedence.md`).
+4. **Deadlines + warnings** — **done**. `DEADLINE_MISSED`, checked
+   against the constraint-adjusted `earlyFinish`. Golden corpus 13 → 15.
+5. **Calendars** — **done** except the resource-calendar sub-piece
+   (deferred to Phase 3, `resources.calendar_id` exists but nothing
+   schedules against it yet).
+6. **Gantt interaction: drag-to-move, resize, drag-to-link** — **slice 1
+   of 3 done** (drag-to-move, mapped to an MSO constraint). Resize
+   (drag a bar edge to change duration) and drag-to-link (drag between
+   two bars to create a dependency) remain — separate follow-up rounds,
+   each touching the same `GanttView`/`GanttPanel` files as slice 1, so
+   one terminal at a time here too.
+7. **Undo/redo** — **done**.
+8. **200-task reference plan vs. MS Project** — **in progress**
+   (terminal 2, worktree `reference-plan`, branch `reference-plan`,
+   `packages/scheduler/scripts/` + `test/golden/200-reference-plan/`,
+   uncommitted as of this check). Same constraint as every other golden
+   case: no MS Project install in this environment, so "validated
    against MS Project" will mean hand-computed/self-verified reference
    output unless real MS Project output is supplied from outside this
    environment.
 
-Remaining work: #4 (`packages/scheduler`, alone now — no other terminal
-contending for those files at the moment) and #6 (`packages/gantt`/
-`apps/web`) can run in separate terminals. The `lagPercent` wiring gap
-(flagged under item 2) is a small, separate `apps/api`-only fix that
-doesn't conflict with either.
+Only item 6's remaining slices (resize, drag-to-link) and the
+`lagPercent` fix are unclaimed and ready to pick up — everything else in
+Phase 2 is either done or already being worked.
 
 ## What can run in parallel (one terminal per Claude Code session)
 
-- ~~Items 1–3, 5, 7~~ — done.
-- **Item 4 (deadlines + warnings)** — `packages/scheduler`, alone for now
-  (no other terminal currently contending for `forwardPass.ts`/
-  `schedule.ts`).
-- **Item 6 (Gantt interaction)** — `packages/gantt` + `apps/web`, no file
-  overlap with item 4. Safe to run in its own terminal alongside it.
-- **Item 8** depends on items 1–5 — not parallelizable (it's testing
-  them), and item 4 isn't done yet.
-- The small **`lagPercent` wiring gap** (flagged under item 2's Done
-  entry) lives in `apps/api/src/services/scheduleRunner.ts`, not
-  `packages/scheduler` — doesn't conflict with item 4 or item 6, so it
-  can land from either terminal without waiting on anything.
+- ~~Items 1–5, 7~~ — done.
+- **Item 8** — in progress, terminal 2's `reference-plan` worktree.
+- **Item 6's remaining slices** (resize, drag-to-link) —
+  `packages/gantt` + `apps/web`, no overlap with item 8's
+  `packages/scheduler` files. One terminal at a time within item 6
+  itself (same `GanttView`/`GanttPanel` files as slice 1).
+- The small **`lagPercent` wiring gap** (flagged under item 2) lives in
+  `apps/api/src/services/scheduleRunner.ts` — no conflict with item 6 or
+  item 8, good filler for a spare terminal.
 
 ## Phases 3–6 (PROJECT_SCOPE.md §8) — not started
 
