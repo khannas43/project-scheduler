@@ -32,14 +32,15 @@ number, not a timeline estimate.
 | 1 — Core planning | 14 | 14 | 0 | 0 | 100% |
 | 2 — Full scheduling | 8 | 8 (all items done) | 0 | 0 | 100% |
 | 3 — Resources | 6 | 6 (all items done) | 0 | 0 | 100% |
-| 4 — Tracking | 6 | 0 | 0 | 6 | 0% |
+| 4 — Tracking | 6 | 4 (baselines; actuals; status date; variance) | 0 | 2 (earned value; S-curve) | 67% |
 | 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **40** | **0** | **17** | **~70%** |
+| **Total** | **57** | **44** | **0** | **13** | **~77%** |
 
-**~70% done, ~30% pending, 0% in progress** (40/57 done — Phases 0–3
-fully complete; 17/57 not started, nothing currently in progress).
-Remaining: Phases 4–6 (tracking, interop/reporting, agile) untouched.
+**~77% done, ~23% pending, 0% in progress** (44/57 done — Phases 0–3
+fully complete, plus four of Phase 4's six items; 13/57 not started,
+nothing currently in progress). Remaining: Phase 4's earned value +
+S-curve slice, then Phases 5–6 (interop/reporting, agile) untouched.
 
 ---
 
@@ -371,6 +372,33 @@ fully done, with no known gaps anywhere in the codebase.**
 model, overallocation detection, timephased distribution, resource
 sheet/usage views) is now fully done.**
 
+- **Baselines, actuals, status date, summary % rollup** (Phase 4 slice
+  1 of 2, §3.6/§4.7) — migration `0001` adds `projects.status_date`
+  (genuinely missing until now). `TaskUpdateInputSchema` (update only,
+  not create — a new task has no actuals yet) gains `percentComplete`,
+  `actualStart`/`actualFinish`, `actualDurationMinutes`,
+  `remainingDurationMinutes`. `rollupSummaries` finally implements
+  §4.7's formula (`Σ(child.pct × child.duration) / Σ(child.duration)`,
+  null child → 0, null when total duration is 0), correctly composing
+  nested summaries bottom-up (a grandparent weights by a summary's own
+  rolled-up duration, not its leaves' raw durations — verified by a
+  hand-computed 3-level test). A leaf's `percentComplete` is user-set;
+  a summary's is always engine-computed — `percentCompleteWritebackValue`
+  plus a conditional-spread `.set()` ensure the reschedule write-back
+  only ever touches summaries, confirmed **live against the running
+  dev server**: set one child to 100%, edited its sibling's duration
+  (an unrelated reschedule trigger), confirmed the 100% survived and
+  the summary correctly re-rolled with the new weighting.
+  `baselineService` snapshots schedule dates plus cost/work summed
+  from each task's *assignments* (the task row has no cost field),
+  distinguishing "no assignments" (`null`) from "assignments summing
+  to exactly `0`" on both the capture and detail sides; 0..10
+  baseline-slot exhaustion rejected with `BadRequestError`;
+  `getBaselineDetail` computes start/finish/duration/cost variance
+  against the live task. Independently reviewed in full — no bugs
+  found. **Earned value (PV/EV/AC/SPI/CPI) and the S-curve are the
+  next slice.**
+
 ## Next up
 
 TECHNICAL_DESIGN.md §13's Phase 0/1/2 build order is **entirely done**
@@ -380,10 +408,10 @@ avoid two copies drifting out of sync). **Phase 0's exit demo**
 fully reachable end-to-end today.
 
 **Phase 3 (Resources) is also entirely done** — see the "Phase 3 —
-Resources" section below. The actual next work is **Phase 4 —
-Tracking** (baselines, actuals, % complete, status date, progress
-lines, earned value + S-curve), not yet broken down into individual
-build-order items the way Phases 0–3 have been.
+Resources" section below. **Phase 4 (Tracking) is half done** — see
+the "Phase 4 — Tracking" section below. The actual next work is
+Phase 4's second slice: **earned value metrics (PV/EV/AC/SPI/CPI) and
+the S-curve.**
 
 ## What can run in parallel (one terminal per Claude Code session)
 
@@ -420,10 +448,28 @@ task-assignment UI in `apps/web` making all of the above visible.
 overallocations surface" — verifiable end-to-end today via
 `/projects/$projectId/resources` and the per-task "Resources" panel.
 
-## Phases 4–6 (PROJECT_SCOPE.md §8) — not started
+## Phase 4 — Tracking (PROJECT_SCOPE.md §8, in progress — 4/6 done)
 
-- **Phase 4 — Tracking:** baselines, actuals, % complete variants, status
-  date, progress lines, earned value + S-curve.
+1. **Baselines** (capture/list/detail-with-variance/clear) — **done**
+   (see Done section above).
+2. **Actuals capture** (`percentComplete`, `actualStart`/`actualFinish`,
+   `actualDurationMinutes`, `remainingDurationMinutes`) — **done**.
+   Pure recording fields this round — editing an actual does not feed
+   back into the CPM engine's forward/backward pass (no "resume
+   incomplete work" recalculation); that's a separate, more advanced
+   feature, not built here.
+3. **Status date** (`projects.status_date`) — **done**.
+4. **Variance columns** (baseline vs. current start/finish/duration/cost)
+   — **done**, via `getBaselineDetail`.
+5. **Earned value metrics** (PV/EV/AC/SPI/CPI) — not started. Needs
+   `status_date` (done) and baseline cost snapshots (done) as inputs —
+   both prerequisites are now in place.
+6. **S-curve** (+ progress line on the Gantt at the status date) — not
+   started. A charting/`apps/web` concern once the backend can produce
+   a PV/EV/AC time series.
+
+## Phases 5–6 (PROJECT_SCOPE.md §8) — not started
+
 - **Phase 5 — Interop & reporting:** MS Project XML round-trip, CSV/Excel/
   PDF/PNG export, report builder, dashboards.
 - **Phase 6 — Agile module:** boards, sprints, backlog, story points, epic
