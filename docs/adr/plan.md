@@ -30,17 +30,18 @@ number, not a timeline estimate.
 |---|---|---|---|---|---|
 | 0 — Foundation | 12 | 12 | 0 | 0 | 100% |
 | 1 — Core planning | 14 | 14 | 0 | 0 | 100% |
-| 2 — Full scheduling | 8 | 4 (link types+lag; calendars; undo/redo) | 0 | 4 | 50% |
+| 2 — Full scheduling | 8 | 5 (link types+lag; constraints+ADR; calendars; undo/redo) | 0 | 3 | 63% |
 | 3 — Resources | 6 | 0 | 0 | 6 | 0% |
 | 4 — Tracking | 6 | 0 | 0 | 6 | 0% |
 | 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **30** | **0** | **27** | **~53%** |
+| **Total** | **57** | **31** | **0** | **26** | **~54%** |
 
-**~53% done, ~47% pending** (30/57 done — Phases 0–1 complete, plus
-Phase 2's link types+lag, calendar-exceptions/recurrence, and undo/redo
-items; 27/57 not started, none currently in progress). Nothing in
-Phases 3–6 (resources, tracking, interop/reporting, agile) has started.
+**~54% done, ~46% pending** (31/57 done — Phases 0–1 complete, plus
+Phase 2's link types+lag, constraints+ADR, calendar-exceptions/recurrence,
+and undo/redo items; 26/57 not started, none currently in progress).
+Nothing in Phases 3–6 (resources, tracking, interop/reporting, agile)
+has started.
 
 ---
 
@@ -171,6 +172,29 @@ Phases 3–6 (resources, tracking, interop/reporting, agile) has started.
   ignores it on a real dependency today — flagged explicitly, not
   hidden, and `DependencyInput.lagPercent`'s type is optional
   specifically so this doesn't block compilation until it's fixed.
+- **Constraint types + precedence + ADR** (§13 item 29, Cursor,
+  `packages/scheduler`) — seven of eight types (`asap`/`snet`/`fnet`/
+  `mso`/`mfo`/`snlt`/`fnlt`) applied per-task in the forward pass after
+  the dependency-derived early start, per §4.4's four-rule precedence
+  model (hard override unconditionally + warn, semi-hard push later
+  only, soft never move + warn-only). `docs/adr/002-constraint-precedence.md`
+  is the real ADR §12.4 only sketched an example of. **ALAP deliberately
+  throws** rather than shipping a silently-wrong schedule — the naive
+  "snap to late dates" approach can leave a successor's displayed early
+  start before this task's displayed early finish unless the change is
+  re-propagated through the downstream subgraph, which is out of scope
+  for this round; both the has-successors and no-successors cases throw
+  (the latter is actually safe, but implementing only one arm would
+  leave an asymmetric surface). `runForwardPass` now returns
+  `{ results, warnings }` (a deliberate breaking change, all call sites
+  updated) so `schedule()`'s `warnings` field is finally populated
+  instead of hardcoded to `[]`. Golden corpus grew 7 → 13 (008–013).
+  Independently verified during review: MSO's override is confirmed at
+  the source to be a true unconditional assignment, not an accidental
+  `max()`; golden case 010 (MSO override) independently re-derived by
+  hand, including confirming the backward pass/float/criticality all
+  correctly use the *post-constraint* early dates, not the pre-constraint
+  dependency candidate.
 
 ## Next up
 
@@ -197,17 +221,15 @@ Phase 2 (§13 items 27–34), status:
    and Zod schema all support it now. `DependencyInput.lagPercent` was
    deliberately made optional so this doesn't break compilation in the
    meantime — small, precise fix before item 3 leans on it further.
-3. **All eight constraint types + precedence rules + ADR** — next up now
-   that #1–2 have landed (same files: `taskTypes.ts` already has
-   `constraintType`/`constraintDate` stubbed optional on `TaskInput` for
-   this). `§12.4`'s own worked ADR example *is* this feature ("hard
-   constraints override dependencies"); write the real
-   `docs/adr/002-*.md`, don't just reference the illustrative one in the
-   design doc.
-4. **Deadlines + warnings** — not started. `SchedulingWarning`
-   (`schedule.ts`) already has the shape reserved for this
-   (`code`/`taskIds`/`message`, "not yet populated by anything"), so this
-   is largely filling it in. Naturally follows #3.
+3. **All eight constraint types + precedence rules + ADR** — **done**
+   (seven of eight — ALAP deliberately throws; see Done section above
+   and `docs/adr/002-constraint-precedence.md`).
+4. **Deadlines + warnings** — next up. `SchedulingWarning`
+   (`schedule.ts`) already has the shape (`code`/`taskIds`/`message`)
+   and is now actually threaded through to `SchedulerOutput.warnings`
+   (item 3's work), so this is filling in the deadline-specific warning
+   path ADR 002 explicitly scoped out ("Deadlines... are out of scope
+   here"). Same files as items 1–3 (`forwardPass.ts` most likely).
 5. **Calendars** — **done** except the resource-calendar sub-piece (see
    Done section above; deferred to Phase 3).
 6. **Gantt interaction: drag-to-move, resize, drag-to-link** — not
@@ -219,37 +241,32 @@ Phase 2 (§13 items 27–34), status:
    now offer real link-type choices since #1 landed.
 7. **Undo/redo** — **done** (see Done section above).
 8. **200-task reference plan vs. MS Project** — not started; capstone
-   validation for 1–5, blocked until 3–4 land. Same constraint as golden
-   cases 001–007: no MS Project install in this environment, so "validated
+   validation for 1–5, blocked until #4 lands. Same constraint as golden
+   cases 001–013: no MS Project install in this environment, so "validated
    against MS Project" will mean hand-computed/self-verified reference
    output unless real MS Project output is supplied from outside this
    environment.
 
-Remaining work no longer has a "wait for terminal 2" blocker — #3/#4
-(`packages/scheduler`, sequential — same files) and #6
-(`packages/gantt`/`apps/web`) can run in separate terminals now.
+Remaining work: #4 (`packages/scheduler`, alone now — no other terminal
+contending for those files at the moment) and #6 (`packages/gantt`/
+`apps/web`) can run in separate terminals. The `lagPercent` wiring gap
+(flagged under item 2) is a small, separate `apps/api`-only fix that
+doesn't conflict with either.
 
 ## What can run in parallel (one terminal per Claude Code session)
 
-- ~~Items 1–2~~ — done (link types + lag, merged from terminal 2's
-  `link-types-lag` branch).
-- ~~Item 5~~ — done (both halves landed: scheduler-side recurrence
-  expansion and the `apps/api` CRUD routes).
-- ~~Item 7~~ — done (undo/redo).
-- **Items 3–4** still share `packages/scheduler`'s pass/validation files
-  closely enough to be one terminal's sequential work, not two parallel
-  ones.
-- **Item 6 (Gantt interaction)** touches `packages/gantt` + `apps/web`
-  only — no file overlap with 3–4 — and can now offer real link-type
-  choices for drag-to-link since #1 is done. Safe to run in its own
-  terminal alongside 3–4.
-- **Item 8** depends on 1–5 being done — not parallelizable, it's testing
-  them, and 3–4 aren't done yet.
-- The small **`lagPercent` wiring gap** flagged under item 2 above lives
-  in `apps/api/src/services/scheduleRunner.ts`, not `packages/scheduler`
-  — doesn't conflict with items 3–4's files, so it can land from either
-  terminal (or the Gantt terminal, if it's between tasks) without
-  waiting on anything.
+- ~~Items 1–3, 5, 7~~ — done.
+- **Item 4 (deadlines + warnings)** — `packages/scheduler`, alone for now
+  (no other terminal currently contending for `forwardPass.ts`/
+  `schedule.ts`).
+- **Item 6 (Gantt interaction)** — `packages/gantt` + `apps/web`, no file
+  overlap with item 4. Safe to run in its own terminal alongside it.
+- **Item 8** depends on items 1–5 — not parallelizable (it's testing
+  them), and item 4 isn't done yet.
+- The small **`lagPercent` wiring gap** (flagged under item 2's Done
+  entry) lives in `apps/api/src/services/scheduleRunner.ts`, not
+  `packages/scheduler` — doesn't conflict with item 4 or item 6, so it
+  can land from either terminal without waiting on anything.
 
 ## Phases 3–6 (PROJECT_SCOPE.md §8) — not started
 
