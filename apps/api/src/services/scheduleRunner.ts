@@ -181,6 +181,18 @@ export function mapSchedulingError(error: unknown): never {
   throw error;
 }
 
+/**
+ * Summary % complete is engine-written; leaves keep their user-edited value.
+ * Returns `undefined` for leaves (omit from the UPDATE set).
+ */
+export function percentCompleteWritebackValue(
+  isSummary: boolean,
+  enginePercentComplete: number | null,
+): string | null | undefined {
+  if (!isSummary) return undefined;
+  return enginePercentComplete === null ? null : String(enginePercentComplete);
+}
+
 export function computedFieldsEqual(a: ComputedFieldSnapshot, b: ComputedFieldSnapshot): boolean {
   const ts = (d: Date | null) => (d ? d.getTime() : null);
   return (
@@ -222,6 +234,8 @@ export function toTaskInputs(
       constraintType: (t.constraintType as ConstraintType | null) ?? null,
       constraintDate: t.constraintDate ? dateToEpochMinutes(t.constraintDate) : null,
       deadline: t.deadline ? dateToEpochMinutes(t.deadline) : null,
+      // numeric() columns come back as string | null from Drizzle.
+      percentComplete: t.percentComplete === null ? null : Number(t.percentComplete),
     }));
 }
 
@@ -370,8 +384,20 @@ export async function rescheduleProject(
       isCritical: computed.isCritical,
     };
 
+    // Summaries only: persist rolled-up % complete. Never clobber a leaf's
+    // user-edited value with the engine pass-through.
+    const nextPct = percentCompleteWritebackValue(row.isSummary, computed.percentComplete);
+    const prevPctNum =
+      row.isSummary
+        ? row.percentComplete === null
+          ? null
+          : Number(row.percentComplete)
+        : undefined;
+    const nextPctNum = nextPct === undefined ? undefined : nextPct === null ? null : Number(nextPct);
+    const pctChanged = row.isSummary && prevPctNum !== nextPctNum;
+
     const prev = beforeById.get(row.id);
-    if (prev && computedFieldsEqual(prev, next)) continue;
+    if (prev && computedFieldsEqual(prev, next) && !pctChanged) continue;
 
     await tx
       .update(tasks)
@@ -383,6 +409,7 @@ export async function rescheduleProject(
         totalFloatMinutes: next.totalFloatMinutes,
         freeFloatMinutes: next.freeFloatMinutes,
         isCritical: next.isCritical,
+        ...(nextPct !== undefined ? { percentComplete: nextPct } : {}),
       })
       .where(eq(tasks.id, row.id));
     affectedIds.push(row.id);

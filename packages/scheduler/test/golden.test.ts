@@ -168,7 +168,8 @@ describe('golden-file corpus (§11.1)', () => {
       for (const [id, expectedTask] of Object.entries(expected.tasks)) {
         const actual = output.tasks.get(asTaskId(id));
         expect(actual, `task ${id} missing from schedule() output`).toBeDefined();
-        expect(actual).toEqual(expectedTask);
+        // toMatchObject: corpus fixtures predate percentComplete on ComputedTaskSchedule.
+        expect(actual).toMatchObject(expectedTask);
       }
 
       if (expected.warnings !== undefined) {

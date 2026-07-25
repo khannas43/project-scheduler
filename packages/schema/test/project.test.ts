@@ -93,4 +93,17 @@ describe('ProjectUpdateInputSchema', () => {
       expect(result.data).not.toHaveProperty('finishDate');
     }
   });
+
+  it('accepts nullable statusDate on update', () => {
+    const set = ProjectUpdateInputSchema.safeParse({
+      version: 1,
+      statusDate: '2026-08-14T00:00:00Z',
+    });
+    expect(set.success).toBe(true);
+    if (set.success) expect(set.data.statusDate).toBe('2026-08-14T00:00:00Z');
+
+    const clear = ProjectUpdateInputSchema.safeParse({ version: 2, statusDate: null });
+    expect(clear.success).toBe(true);
+    if (clear.success) expect(clear.data.statusDate).toBeNull();
+  });
 });

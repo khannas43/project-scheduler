@@ -23,9 +23,10 @@ const SchedulingModeSchema = z.enum(['cpm', 'agile']);
  * - sortOrder (reorder via TaskMoveInputSchema)
  *
  * Deferred (not yet built elsewhere in the codebase):
- * - Phase 4 tracking: percentComplete, actualStart, actualFinish,
- *   actualDurationMinutes, remainingDurationMinutes
  * - Phase 6 agile: storyPoints, sprintId, boardColumnId, backlogRank
+ *
+ * Tracking fields (percentComplete / actuals) are update-only — a new task
+ * has no actuals yet (same omission-by-design convention as finishDate).
  *
  * `parentId` is allowed on create for initial placement under a parent;
  * reordering (parentId + sortOrder) uses TaskMoveInputSchema.
@@ -50,6 +51,11 @@ export const TaskCreateInputSchema = z.object({
 
 export const TaskUpdateInputSchema = TaskCreateInputSchema.partial().extend({
   version: z.number().int().nonnegative(),
+  percentComplete: z.number().min(0).max(100).nullable().optional(),
+  actualStart: z.iso.datetime().nullable().optional(),
+  actualFinish: z.iso.datetime().nullable().optional(),
+  actualDurationMinutes: z.number().int().nonnegative().nullable().optional(),
+  remainingDurationMinutes: z.number().int().nonnegative().nullable().optional(),
 });
 
 /** Body for POST /api/tasks/:id/move (§5.2). */

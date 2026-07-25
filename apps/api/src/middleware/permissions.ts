@@ -5,6 +5,7 @@ import type { FastifyRequest } from 'fastify';
 import { db } from '../db/client.js';
 import {
   assignments,
+  baselines,
   calendarExceptions,
   calendars,
   taskDependencies,
@@ -117,6 +118,17 @@ export async function resolveProjectId(request: FastifyRequest): Promise<string 
       .where(eq(calendarExceptions.id, id))
       .limit(1);
     return row?.projectId ?? undefined;
+  }
+
+  // GET/DELETE /api/baselines/:id — :id is a baseline id (direct FK to project).
+  if (routePath.startsWith('/api/baselines/')) {
+    if (!id) return undefined;
+    const [row] = await db
+      .select({ projectId: baselines.projectId })
+      .from(baselines)
+      .where(eq(baselines.id, id))
+      .limit(1);
+    return row?.projectId;
   }
 
   return undefined;

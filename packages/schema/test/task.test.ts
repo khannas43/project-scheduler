@@ -30,7 +30,7 @@ const FORBIDDEN_CREATE_KEYS = [
   'wbsCode',
   // Reorder belongs on TaskMoveInputSchema
   'sortOrder',
-  // Phase 4 tracking — deferred
+  // Phase 4 tracking — create-only omission (allowed on update)
   'percentComplete',
   'actualStart',
   'actualFinish',
@@ -42,6 +42,16 @@ const FORBIDDEN_CREATE_KEYS = [
   'boardColumnId',
   'backlogRank',
 ] as const;
+
+/** Still forbidden on update (CPM / WBS / agile). Tracking keys are update-only. */
+const FORBIDDEN_UPDATE_KEYS = FORBIDDEN_CREATE_KEYS.filter(
+  (k) =>
+    k !== 'percentComplete' &&
+    k !== 'actualStart' &&
+    k !== 'actualFinish' &&
+    k !== 'actualDurationMinutes' &&
+    k !== 'remainingDurationMinutes',
+);
 
 describe('TaskCreateInputSchema', () => {
   it('accepts a minimal valid create payload', () => {
@@ -179,9 +189,31 @@ describe('TaskUpdateInputSchema', () => {
   });
 
   it('does not declare forbidden keys on the update schema shape', () => {
-    for (const key of FORBIDDEN_CREATE_KEYS) {
+    for (const key of FORBIDDEN_UPDATE_KEYS) {
       expect(TaskUpdateInputSchema.shape).not.toHaveProperty(key);
     }
+  });
+
+  it('accepts Phase 4 tracking fields on update', () => {
+    const result = TaskUpdateInputSchema.safeParse({
+      version: 1,
+      percentComplete: 42.5,
+      actualStart: '2026-08-14T09:00:00Z',
+      actualFinish: null,
+      actualDurationMinutes: 120,
+      remainingDurationMinutes: 360,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.percentComplete).toBe(42.5);
+      expect(result.data.actualDurationMinutes).toBe(120);
+    }
+  });
+
+  it('rejects percentComplete outside 0..100', () => {
+    expect(
+      TaskUpdateInputSchema.safeParse({ version: 1, percentComplete: 101 }).success,
+    ).toBe(false);
   });
 
   it('strips CPM outputs on update by omission', () => {

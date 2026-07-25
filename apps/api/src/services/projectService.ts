@@ -143,6 +143,9 @@ export async function updateProject(
         ...(patch.startDate !== undefined
           ? { startDate: patch.startDate ? new Date(patch.startDate) : null }
           : {}),
+        ...(patch.statusDate !== undefined
+          ? { statusDate: patch.statusDate ? new Date(patch.statusDate) : null }
+          : {}),
         ...(patch.calendarId !== undefined ? { calendarId: patch.calendarId } : {}),
         ...(patch.isArchived !== undefined ? { isArchived: patch.isArchived } : {}),
         version: sql`${projects.version} + 1`,

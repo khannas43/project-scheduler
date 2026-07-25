@@ -32,6 +32,11 @@ export interface ComputedTaskSchedule {
   readonly totalFloatMinutes: number | null;
   readonly freeFloatMinutes: number | null;
   readonly isCritical: boolean;
+  /**
+   * Leaf: pass-through of TaskInput.percentComplete.
+   * Summary: duration-weighted rollup (§4.7); null when Σ(child.duration) === 0.
+   */
+  readonly percentComplete: number | null;
 }
 
 export interface SchedulerOutput {
@@ -87,6 +92,7 @@ export function schedule(input: SchedulerInput): SchedulerOutput {
         totalFloatMinutes: null,
         freeFloatMinutes: null,
         isCritical: r.isCritical,
+        percentComplete: r.percentComplete,
       });
       continue;
     }
@@ -105,6 +111,7 @@ export function schedule(input: SchedulerInput): SchedulerOutput {
       totalFloatMinutes: fl.totalFloatMinutes,
       freeFloatMinutes: fl.freeFloatMinutes,
       isCritical: fl.isCritical,
+      percentComplete: task.percentComplete ?? null,
     });
   }
 

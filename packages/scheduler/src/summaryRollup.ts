@@ -9,6 +9,11 @@ export interface SummarySchedule {
   readonly earlyFinish: EpochMinutes;
   readonly durationMinutes: number;
   readonly isCritical: boolean;
+  /**
+   * Duration-weighted average of direct children's % complete (§4.7).
+   * Null when Σ(child.duration) === 0 (all milestones / zero-duration children).
+   */
+  readonly percentComplete: number | null;
 }
 
 function depthOf(taskById: ReadonlyMap<TaskId, TaskInput>, id: TaskId): number {
@@ -22,14 +27,14 @@ function depthOf(taskById: ReadonlyMap<TaskId, TaskInput>, id: TaskId): number {
 }
 
 /**
- * §4.7: after both passes, walk the WBS tree bottom-up. Only rolls up
- * early_start/early_finish/duration/is_critical — percent_complete and cost
- * need tracking and resource data that doesn't exist in TaskInput yet
- * (Phases 3 and 4 respectively).
+ * §4.7: after both passes, walk the WBS tree bottom-up.
  *
  * "Children" means *direct* children only; a summary of summaries still
  * ends up correct because deeper summaries are processed first and their
  * rolled-up values are what the shallower summary reads.
+ *
+ * percentComplete = Σ(child.pct × child.duration) / Σ(child.duration)
+ * with null child pct treated as 0; zero total duration → null (not NaN).
  */
 export function rollupSummaries(
   tasks: readonly TaskInput[],
@@ -54,12 +59,21 @@ export function rollupSummaries(
   const earlyStartOf = new Map<TaskId, EpochMinutes>();
   const earlyFinishOf = new Map<TaskId, EpochMinutes>();
   const isCriticalOf = new Map<TaskId, boolean>();
+  const percentCompleteOf = new Map<TaskId, number | null>();
+  const durationOf = new Map<TaskId, number>();
+
   for (const [id, schedule] of forwardResults) {
     earlyStartOf.set(id, schedule.earlyStart);
     earlyFinishOf.set(id, schedule.earlyFinish);
   }
   for (const [id, float] of floatResults) {
     isCriticalOf.set(id, float.isCritical);
+  }
+  for (const t of tasks) {
+    if (!t.isSummary) {
+      percentCompleteOf.set(t.id, t.percentComplete ?? null);
+      durationOf.set(t.id, t.durationMinutes);
+    }
   }
 
   const results = new Map<TaskId, SummarySchedule>();
@@ -73,6 +87,8 @@ export function rollupSummaries(
     let minStart = Infinity;
     let maxFinish = -Infinity;
     let anyCritical = false;
+    let weightedPct = 0;
+    let totalDuration = 0;
 
     for (const child of children) {
       const childStart = earlyStartOf.get(child.id);
@@ -85,6 +101,12 @@ export function rollupSummaries(
       if (isCriticalOf.get(child.id) === true) {
         anyCritical = true;
       }
+
+      const childDuration = durationOf.get(child.id) ?? 0;
+      const childPct = percentCompleteOf.get(child.id);
+      // null child → 0 in the weighted sum (§4.7 / Phase 4).
+      weightedPct += (childPct ?? 0) * childDuration;
+      totalDuration += childDuration;
     }
 
     const earlyStart = asEpochMinutes(minStart);
@@ -96,12 +118,23 @@ export function rollupSummaries(
     }
 
     const durationMinutes = workingMinutesBetween(earlyStart, earlyFinish, calendar);
+    const percentComplete = totalDuration === 0 ? null : weightedPct / totalDuration;
 
     earlyStartOf.set(summary.id, earlyStart);
     earlyFinishOf.set(summary.id, earlyFinish);
     isCriticalOf.set(summary.id, anyCritical);
+    percentCompleteOf.set(summary.id, percentComplete);
+    // Nested rollups weight by the child's own duration (leaf duration or
+    // rolled working-minute span for a child summary).
+    durationOf.set(summary.id, durationMinutes);
 
-    results.set(summary.id, { earlyStart, earlyFinish, durationMinutes, isCritical: anyCritical });
+    results.set(summary.id, {
+      earlyStart,
+      earlyFinish,
+      durationMinutes,
+      isCritical: anyCritical,
+      percentComplete,
+    });
   }
 
   return results;

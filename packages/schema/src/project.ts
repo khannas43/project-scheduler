@@ -16,6 +16,8 @@ export const ProjectCreateInputSchema = z.object({
 
 export const ProjectUpdateInputSchema = ProjectCreateInputSchema.partial().extend({
   version: z.number().int().nonnegative(),
+  /** Status date for progress reporting (§5.8) — not on create. */
+  statusDate: z.iso.datetime().nullable().optional(),
 });
 
 export type ProjectCreateInput = z.infer<typeof ProjectCreateInputSchema>;

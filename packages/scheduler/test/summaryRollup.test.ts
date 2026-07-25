@@ -23,13 +23,19 @@ const MON_FRI_9_5: CalendarCompilationInput = {
 
 const calendars = new Map([[CAL, compileCalendar(MON_FRI_9_5)]]);
 
-function leaf(id: string, parentId: string | null, durationMinutes: number): TaskInput {
+function leaf(
+  id: string,
+  parentId: string | null,
+  durationMinutes: number,
+  percentComplete?: number | null,
+): TaskInput {
   return {
     id: asTaskId(id),
     parentId: parentId === null ? null : asTaskId(parentId),
     isSummary: false,
     durationMinutes,
     calendarId: CAL,
+    ...(percentComplete !== undefined ? { percentComplete } : {}),
   };
 }
 
@@ -136,5 +142,84 @@ describe('rollupSummaries (§4.7)', () => {
     const tasks = [summary('Empty', null)];
 
     expect(() => rollupSummaries(tasks, new Map(), new Map(), calendars)).toThrow();
+  });
+
+  it('rolls up percentComplete as a duration-weighted average (null child → 0)', () => {
+    // A 100% × 60 + B 0% × 120 + C null × 60 → (6000 + 0 + 0) / 240 = 25
+    const tasks = [
+      summary('S', null),
+      leaf('A', 'S', 60, 100),
+      leaf('B', 'S', 120, 0),
+      leaf('C', 'S', 60, null),
+    ];
+    const { results: forward } = runForwardPass(projectStart, tasks, [], calendars);
+    const float = computeFloat(
+      forward,
+      new Map(
+        [...forward].map(([id, f]) => [
+          id,
+          { lateStart: f.earlyStart, lateFinish: f.earlyFinish },
+        ]),
+      ),
+      [],
+    );
+
+    const rollup = rollupSummaries(tasks, forward, float, calendars);
+    expect(rollup.get(asTaskId('S'))?.percentComplete).toBe(25);
+  });
+
+  it('returns null percentComplete when total child duration is zero (milestones)', () => {
+    const tasks = [
+      summary('S', null),
+      leaf('M1', 'S', 0, 100),
+      leaf('M2', 'S', 0, 50),
+    ];
+    const { results: forward } = runForwardPass(projectStart, tasks, [], calendars);
+    const float = computeFloat(
+      forward,
+      new Map(
+        [...forward].map(([id, f]) => [
+          id,
+          { lateStart: f.earlyStart, lateFinish: f.earlyFinish },
+        ]),
+      ),
+      [],
+    );
+
+    const rollup = rollupSummaries(tasks, forward, float, calendars);
+    expect(rollup.get(asTaskId('S'))?.percentComplete).toBeNull();
+  });
+
+  it('composes nested percentComplete bottom-up (grandparent uses mid rollup)', () => {
+    // Mid: (100×60 + 50×120) / 180 = 66.666…
+    // Both leaves start together → Mid.durationMinutes = 120 (span of Leaf2).
+    // Root: (Mid.pct×120 + Sibling 0%×30) / 150 = Mid.pct × 120 / 150
+    const tasks = [
+      summary('Root', null),
+      summary('Mid', 'Root'),
+      leaf('Leaf1', 'Mid', 60, 100),
+      leaf('Leaf2', 'Mid', 120, 50),
+      leaf('Sibling', 'Root', 30, 0),
+    ];
+    const { results: forward } = runForwardPass(projectStart, tasks, [], calendars);
+    const float = computeFloat(
+      forward,
+      new Map(
+        [...forward].map(([id, f]) => [
+          id,
+          { lateStart: f.earlyStart, lateFinish: f.earlyFinish },
+        ]),
+      ),
+      [],
+    );
+
+    const rollup = rollupSummaries(tasks, forward, float, calendars);
+    const midPct = (100 * 60 + 50 * 120) / 180;
+    const midDuration = rollup.get(asTaskId('Mid'))?.durationMinutes;
+    expect(midDuration).toBe(120);
+    expect(rollup.get(asTaskId('Mid'))?.percentComplete).toBeCloseTo(midPct, 10);
+
+    const rootPct = (midPct * 120 + 0 * 30) / 150;
+    expect(rollup.get(asTaskId('Root'))?.percentComplete).toBeCloseTo(rootPct, 10);
   });
 });

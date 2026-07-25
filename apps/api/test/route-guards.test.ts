@@ -101,6 +101,12 @@ describe('route-guard drift (§6.4)', () => {
     // GET is skipped by the SAFE_METHODS loop above — assert the guard key explicitly.
     byKey('GET', '/api/assignments/:id/timephased', PERMISSIONS.RESOURCE_ASSIGN.key);
 
+    // Baselines — GETs need explicit assertion (SAFE_METHODS filter skips them).
+    byKey('POST', '/api/projects/:id/baselines', PERMISSIONS.BASELINE_SAVE.key);
+    byKey('GET', '/api/projects/:id/baselines', PERMISSIONS.BASELINE_VIEW.key);
+    byKey('GET', '/api/baselines/:id', PERMISSIONS.BASELINE_VIEW.key);
+    byKey('DELETE', '/api/baselines/:id', PERMISSIONS.BASELINE_CLEAR.key);
+
     await fastify.close();
   });
 });

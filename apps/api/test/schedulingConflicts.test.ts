@@ -9,6 +9,7 @@ import {
   assertGraphValid,
   computedFieldsEqual,
   mapSchedulingError,
+  percentCompleteWritebackValue,
   toDependencyInputs,
   toTaskInputs,
 } from '../src/services/scheduleRunner.js';
@@ -190,6 +191,70 @@ describe('toDependencyInputs lagPercent conversion', () => {
     ]);
 
     expect(dep!.lagPercent).toBeNull();
+  });
+});
+
+describe('toTaskInputs percentComplete', () => {
+  it('Number()s the numeric() column string for the engine', () => {
+    const cal = '11111111-1111-4111-8111-111111111111';
+    const [input] = toTaskInputs(
+      [
+        {
+          id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+          projectId: 'p',
+          parentId: null,
+          wbsPath: '1',
+          wbsCode: '1',
+          sortOrder: 0,
+          name: 'A',
+          notes: null,
+          isMilestone: false,
+          isSummary: false,
+          schedulingMode: 'cpm',
+          durationMinutes: 60,
+          taskType: null,
+          isEffortDriven: true,
+          isManuallyScheduled: false,
+          constraintType: null,
+          constraintDate: null,
+          deadline: null,
+          calendarId: cal,
+          earlyStart: null,
+          earlyFinish: null,
+          lateStart: null,
+          lateFinish: null,
+          totalFloatMinutes: null,
+          freeFloatMinutes: null,
+          isCritical: false,
+          percentComplete: '42.50',
+          actualStart: null,
+          actualFinish: null,
+          actualDurationMinutes: null,
+          remainingDurationMinutes: null,
+          storyPoints: null,
+          sprintId: null,
+          boardColumnId: null,
+          backlogRank: null,
+          version: 0,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+      cal,
+    );
+    expect(input!.percentComplete).toBe(42.5);
+  });
+});
+
+describe('percentCompleteWritebackValue (leaf vs summary)', () => {
+  it('omits percentComplete for leaves so reschedule never clobbers a direct edit', () => {
+    expect(percentCompleteWritebackValue(false, 75)).toBeUndefined();
+    expect(percentCompleteWritebackValue(false, null)).toBeUndefined();
+  });
+
+  it('persists the engine value for summaries (including null)', () => {
+    expect(percentCompleteWritebackValue(true, 25)).toBe('25');
+    expect(percentCompleteWritebackValue(true, null)).toBeNull();
   });
 });
 

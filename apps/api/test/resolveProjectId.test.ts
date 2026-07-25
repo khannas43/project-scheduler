@@ -251,3 +251,51 @@ describe('resolveProjectId — calendar exception branches', () => {
     expect(projectId).toBeUndefined();
   });
 });
+
+describe('resolveProjectId — baseline branches', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    chain.from.mockReturnValue(chain);
+    chain.where.mockReturnValue(chain);
+    chain.innerJoin.mockReturnValue(chain);
+  });
+
+  it('GET/DELETE /api/baselines/:id resolves via baselines.projectId', async () => {
+    limit.mockResolvedValueOnce([{ projectId: 'proj-bl' }]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/baselines/:id',
+        id: '66666666-6666-4666-8666-666666666666',
+      }),
+    );
+
+    expect(projectId).toBe('proj-bl');
+    expect(db.select).toHaveBeenCalled();
+  });
+
+  it('returns undefined when the baseline is missing (fail-closed)', async () => {
+    limit.mockResolvedValueOnce([]);
+
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/baselines/:id',
+        id: '66666666-6666-4666-8666-666666666666',
+      }),
+    );
+
+    expect(projectId).toBeUndefined();
+  });
+
+  it('POST/GET /api/projects/:id/baselines uses the projects prefix (no join)', async () => {
+    const projectId = await resolveProjectId(
+      mockRequest({
+        url: '/api/projects/:id/baselines',
+        id: '77777777-7777-4777-8777-777777777777',
+      }),
+    );
+
+    expect(projectId).toBe('77777777-7777-4777-8777-777777777777');
+    expect(db.select).not.toHaveBeenCalled();
+  });
+});

@@ -29,6 +29,12 @@ export interface TaskInput {
    * so apps/api's `toTaskInputs` keeps compiling until it wires the column.
    */
   readonly deadline?: EpochMinutes | null;
+  /**
+   * Leaf % complete (0–100). Summaries ignore this input — they get a
+   * duration-weighted rollup from children (§4.7). Null/absent → 0 in the
+   * weighted sum when this task is a child of a summary.
+   */
+  readonly percentComplete?: number | null;
 }
 
 export interface DependencyInput {

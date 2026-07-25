@@ -207,6 +207,24 @@ export async function updateTask(
           ? { deadline: patch.deadline ? new Date(patch.deadline) : null }
           : {}),
         ...(patch.calendarId !== undefined ? { calendarId: patch.calendarId } : {}),
+        ...(patch.percentComplete !== undefined
+          ? {
+              percentComplete:
+                patch.percentComplete === null ? null : String(patch.percentComplete),
+            }
+          : {}),
+        ...(patch.actualStart !== undefined
+          ? { actualStart: patch.actualStart ? new Date(patch.actualStart) : null }
+          : {}),
+        ...(patch.actualFinish !== undefined
+          ? { actualFinish: patch.actualFinish ? new Date(patch.actualFinish) : null }
+          : {}),
+        ...(patch.actualDurationMinutes !== undefined
+          ? { actualDurationMinutes: patch.actualDurationMinutes }
+          : {}),
+        ...(patch.remainingDurationMinutes !== undefined
+          ? { remainingDurationMinutes: patch.remainingDurationMinutes }
+          : {}),
         version: sql`${tasks.version} + 1`,
       })
       .where(and(eq(tasks.id, taskId), eq(tasks.version, version)))

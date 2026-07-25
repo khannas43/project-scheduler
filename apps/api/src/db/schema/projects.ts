@@ -31,6 +31,8 @@ export const projects = pgTable('projects', {
   startDate: timestamp('start_date', { withTimezone: true }),
   // Computed — engine-written, like the CPM output columns on tasks (§3.3).
   finishDate: timestamp('finish_date', { withTimezone: true }),
+  /** Status date for progress reporting / progress line (§5.8 / Phase 4). */
+  statusDate: timestamp('status_date', { withTimezone: true }),
   calendarId: uuid('calendar_id')
     .notNull()
     .references(() => calendars.id),
