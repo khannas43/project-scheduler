@@ -31,17 +31,17 @@ number, not a timeline estimate.
 | 0 — Foundation | 12 | 12 | 0 | 0 | 100% |
 | 1 — Core planning | 14 | 14 | 0 | 0 | 100% |
 | 2 — Full scheduling | 8 | 8 (all items done) | 0 | 0 | 100% |
-| 3 — Resources | 6 | 0 | 0 | 6 | 0% |
+| 3 — Resources | 6 | 4 (pool CRUD; assignments CRUD; cost model; overallocation) | 0 | 2 (timephased distribution; resource sheet/usage UI) | 67% |
 | 4 — Tracking | 6 | 0 | 0 | 6 | 0% |
 | 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **34** | **0** | **23** | **~60%** |
+| **Total** | **57** | **38** | **0** | **19** | **~67%** |
 
-**~60% done, ~40% pending, 0% in progress** (34/57 done — Phases 0–2
-fully complete; 23/57 not started, nothing currently in progress).
-Everything remaining is Phases 3–6 (resources, tracking,
-interop/reporting, agile). No other known gaps anywhere in the
-codebase as of this check.
+**~67% done, ~33% pending, 0% in progress** (38/57 done — Phases 0–2
+fully complete, plus four of Phase 3's six items; 19/57 not started,
+nothing currently in progress). Remaining: Phase 3's timephased
+distribution and web UI, then Phases 4–6 (tracking, interop/reporting,
+agile) untouched.
 
 ---
 
@@ -301,46 +301,51 @@ codebase as of this check.
 **Phase 2 (TECHNICAL_DESIGN.md §13, all eight build-order items) is now
 fully done, with no known gaps anywhere in the codebase.**
 
+- **Resource pool + task assignments backend** (Phase 3 kickoff, §3.5) —
+  `packages/schema` (`resource.ts`/`assignment.ts`) + `apps/api`
+  (`resourceService`/`resourceRoutes`, `assignmentService`/
+  `assignmentRoutes`). Resources are a global, instance-wide pool (per
+  the schema's own comment), not project-scoped — reuses roles'
+  `requirePermissionForProject` pattern exactly. Assignments are
+  project-scoped via `taskId` → task → project, resolved through
+  `resolveProjectId` the same way dependency routes already are.
+  `workMinutes`/`cost` are server-computed (`computeWorkAndCost`),
+  never client input, matching §3.3's CPM-output-omission rule.
+  `numericToDb`/`numericFromDb` centralize the Drizzle
+  `numeric()`-as-string boundary conversion that's bitten this codebase
+  twice before (`lagPercent`, `deadline`) — this time built as a shared
+  helper from the start. Overallocation is computed across *all* of a
+  resource's assignments globally (not scoped to one project, since the
+  pool itself isn't project-scoped), bucketed by UTC calendar day —
+  deliberately not working-minute granularity, which is
+  `assignment_timephased`'s job and stays unbuilt. `listProjectTasks`
+  (§5.3) now also returns `assignments`, matching how
+  `dependencies`/`calendars` already ride along. Independently
+  reviewed in full (numeric round-trip, delete-with-assignments guard,
+  overallocation day-bucketing hand-traced against two overlapping
+  spans, route-guard drift extended to assert all 8 new routes by
+  name) — no bugs found.
+  **Not built this round**: `assignment_timephased` (full timephased
+  work distribution), any `apps/web` UI (resource sheet/usage views —
+  Phase 3's stated exit criterion still needs this), overtime-rate
+  costing.
+
 ## Next up
 
-TECHNICAL_DESIGN.md §13's Phase 0/1 build order is complete, including
-**Role management UI** (`apps/web/src/features/roles/`: `PermissionMatrix`
-shared by create/edit, `RoleList` with system roles read-only, clone as a
-client-side create-prefill, `/projects/$projectId/roles`).
+TECHNICAL_DESIGN.md §13's Phase 0/1/2 build order is **entirely done**
+(see Done section above for the full walkthrough — not repeated here to
+avoid two copies drifting out of sync). **Phase 0's exit demo**
+(`docker compose up`, log in, create a custom role, watch a 403) is
+fully reachable end-to-end today.
 
-**Phase 0's exit demo** (`docker compose up`, log in, create a custom role,
-watch a 403) is fully reachable end-to-end today.
+The actual next work is **Phase 3's two remaining items** — see the
+"Phase 3 — Resources" section below for the full breakdown:
 
-Phase 2 (§13 items 27–34), status:
-
-1. **SS/FF/SF link types + golden cases** — **done**.
-2. **Lead/lag, including negative and percentage** — **done**, including
-   the `apps/api` wiring gap (see Done section above).
-3. **All eight constraint types + precedence rules + ADR** — **done**
-   (seven of eight — ALAP deliberately throws; `docs/adr/002-constraint-precedence.md`).
-4. **Deadlines + warnings** — **done**. `DEADLINE_MISSED`, checked
-   against the constraint-adjusted `earlyFinish`. Golden corpus 13 → 15.
-5. **Calendars** — **done** except the resource-calendar sub-piece
-   (deferred to Phase 3, `resources.calendar_id` exists but nothing
-   schedules against it yet).
-6. **Gantt interaction: drag-to-move, resize, drag-to-link** — **done**
-   (all three slices: drag-to-move → MSO constraint; right-edge resize →
-   `durationMinutes`; Shift+right-edge drag-to-link → plain FS
-   dependency via a new `createDependency`/`useCreateDependency`,
-   `apps/web`'s first-ever call to `POST /api/dependencies`).
-7. **Undo/redo** — **done**.
-8. **200-task reference plan vs. MS Project** — **done**. No MS Project
-   install in this environment (same standing caveat as every other
-   golden case), so this uses a two-tier approach instead: `expected.json`
-   is engine-generated, a 16-task representative sample is hand-verified
-   in `notes.md`, and five global invariants (`referencePlanInvariants.test.ts`)
-   are asserted against the full 203-task output. Independently
-   re-verified during review by rebuilding `packages/scheduler` and
-   running a from-scratch script (outside their test harness) that
-   recompiles the fixture's calendars/tasks/dependencies and calls
-   `schedule()` directly — byte-for-byte match against `expected.json`.
-
-**Phase 2 (§13 items 27–34) is now fully done, with no known gaps.**
+1. **Timephased work distribution** (`assignment_timephased`) — not
+   started.
+2. **Resource sheet / usage views** (`apps/web`) — not started. This is
+   what makes Phase 3's backend work (cost/work computation,
+   overallocation detection) actually visible to a user.
 
 ## What can run in parallel (one terminal per Claude Code session)
 
@@ -357,12 +362,27 @@ it outside this session. Don't attempt to remove it again without new
 information — retrying the same hung command isn't productive.
 
 Phase 2 is fully done and closed out — no unclaimed work remains from
-it. Phases 3–6 (below) are the next source of work whenever that starts.
+it. Phase 3 (below) is now in progress.
 
-## Phases 3–6 (PROJECT_SCOPE.md §8) — not started
+## Phase 3 — Resources (PROJECT_SCOPE.md §8, in progress)
 
-- **Phase 3 — Resources:** pool, assignments, cost model, timephased work,
-  overallocation detection, resource sheet/usage views.
+1. **Resource pool CRUD** — **done** (see Done section above).
+2. **Assignments CRUD** — **done**.
+3. **Cost model** (`computeWorkAndCost`) — **done**. Standard rate +
+   cost-per-use only; overtime rate unused (no threshold defined yet).
+4. **Overallocation detection** — **done**, at UTC-calendar-day
+   granularity. A working-minute/calendar-aware version would need
+   `assignment_timephased` (item 5) to be meaningfully more precise.
+5. **Timephased work distribution** — not started.
+   `assignment_timephased` exists in the DB (partitioned, per §3.5) but
+   nothing in the application layer writes or reads it yet.
+6. **Resource sheet / usage views** (`apps/web`) — not started. Phase
+   3's stated exit criterion ("assignments compute cost and work
+   correctly; overallocations surface") needs this to actually be
+   *visible* — the backend can do it today, nothing shows it yet.
+
+## Phases 4–6 (PROJECT_SCOPE.md §8) — not started
+
 - **Phase 4 — Tracking:** baselines, actuals, % complete variants, status
   date, progress lines, earned value + S-curve.
 - **Phase 5 — Interop & reporting:** MS Project XML round-trip, CSV/Excel/
