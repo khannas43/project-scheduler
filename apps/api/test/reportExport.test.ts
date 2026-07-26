@@ -124,11 +124,14 @@ describe('buildExcelBuffer — date cell type', () => {
 describe('buildPdfBuffer — pagination', () => {
   it('adds pages when the row set exceeds one page height', async () => {
     const many: TaskReportRow[] = Array.from({ length: 80 }, (_, i) => ({
+      id: `t-${i + 1}`,
       wbsCode: String(i + 1),
       name: `Task ${i + 1}`,
       isSummary: false,
+      isMilestone: false,
       earlyStart: new Date('2026-01-01T09:00:00.000Z'),
       earlyFinish: new Date('2026-01-01T17:00:00.000Z'),
+      deadline: null,
       durationMinutes: 480,
       percentComplete: 0,
       isCritical: false,

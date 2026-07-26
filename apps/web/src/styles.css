@@ -781,3 +781,28 @@ button:disabled {
     padding: 1rem;
   }
 }
+
+.reports-export-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.reports-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.reports-ev-card {
+  margin: 1rem 0 1.5rem;
+  padding: 1rem 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.reports-ev-card h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.05rem;
+}

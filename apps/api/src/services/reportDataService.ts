@@ -7,11 +7,14 @@ import { numericFromDb } from './resourceService.js';
 
 /** One row per task for CSV / Excel / PDF export — including summaries. */
 export interface TaskReportRow {
+  readonly id: string;
   readonly wbsCode: string | null;
   readonly name: string;
   readonly isSummary: boolean;
+  readonly isMilestone: boolean;
   readonly earlyStart: Date | null;
   readonly earlyFinish: Date | null;
+  readonly deadline: Date | null;
   readonly durationMinutes: number | null;
   readonly percentComplete: number | null;
   readonly isCritical: boolean;
@@ -31,8 +34,11 @@ export interface TaskReportSourceTask {
   readonly wbsCode: string | null;
   readonly name: string;
   readonly isSummary: boolean;
+  /** Optional so older fixtures (reportExport tests) stay valid unmodified. */
+  readonly isMilestone?: boolean;
   readonly earlyStart: Date | null;
   readonly earlyFinish: Date | null;
+  readonly deadline?: Date | null;
   readonly durationMinutes: number | null;
   readonly percentComplete: string | null;
   readonly isCritical: boolean;
@@ -91,11 +97,14 @@ export function assembleTaskReportRows(
     names.sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
     const hasAssignments = assignedTaskIds.has(t.id);
     return {
+      id: t.id,
       wbsCode: t.wbsCode,
       name: t.name,
       isSummary: t.isSummary,
+      isMilestone: t.isMilestone ?? false,
       earlyStart: t.earlyStart,
       earlyFinish: t.earlyFinish,
+      deadline: t.deadline ?? null,
       durationMinutes: t.durationMinutes,
       percentComplete: numericFromDb(t.percentComplete),
       isCritical: t.isCritical,

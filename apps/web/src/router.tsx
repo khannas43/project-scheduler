@@ -5,6 +5,7 @@ import { LoginPage, RequireAuth } from './features/auth/index.js';
 import { ProjectListPage } from './features/projects/index.js';
 import { ResourceSheet } from './features/resources/index.js';
 import { RolesPage } from './features/roles/index.js';
+import { ReportsPage } from './features/reports/index.js';
 import { ProjectDetailPage } from './features/tasks/index.js';
 import { BaselinesPage } from './features/tracking/index.js';
 import { useAuthStore } from './stores/authStore.js';
@@ -70,6 +71,12 @@ const projectBaselinesRoute = createRoute({
   component: BaselinesPage,
 });
 
+const projectReportsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/projects/$projectId/reports',
+  component: ReportsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -80,6 +87,7 @@ const routeTree = rootRoute.addChildren([
       projectRolesRoute,
       projectResourcesRoute,
       projectBaselinesRoute,
+      projectReportsRoute,
     ]),
   ]),
 ]);

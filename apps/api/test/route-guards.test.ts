@@ -116,6 +116,14 @@ describe('route-guard drift (§6.4)', () => {
     byKey('GET', '/api/projects/:id/export/pdf', PERMISSIONS.DATA_EXPORT.key);
     byKey('POST', '/api/projects/:id/import/xml', PERMISSIONS.DATA_IMPORT.key);
 
+    // Built-in JSON reports — GETs need explicit assertion (SAFE_METHODS skips them).
+    byKey('GET', '/api/projects/:id/reports/summary', PERMISSIONS.REPORT_VIEW.key);
+    byKey('GET', '/api/projects/:id/reports/critical-tasks', PERMISSIONS.REPORT_VIEW.key);
+    byKey('GET', '/api/projects/:id/reports/milestones', PERMISSIONS.REPORT_VIEW.key);
+    byKey('GET', '/api/projects/:id/reports/overallocated-resources', PERMISSIONS.REPORT_VIEW.key);
+    byKey('GET', '/api/projects/:id/reports/cost-overview', PERMISSIONS.REPORT_VIEW.key);
+    byKey('GET', '/api/projects/:id/reports/slipping-tasks', PERMISSIONS.REPORT_VIEW.key);
+
     await fastify.close();
   });
 });

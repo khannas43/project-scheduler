@@ -143,5 +143,77 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return (await response.json()) as T;
 }
 
+function filenameFromContentDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const match = /filename\*?=(?:UTF-8''|")?([^";]+)"?/i.exec(header);
+  if (!match?.[1]) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return match[1];
+  }
+}
+
+/**
+ * Authenticated binary download — same Bearer/refresh cycle as apiRequest,
+ * but returns a Blob (for CSV/Excel/PDF attachments).
+ */
+export async function apiRequestBlob(
+  path: string,
+  options: RequestOptions = {},
+): Promise<{ blob: Blob; filename: string | null }> {
+  const { body, skipAuthRetry, headers: initHeaders, ...rest } = options;
+
+  const headers = new Headers(initHeaders);
+  if (body !== undefined && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+  const token = authBridge?.getAccessToken();
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const init: RequestInit = {
+    ...rest,
+    headers,
+    credentials: 'include',
+  };
+  if (body !== undefined) {
+    init.body = JSON.stringify(body);
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, init);
+
+  if (response.status === 401 && !skipAuthRetry) {
+    const refreshed = await tryRefresh();
+    if (refreshed) {
+      return apiRequestBlob(path, { ...options, skipAuthRetry: true });
+    }
+    throw new ApiError(await parseProblem(response));
+  }
+
+  if (!response.ok) {
+    throw new ApiError(await parseProblem(response));
+  }
+
+  return {
+    blob: await response.blob(),
+    filename: filenameFromContentDisposition(response.headers.get('Content-Disposition')),
+  };
+}
+
+/** Trigger a browser file download from a Blob. */
+export function downloadBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
 /** Exported for unit tests. */
 export const __testOnly = { tryRefresh, parseProblem, configureApiClient };

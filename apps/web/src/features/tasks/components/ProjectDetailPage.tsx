@@ -94,6 +94,10 @@ export function ProjectDetailPage() {
             <Link to="/projects/$projectId/baselines" params={{ projectId }}>
               Baselines
             </Link>
+            {' · '}
+            <Link to="/projects/$projectId/reports" params={{ projectId }}>
+              Reports
+            </Link>
           </p>
         </div>
         <div className="undo-redo-actions">
