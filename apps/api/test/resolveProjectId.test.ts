@@ -315,20 +315,18 @@ describe('resolveProjectId — baseline branches', () => {
     expect(db.select).not.toHaveBeenCalled();
   });
 
-  it('GET /api/projects/:id/export/xml and POST …/import/xml resolve via the projects prefix', async () => {
+  it('GET /api/projects/:id/export/{xml,csv,excel,pdf} and POST …/import/xml resolve via the projects prefix', async () => {
     const projectId = '99999999-9999-4999-8999-999999999999';
 
-    expect(
-      await resolveProjectId(
-        mockRequest({ url: '/api/projects/:id/export/xml', id: projectId }),
-      ),
-    ).toBe(projectId);
-
-    expect(
-      await resolveProjectId(
-        mockRequest({ url: '/api/projects/:id/import/xml', id: projectId }),
-      ),
-    ).toBe(projectId);
+    for (const url of [
+      '/api/projects/:id/export/xml',
+      '/api/projects/:id/export/csv',
+      '/api/projects/:id/export/excel',
+      '/api/projects/:id/export/pdf',
+      '/api/projects/:id/import/xml',
+    ]) {
+      expect(await resolveProjectId(mockRequest({ url, id: projectId }))).toBe(projectId);
+    }
 
     expect(db.select).not.toHaveBeenCalled();
   });

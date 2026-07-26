@@ -12,6 +12,26 @@ import {
 } from '../optimisticEdit.js';
 import type { DependencyRow, TaskEditPatch, TaskRow } from '../types.js';
 
+/** Trigger a browser download from a data URL (no server round-trip). */
+export function downloadDataUrl(dataUrl: string, filename: string): void {
+  const anchor = document.createElement('a');
+  anchor.href = dataUrl;
+  anchor.download = filename;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
+function slugPngFilename(projectName: string): string {
+  const slug = projectName
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return `${slug || 'gantt'}.png`;
+}
+
 export interface GanttPanelProps {
   readonly project: Project;
   readonly tasks: readonly TaskRow[];
@@ -160,7 +180,21 @@ export function GanttPanel({
 
   return (
     <div className="gantt-panel">
-      <div className="gantt-panel-label">Gantt</div>
+      <div className="gantt-panel-toolbar">
+        <div className="gantt-panel-label">Gantt</div>
+        <button
+          type="button"
+          className="btn-secondary gantt-save-png"
+          data-testid="gantt-save-png"
+          onClick={() => {
+            const view = viewRef.current;
+            if (!view) return;
+            downloadDataUrl(view.exportToPngDataUrl(), slugPngFilename(projectRef.current.name));
+          }}
+        >
+          Save as PNG
+        </button>
+      </div>
       <div ref={hostRef} className="gantt-host" data-testid="gantt-host" />
     </div>
   );

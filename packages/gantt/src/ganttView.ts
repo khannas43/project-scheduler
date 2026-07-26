@@ -231,6 +231,24 @@ export class GanttView {
     this.flush();
   }
 
+  /**
+   * Composite background + arrows + bars into one PNG data URL (skips the
+   * interaction overlay — hover/drag ghosts shouldn't appear in the snapshot).
+   */
+  exportToPngDataUrl(): string {
+    this.paint();
+    const source = this.canvases.background;
+    const out = document.createElement('canvas');
+    out.width = source.width;
+    out.height = source.height;
+    const ctx = out.getContext('2d');
+    if (!ctx) throw new Error('CanvasRenderingContext2D unavailable');
+    for (const name of ['background', 'arrows', 'bars'] as const) {
+      ctx.drawImage(this.canvases[name], 0, 0);
+    }
+    return out.toDataURL('image/png');
+  }
+
   destroy(): void {
     if (this.raf) cancelAnimationFrame(this.raf);
     this.stack.removeEventListener('wheel', this.onWheel);

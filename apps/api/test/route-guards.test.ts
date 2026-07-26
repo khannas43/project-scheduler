@@ -109,8 +109,11 @@ describe('route-guard drift (§6.4)', () => {
     byKey('GET', '/api/baselines/:id', PERMISSIONS.BASELINE_VIEW.key);
     byKey('DELETE', '/api/baselines/:id', PERMISSIONS.BASELINE_CLEAR.key);
 
-    // MSPDI export/import — GET needs an explicit assertion (SAFE_METHODS skips it).
+    // MSPDI + report exports — GETs need an explicit assertion (SAFE_METHODS skips them).
     byKey('GET', '/api/projects/:id/export/xml', PERMISSIONS.DATA_EXPORT.key);
+    byKey('GET', '/api/projects/:id/export/csv', PERMISSIONS.DATA_EXPORT.key);
+    byKey('GET', '/api/projects/:id/export/excel', PERMISSIONS.DATA_EXPORT.key);
+    byKey('GET', '/api/projects/:id/export/pdf', PERMISSIONS.DATA_EXPORT.key);
     byKey('POST', '/api/projects/:id/import/xml', PERMISSIONS.DATA_IMPORT.key);
 
     await fastify.close();
