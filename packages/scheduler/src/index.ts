@@ -11,6 +11,7 @@ export type { ComputedSchedule, ForwardPassResult } from './forwardPass.js';
 export { computeTopologicalOrder } from './graphOrdering.js';
 export type { GraphEdge } from './graphOrdering.js';
 export { SchedulingError, validateGraph } from './graphValidation.js';
+export { resolveLagMinutes, applyLag, unapplyLag } from './lag.js';
 export { schedule } from './schedule.js';
 export type {
   ComputedTaskSchedule,

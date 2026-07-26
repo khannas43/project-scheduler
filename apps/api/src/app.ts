@@ -13,6 +13,7 @@ import { baselineRoutes } from './routes/baselines.js';
 import { calendarRoutes } from './routes/calendars.js';
 import { dependencyRoutes } from './routes/dependencies.js';
 import { healthRoutes } from './routes/health.js';
+import { mspdiRoutes } from './routes/mspdi.js';
 import { projectRoutes } from './routes/projects.js';
 import { resourceRoutes } from './routes/resources.js';
 import { roleRoutes } from './routes/roles.js';
@@ -65,6 +66,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(resourceRoutes);
   await fastify.register(assignmentRoutes);
   await fastify.register(baselineRoutes);
+  await fastify.register(mspdiRoutes);
 
   return fastify;
 }

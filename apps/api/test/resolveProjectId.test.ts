@@ -314,4 +314,22 @@ describe('resolveProjectId — baseline branches', () => {
 
     expect(db.select).not.toHaveBeenCalled();
   });
+
+  it('GET /api/projects/:id/export/xml and POST …/import/xml resolve via the projects prefix', async () => {
+    const projectId = '99999999-9999-4999-8999-999999999999';
+
+    expect(
+      await resolveProjectId(
+        mockRequest({ url: '/api/projects/:id/export/xml', id: projectId }),
+      ),
+    ).toBe(projectId);
+
+    expect(
+      await resolveProjectId(
+        mockRequest({ url: '/api/projects/:id/import/xml', id: projectId }),
+      ),
+    ).toBe(projectId);
+
+    expect(db.select).not.toHaveBeenCalled();
+  });
 });
