@@ -33,13 +33,13 @@ number, not a timeline estimate.
 | 2 — Full scheduling | 8 | 8 (all items done) | 0 | 0 | 100% |
 | 3 — Resources | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 4 — Tracking | 6 | 6 (all items done) | 0 | 0 | 100% |
-| 5 — Interop & reporting | 4 | 1 (MSPDI XML round-trip) | 0 | 3 (CSV/Excel/PDF/PNG export; report builder; dashboards) | 25% |
+| 5 — Interop & reporting | 4 | 2 (MSPDI XML round-trip; CSV/Excel/PDF/PNG export) | 0 | 2 (report builder; dashboards) | 50% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **47** | **0** | **10** | **~82%** |
+| **Total** | **57** | **48** | **0** | **9** | **~84%** |
 
-**~82% done, ~18% pending, 0% in progress** (47/57 done — Phases 0–4
-fully complete, plus Phase 5's MSPDI round-trip item; 10/57 not
-started, nothing currently in progress). Remaining: Phase 5's export/
+**~84% done, ~16% pending, 0% in progress** (48/57 done — Phases 0–4
+fully complete, plus Phase 5's MSPDI round-trip and export items; 9/57
+not started, nothing currently in progress). Remaining: Phase 5's
 report-builder/dashboard items, then Phase 6 (agile), plus the small
 Gantt progress-line item noted under Phase 4.
 
@@ -456,6 +456,29 @@ variance columns, earned value metrics, S-curve) is now fully done.**
   resolution (caught by the existing orphan check) rather than either
   assuming it was fine or flagging an unconfirmed suspicion — no bugs
   found.
+- **CSV/Excel/PDF/PNG export** (Phase 5, item 2 of 4) — `GET
+  /api/projects/:id/export/{csv,excel,pdf}` under the existing
+  `data.export` permission (already registered for MSPDI, reused as-is
+  — no new permission needed). All three share one DB read,
+  `reportDataService.ts`'s `loadTaskReport`, and a pure row assembler
+  (`assembleTaskReportRows`, unit-tested without a DB) so the
+  CSV/Excel/PDF renderers can't disagree on what a row is. Rows are
+  ordered by `wbsPath`/`sortOrder` (matching the Gantt/grid's own
+  ordering) and include summaries. `cost` follows `baselineService`'s
+  existing null-vs-zero convention — `null` for a task with no
+  assignments at all, a real `0` only when assignments sum to exactly
+  zero — via the same `numericFromDb` helper the codebase already
+  centralizes the Drizzle `numeric()`-as-string conversion through.
+  `excelExportService.ts` uses `exceljs`, `pdfExportService.ts` uses
+  `pdfkit` (both new dependencies); `slugExportFilename` gives each
+  format a real `Content-Disposition` filename derived from the
+  project name. PNG export is a `packages/gantt` addition instead —
+  `GanttView.exportToPngDataUrl()` composites the background/arrows/
+  bars canvas layers into one offscreen canvas and returns a data URL,
+  deliberately skipping the interaction overlay so a stale hover/drag
+  ghost never ends up baked into the snapshot; wired into
+  `apps/web`'s `GanttPanel` as a "Save as PNG" action. Reviewed in
+  full — no bugs found.
 
 ## Next up
 
@@ -468,8 +491,7 @@ fully reachable end-to-end today.
 **Phases 3 and 4 (Resources, Tracking) are also entirely done** — see
 their sections below. **Phase 5 (Interop & reporting) is in
 progress** — see the "Phase 5" section below. The actual next work is
-Phase 5's remaining three items: CSV/Excel/PDF/PNG export, report
-builder, dashboards.
+Phase 5's remaining two items: report builder, dashboards.
 
 ## What can run in parallel (one terminal per Claude Code session)
 
@@ -535,7 +557,7 @@ against recorded actuals" — verifiable end-to-end via
 
 1. **MS Project XML (MSPDI) round-trip** — **done** (export + import,
    see Done section above).
-2. **CSV/Excel/PDF/PNG export** — not started.
+2. **CSV/Excel/PDF/PNG export** — **done** (see Done section above).
 3. **Report builder** — not started.
 4. **Project and portfolio dashboards** — not started.
 
