@@ -33,13 +33,14 @@ number, not a timeline estimate.
 | 2 — Full scheduling | 8 | 8 (all items done) | 0 | 0 | 100% |
 | 3 — Resources | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 4 — Tracking | 6 | 6 (all items done) | 0 | 0 | 100% |
-| 5 — Interop & reporting | 4 | 0 | 0 | 4 | 0% |
+| 5 — Interop & reporting | 4 | 1 (MSPDI XML round-trip) | 0 | 3 (CSV/Excel/PDF/PNG export; report builder; dashboards) | 25% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **46** | **0** | **11** | **~81%** |
+| **Total** | **57** | **47** | **0** | **10** | **~82%** |
 
-**~81% done, ~19% pending, 0% in progress** (46/57 done — Phases 0–4
-fully complete; 11/57 not started, nothing currently in progress).
-Remaining: Phases 5–6 (interop/reporting, agile), plus the small
+**~82% done, ~18% pending, 0% in progress** (47/57 done — Phases 0–4
+fully complete, plus Phase 5's MSPDI round-trip item; 10/57 not
+started, nothing currently in progress). Remaining: Phase 5's export/
+report-builder/dashboard items, then Phase 6 (agile), plus the small
 Gantt progress-line item noted under Phase 4.
 
 ---
@@ -427,6 +428,35 @@ sheet/usage views) is now fully done.**
 **Phase 4 (PROJECT_SCOPE.md §8: baselines, actuals, status date,
 variance columns, earned value metrics, S-curve) is now fully done.**
 
+- **MS Project XML (MSPDI) export + import** (Phase 5, item 1 of 4) —
+  `.mpp` (binary) stays explicitly out of scope per §10 ("no JVM
+  sidecar"); this is the plain-XML MSPDI interchange format only.
+  Every numeric code mapping (link type, constraint type, resource
+  type, accrue-at, weekday) was independently verified against
+  Microsoft's own primary documentation rather than memory — caught
+  and fixed a real error in the first draft's `PredecessorLink` `Type`
+  codes before it shipped (only `FS` was right; `SS`/`FF`/`SF` were
+  transposed). `mspdiExportService.ts`'s `buildMspdiXml` is pure (no
+  DB inside the builder), hand-verified against a golden fixture, well-
+  formedness checked via a real stack-based tag-balance parse.
+  `mspdiImportService.ts`'s reverse code maps are built by **probing
+  the export functions** rather than re-deriving codes a second time —
+  structurally impossible for import/export to disagree. Import
+  replaces a project's tasks/dependencies/assignments wholesale
+  (matching FK cascades already in place); resources/calendars are
+  matched-or-created by case-insensitive name instead, since they're a
+  shared pool. The file's graph is validated (existing
+  cycle/orphan/summary-link checks) before any writes — a rejected
+  file leaves the project untouched, proven by a test asserting the
+  delete/reschedule calls never fire. The highest-value test
+  round-trips `buildMspdiXml`'s own output back through `parseMspdiXml`
+  and asserts every field matches the original input — real proof
+  export and import agree. Independently reviewed in full, including
+  tracing a dangling-`PredecessorUID` edge case through to its actual
+  resolution (caught by the existing orphan check) rather than either
+  assuming it was fine or flagging an unconfirmed suspicion — no bugs
+  found.
+
 ## Next up
 
 TECHNICAL_DESIGN.md §13's Phase 0/1/2 build order is **entirely done**
@@ -436,10 +466,10 @@ avoid two copies drifting out of sync). **Phase 0's exit demo**
 fully reachable end-to-end today.
 
 **Phases 3 and 4 (Resources, Tracking) are also entirely done** — see
-their sections below. The actual next work is **Phase 5 — Interop &
-reporting** (MS Project XML round-trip, CSV/Excel/PDF/PNG export,
-report builder, dashboards), not yet broken down into individual
-build-order items the way Phases 0–4 have been.
+their sections below. **Phase 5 (Interop & reporting) is in
+progress** — see the "Phase 5" section below. The actual next work is
+Phase 5's remaining three items: CSV/Excel/PDF/PNG export, report
+builder, dashboards.
 
 ## What can run in parallel (one terminal per Claude Code session)
 
@@ -501,12 +531,25 @@ overallocations surface" — verifiable end-to-end today via
 against recorded actuals" — verifiable end-to-end via
 `/projects/$projectId/baselines`.
 
-## Phases 5–6 (PROJECT_SCOPE.md §8) — not started
+## Phase 5 — Interop & reporting (PROJECT_SCOPE.md §8, in progress)
 
-- **Phase 5 — Interop & reporting:** MS Project XML round-trip, CSV/Excel/
-  PDF/PNG export, report builder, dashboards.
-- **Phase 6 — Agile module:** boards, sprints, backlog, story points, epic
-  hierarchy, burndown/burnup/velocity/CFD, sprint bars on the master Gantt.
+1. **MS Project XML (MSPDI) round-trip** — **done** (export + import,
+   see Done section above).
+2. **CSV/Excel/PDF/PNG export** — not started.
+3. **Report builder** — not started.
+4. **Project and portfolio dashboards** — not started.
+
+**Exit criterion** ("round-trip with MS Project preserves the plan")
+is **partially verifiable** — the export→import round-trip is proven
+against our own generated files (no MS Project install in this
+environment, same standing caveat as every golden case), but not yet
+against a real MS Project export.
+
+## Phase 6 — Agile module (PROJECT_SCOPE.md §8) — not started
+
+Planning-mode field, boards, sprints, backlog, story points, epic
+hierarchy, burndown/burnup/velocity/CFD, sprint bars on the master
+Gantt, sprint close and carry-over.
 
 `packages/ui` (shadcn/ui-based shared components) has no dedicated line item
 above — it accretes as `apps/web` needs components.
