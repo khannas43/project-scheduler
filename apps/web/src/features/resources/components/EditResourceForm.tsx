@@ -36,13 +36,34 @@ export function EditResourceForm({
     (resource.accrualType as AccrualType | null) ?? '',
   );
   const [calendarId, setCalendarId] = useState(resource.calendarId ?? '');
+  const [formError, setFormError] = useState<string | null>(null);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     const max = parseOptionalNumber(maxUnits);
     const rate = parseOptionalNumber(standardRate);
     const cpu = parseOptionalNumber(costPerUse);
-    if (max === undefined || rate === undefined || cpu === undefined) return;
+    if (max === undefined) {
+      setFormError('Max units must be a valid number (or blank).');
+      return;
+    }
+    if (rate === undefined) {
+      setFormError('Standard rate must be a valid number (or blank).');
+      return;
+    }
+    if (cpu === undefined) {
+      setFormError('Cost per use must be a valid number (or blank).');
+      return;
+    }
+    const calendar = calendarId.trim();
+    if (
+      calendar !== '' &&
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(calendar)
+    ) {
+      setFormError('Calendar ID must be a valid UUID, or left blank.');
+      return;
+    }
+    setFormError(null);
 
     try {
       const updated = await update.mutateAsync({
@@ -55,7 +76,7 @@ export function EditResourceForm({
           standardRate: rate,
           costPerUse: cpu,
           accrualType: accrualType === '' ? null : accrualType,
-          calendarId: calendarId.trim() === '' ? null : calendarId.trim(),
+          calendarId: calendar === '' ? null : calendar,
         },
       });
       onUpdated?.(updated);
@@ -147,6 +168,11 @@ export function EditResourceForm({
           placeholder="optional UUID"
         />
       </label>
+      {formError ? (
+        <p className="form-error" role="alert">
+          {formError}
+        </p>
+      ) : null}
       {update.error ? (
         <p className="form-error" role="alert">
           {update.error instanceof Error ? update.error.message : 'Could not update resource'}

@@ -1,10 +1,17 @@
-import { MINUTES_PER_DAY, PIXELS_PER_DAY, RESIZE_EDGE_PX, ROW_HEIGHT } from './constants.js';
+import {
+  HEADER_HEIGHT,
+  MINUTES_PER_DAY,
+  PIXELS_PER_DAY,
+  RESIZE_EDGE_PX,
+  ROW_HEIGHT,
+} from './constants.js';
 import { snapDurationMinutes, snapMinutesToDay } from './drag.js';
 import { hitTest } from './hitTest.js';
 import { drawArrows } from './layers/arrows.js';
 import { drawBackground } from './layers/background.js';
 import { drawBars } from './layers/bars.js';
 import { drawInteraction, type DragGhost } from './layers/interaction.js';
+import { drawTimeHeader } from './layers/timeHeader.js';
 import { buildTaskById, lookupTask } from './taskIndex.js';
 import type { GanttDependency, GanttTask, ViewportState } from './types.js';
 import { minutesToX, xToMinutes } from './viewport.js';
@@ -14,6 +21,8 @@ export interface GanttViewOptions {
   readonly tasks: readonly GanttTask[];
   readonly dependencies: readonly GanttDependency[];
   readonly pixelsPerMinute?: number;
+  /** ISO date/time for day 0 on the timescale (usually project start). */
+  readonly originDateIso?: string | null;
   readonly onHover?: (taskId: number | null) => void;
   /** Fired on pointerup when a non-summary bar was dragged to a new day-snapped start. */
   readonly onCommitMove?: (taskId: number, newStartMinutes: number) => void;
@@ -47,20 +56,33 @@ interface ActiveLink {
   readonly fromTaskId: number;
 }
 
+interface ActivePan {
+  readonly pointerId: number;
+  readonly originClientX: number;
+  readonly originClientY: number;
+  readonly originScrollLeft: number;
+  readonly originScrollTop: number;
+}
+
 /**
- * Four-layer canvas Gantt (§8.2). Each layer is its own `<canvas>`; dirty
- * flags ensure redraws follow the invalidation table:
+ * Four-layer canvas Gantt (§8.2) plus a sticky date header. Each chart layer
+ * is its own `<canvas>`; dirty flags ensure redraws follow the invalidation
+ * table:
  *
- * - background  — viewport change only
+ * - background / header — viewport change only
  * - arrows/bars — data or viewport change
  * - interaction — every pointer move
  */
 export class GanttView {
   readonly container: HTMLElement;
+  private readonly root: HTMLElement;
+  private readonly headerCanvas: HTMLCanvasElement;
+  private readonly headerCtx: CanvasRenderingContext2D;
   private readonly stack: HTMLElement;
   private readonly canvases: Record<LayerName, HTMLCanvasElement>;
   private readonly contexts: Record<LayerName, CanvasRenderingContext2D>;
-  private readonly dirty: Record<LayerName, boolean> = {
+  private readonly dirty: Record<LayerName, boolean> & { header: boolean } = {
+    header: true,
     background: true,
     arrows: true,
     bars: true,
@@ -70,7 +92,8 @@ export class GanttView {
   private tasks: readonly GanttTask[];
   private tasksById: ReadonlyMap<number, GanttTask>;
   private dependencies: readonly GanttDependency[];
-  private readonly pixelsPerMinute: number;
+  private pixelsPerMinute: number;
+  private originUtcMs: number;
   private readonly onHover: ((taskId: number | null) => void) | undefined;
   private readonly onCommitMove: ((taskId: number, newStartMinutes: number) => void) | undefined;
   private readonly onCommitResize: ((taskId: number, newDurationMinutes: number) => void) | undefined;
@@ -83,6 +106,7 @@ export class GanttView {
   private drag: ActiveDrag | null = null;
   private resizeDrag: ActiveResize | null = null;
   private linkDrag: ActiveLink | null = null;
+  private pan: ActivePan | null = null;
   private raf = 0;
   private dpr = 1;
 
@@ -99,15 +123,27 @@ export class GanttView {
     this.tasksById = buildTaskById(options.tasks);
     this.dependencies = options.dependencies;
     this.pixelsPerMinute = options.pixelsPerMinute ?? PIXELS_PER_DAY / MINUTES_PER_DAY;
+    this.originUtcMs = parseOriginUtcMs(options.originDateIso);
     this.onHover = options.onHover;
     this.onCommitMove = options.onCommitMove;
     this.onCommitResize = options.onCommitResize;
     this.onCommitLink = options.onCommitLink;
 
+    this.root = document.createElement('div');
+    this.root.style.cssText =
+      'display:flex;flex-direction:column;width:100%;height:100%;overflow:hidden;';
+    this.container.appendChild(this.root);
+
+    this.headerCanvas = document.createElement('canvas');
+    this.headerCanvas.setAttribute('aria-hidden', 'true');
+    this.headerCanvas.style.cssText = `display:block;width:100%;height:${HEADER_HEIGHT}px;flex:0 0 ${HEADER_HEIGHT}px;cursor:grab;touch-action:none;`;
+    this.root.appendChild(this.headerCanvas);
+    this.headerCtx = require2d(this.headerCanvas);
+
     this.stack = document.createElement('div');
     this.stack.style.cssText =
-      'position:relative;width:100%;height:100%;overflow:hidden;touch-action:none;';
-    this.container.appendChild(this.stack);
+      'position:relative;flex:1 1 auto;min-height:0;width:100%;overflow:hidden;touch-action:none;cursor:grab;';
+    this.root.appendChild(this.stack);
 
     this.canvases = {
       background: this.makeCanvas(1),
@@ -130,19 +166,21 @@ export class GanttView {
     this.onPointerMove = (e) => this.handlePointerMove(e);
     this.onPointerUp = (e) => this.handlePointerUp(e);
     this.onPointerLeave = () => {
-      if (!this.drag && !this.resizeDrag && !this.linkDrag) {
+      if (!this.drag && !this.resizeDrag && !this.linkDrag && !this.pan) {
         this.setHover(null);
-        this.stack.style.cursor = '';
+        this.setIdleCursor();
       }
     };
     this.onResize = () => this.resize();
 
-    this.stack.addEventListener('wheel', this.onWheel, { passive: false });
-    this.stack.addEventListener('pointerdown', this.onPointerDown);
-    this.stack.addEventListener('pointermove', this.onPointerMove);
-    this.stack.addEventListener('pointerup', this.onPointerUp);
-    this.stack.addEventListener('pointercancel', this.onPointerUp);
-    this.stack.addEventListener('pointerleave', this.onPointerLeave);
+    for (const el of [this.stack, this.headerCanvas]) {
+      el.addEventListener('wheel', this.onWheel, { passive: false });
+      el.addEventListener('pointerdown', this.onPointerDown);
+      el.addEventListener('pointermove', this.onPointerMove);
+      el.addEventListener('pointerup', this.onPointerUp);
+      el.addEventListener('pointercancel', this.onPointerUp);
+      el.addEventListener('pointerleave', this.onPointerLeave);
+    }
     window.addEventListener('resize', this.onResize);
 
     this.resize();
@@ -175,6 +213,11 @@ export class GanttView {
     return this.linkDrag;
   }
 
+  /** Test seam — active pan-drag state, if any. */
+  getActivePan(): Readonly<ActivePan> | null {
+    return this.pan;
+  }
+
   /** Test seam — current drag ghost (move / resize / link preview). */
   getDragGhost(): DragGhost | null {
     return this.dragGhost;
@@ -190,6 +233,31 @@ export class GanttView {
     this.schedule();
   }
 
+  getPixelsPerMinute(): number {
+    return this.pixelsPerMinute;
+  }
+
+  /** Change horizontal zoom (e.g. Day / Week / Month presets) and repaint. */
+  setPixelsPerMinute(pixelsPerMinute: number): void {
+    if (!(pixelsPerMinute > 0) || pixelsPerMinute === this.pixelsPerMinute) return;
+    this.pixelsPerMinute = pixelsPerMinute;
+    this.dirty.header = true;
+    this.dirty.background = true;
+    this.dirty.arrows = true;
+    this.dirty.bars = true;
+    this.dirty.interaction = true;
+    this.schedule();
+  }
+
+  /** Update day-0 date used by the timescale header labels. */
+  setOriginDateIso(originDateIso: string | null | undefined): void {
+    const next = parseOriginUtcMs(originDateIso);
+    if (next === this.originUtcMs) return;
+    this.originUtcMs = next;
+    this.dirty.header = true;
+    this.schedule();
+  }
+
   setScroll(scrollLeft: number, scrollTop: number): void {
     const maxTop = Math.max(0, this.contentHeight - this.viewport.height);
     const nextLeft = Math.max(0, scrollLeft);
@@ -197,6 +265,7 @@ export class GanttView {
     if (nextLeft === this.viewport.scrollLeft && nextTop === this.viewport.scrollTop) return;
 
     this.viewport = { ...this.viewport, scrollLeft: nextLeft, scrollTop: nextTop };
+    this.dirty.header = true;
     this.dirty.background = true;
     this.dirty.arrows = true;
     this.dirty.bars = true;
@@ -232,33 +301,37 @@ export class GanttView {
   }
 
   /**
-   * Composite background + arrows + bars into one PNG data URL (skips the
-   * interaction overlay — hover/drag ghosts shouldn't appear in the snapshot).
+   * Composite header + background + arrows + bars into one PNG data URL (skips
+   * the interaction overlay — hover/drag ghosts shouldn't appear in the snapshot).
    */
   exportToPngDataUrl(): string {
     this.paint();
-    const source = this.canvases.background;
+    const body = this.canvases.background;
     const out = document.createElement('canvas');
-    out.width = source.width;
-    out.height = source.height;
+    out.width = body.width;
+    out.height = this.headerCanvas.height + body.height;
     const ctx = out.getContext('2d');
     if (!ctx) throw new Error('CanvasRenderingContext2D unavailable');
+    ctx.drawImage(this.headerCanvas, 0, 0);
+    let y = this.headerCanvas.height;
     for (const name of ['background', 'arrows', 'bars'] as const) {
-      ctx.drawImage(this.canvases[name], 0, 0);
+      ctx.drawImage(this.canvases[name], 0, y);
     }
     return out.toDataURL('image/png');
   }
 
   destroy(): void {
     if (this.raf) cancelAnimationFrame(this.raf);
-    this.stack.removeEventListener('wheel', this.onWheel);
-    this.stack.removeEventListener('pointerdown', this.onPointerDown);
-    this.stack.removeEventListener('pointermove', this.onPointerMove);
-    this.stack.removeEventListener('pointerup', this.onPointerUp);
-    this.stack.removeEventListener('pointercancel', this.onPointerUp);
-    this.stack.removeEventListener('pointerleave', this.onPointerLeave);
+    for (const el of [this.stack, this.headerCanvas]) {
+      el.removeEventListener('wheel', this.onWheel);
+      el.removeEventListener('pointerdown', this.onPointerDown);
+      el.removeEventListener('pointermove', this.onPointerMove);
+      el.removeEventListener('pointerup', this.onPointerUp);
+      el.removeEventListener('pointercancel', this.onPointerUp);
+      el.removeEventListener('pointerleave', this.onPointerLeave);
+    }
     window.removeEventListener('resize', this.onResize);
-    this.stack.remove();
+    this.root.remove();
   }
 
   private makeCanvas(z: number): HTMLCanvasElement {
@@ -275,6 +348,10 @@ export class GanttView {
     const height = Math.max(1, Math.floor(rect.height));
     this.dpr = window.devicePixelRatio || 1;
 
+    this.headerCanvas.width = Math.floor(width * this.dpr);
+    this.headerCanvas.height = Math.floor(HEADER_HEIGHT * this.dpr);
+    this.headerCtx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
     for (const name of Object.keys(this.canvases) as LayerName[]) {
       const canvas = this.canvases[name];
       canvas.width = Math.floor(width * this.dpr);
@@ -284,6 +361,7 @@ export class GanttView {
     }
 
     this.viewport = { ...this.viewport, width, height };
+    this.dirty.header = true;
     this.dirty.background = true;
     this.dirty.arrows = true;
     this.dirty.bars = true;
@@ -294,6 +372,10 @@ export class GanttView {
   private pointerLocal(e: PointerEvent): { x: number; y: number } {
     const rect = this.stack.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  private captureTarget(e: PointerEvent): HTMLElement {
+    return e.currentTarget instanceof HTMLElement ? e.currentTarget : this.stack;
   }
 
   private barPixelGeometry(task: GanttTask): { x: number; w: number } {
@@ -308,28 +390,72 @@ export class GanttView {
     return pointerX >= x + w - RESIZE_EDGE_PX && pointerX <= x + w;
   }
 
+  private setIdleCursor(): void {
+    this.stack.style.cursor = 'grab';
+    this.headerCanvas.style.cursor = 'grab';
+  }
+
   private updateHoverCursor(x: number, y: number): void {
-    if (this.drag || this.resizeDrag || this.linkDrag) return;
+    if (this.drag || this.resizeDrag || this.linkDrag || this.pan) return;
     const taskId = hitTest(this.spatialIndex, x, y);
     const task = lookupTask(this.tasksById, taskId);
     if (task && !task.isSummary && this.isNearRightResizeEdge(x, task)) {
       this.stack.style.cursor = 'ew-resize';
+    } else if (task && !task.isSummary) {
+      this.stack.style.cursor = 'default';
     } else {
-      this.stack.style.cursor = '';
+      this.setIdleCursor();
     }
   }
 
+  private beginPan(e: PointerEvent): void {
+    const target = this.captureTarget(e);
+    target.setPointerCapture(e.pointerId);
+    this.pan = {
+      pointerId: e.pointerId,
+      originClientX: e.clientX,
+      originClientY: e.clientY,
+      originScrollLeft: this.viewport.scrollLeft,
+      originScrollTop: this.viewport.scrollTop,
+    };
+    this.stack.style.cursor = 'grabbing';
+    this.headerCanvas.style.cursor = 'grabbing';
+    this.setHover(null);
+    e.preventDefault();
+  }
+
   private handlePointerDown(e: PointerEvent): void {
-    if (this.drag || this.resizeDrag || this.linkDrag) return;
+    if (this.drag || this.resizeDrag || this.linkDrag || this.pan) return;
+
+    // Middle / aux button always pans; header strip always pans.
+    const onHeader = e.currentTarget === this.headerCanvas;
+    if (e.button === 1 || onHeader) {
+      this.beginPan(e);
+      return;
+    }
+    if (e.button !== 0) return;
+
     // Ensure spatial index is current before hit-testing.
     this.paint();
 
     const { x, y } = this.pointerLocal(e);
+    // Clicks that land outside the chart body (e.g. header) already panned.
+    if (y < 0 || y > this.viewport.height) {
+      this.beginPan(e);
+      return;
+    }
+
     const taskId = hitTest(this.spatialIndex, x, y);
-    if (taskId === null) return;
+    if (taskId === null) {
+      this.beginPan(e);
+      return;
+    }
 
     const task = lookupTask(this.tasksById, taskId);
-    if (!task || task.isSummary) return;
+    if (!task || task.isSummary) {
+      this.beginPan(e);
+      return;
+    }
 
     this.stack.setPointerCapture(e.pointerId);
 
@@ -376,6 +502,14 @@ export class GanttView {
   }
 
   private handlePointerMove(e: PointerEvent): void {
+    if (this.pan && e.pointerId === this.pan.pointerId) {
+      const dx = e.clientX - this.pan.originClientX;
+      const dy = e.clientY - this.pan.originClientY;
+      // Dragging right reveals earlier dates (scroll left decreases).
+      this.setScroll(this.pan.originScrollLeft - dx, this.pan.originScrollTop - dy);
+      return;
+    }
+
     if (this.linkDrag && e.pointerId === this.linkDrag.pointerId) {
       const { x, y } = this.pointerLocal(e);
       this.setDragGhost({
@@ -417,6 +551,11 @@ export class GanttView {
       return;
     }
 
+    if (e.currentTarget === this.headerCanvas) {
+      this.headerCanvas.style.cursor = 'grab';
+      return;
+    }
+
     const { x, y } = this.pointerLocal(e);
     const id = hitTest(this.spatialIndex, x, y);
     this.setHover(id);
@@ -424,6 +563,17 @@ export class GanttView {
   }
 
   private handlePointerUp(e: PointerEvent): void {
+    if (this.pan && e.pointerId === this.pan.pointerId) {
+      const { pointerId } = this.pan;
+      this.pan = null;
+      const target = this.captureTarget(e);
+      if (target.hasPointerCapture(pointerId)) {
+        target.releasePointerCapture(pointerId);
+      }
+      this.setIdleCursor();
+      return;
+    }
+
     if (this.linkDrag && e.pointerId === this.linkDrag.pointerId) {
       const { fromTaskId, pointerId } = this.linkDrag;
       this.linkDrag = null;
@@ -432,7 +582,7 @@ export class GanttView {
         this.stack.releasePointerCapture(pointerId);
       }
       this.setDragGhost(null);
-      this.stack.style.cursor = '';
+      this.setIdleCursor();
 
       const { x, y } = this.pointerLocal(e);
       // Ensure spatial index is current for the drop hit-test.
@@ -453,7 +603,7 @@ export class GanttView {
         this.stack.releasePointerCapture(pointerId);
       }
       this.setDragGhost(null);
-      this.stack.style.cursor = '';
+      this.setIdleCursor();
 
       if (currentDurationMinutes !== originDurationMinutes) {
         this.onCommitResize?.(taskId, currentDurationMinutes);
@@ -470,6 +620,7 @@ export class GanttView {
       this.stack.releasePointerCapture(pointerId);
     }
     this.setDragGhost(null);
+    this.setIdleCursor();
 
     if (currentStartMinutes !== originStartMinutes) {
       this.onCommitMove?.(taskId, currentStartMinutes);
@@ -488,6 +639,17 @@ export class GanttView {
     const vp = this.viewport;
     const ppm = this.pixelsPerMinute;
 
+    if (this.dirty.header) {
+      drawTimeHeader({
+        ctx: this.headerCtx,
+        width: vp.width,
+        height: HEADER_HEIGHT,
+        scrollLeft: vp.scrollLeft,
+        pixelsPerMinute: ppm,
+        originUtcMs: this.originUtcMs,
+      });
+      this.dirty.header = false;
+    }
     if (this.dirty.background) {
       drawBackground({ ctx: this.contexts.background, viewport: vp, pixelsPerMinute: ppm });
       this.dirty.background = false;
@@ -532,4 +694,10 @@ function require2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('CanvasRenderingContext2D unavailable');
   return ctx;
+}
+
+function parseOriginUtcMs(originDateIso: string | null | undefined): number {
+  if (!originDateIso) return 0;
+  const ms = Date.parse(originDateIso);
+  return Number.isFinite(ms) ? ms : 0;
 }

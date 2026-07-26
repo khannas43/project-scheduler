@@ -40,6 +40,12 @@ export const projects = pgTable('projects', {
     .notNull()
     .references(() => users.id),
   isArchived: boolean('is_archived').notNull().default(false),
+  /**
+   * Project-scoped display / planning preferences (date format, active
+   * baseline, etc.). Scheduling fields (startDate, statusDate, calendarId)
+   * stay first-class columns.
+   */
+  settings: jsonb('settings').$type<Record<string, unknown>>().notNull().default({}),
   version: integer('version').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true })

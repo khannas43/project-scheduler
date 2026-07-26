@@ -1,11 +1,15 @@
-import type { AssignmentCreateInput, AssignmentUpdateInput } from '@pkg/schema';
+import type {
+  AssignmentCreateInput,
+  AssignmentUpdateInput,
+  TimephasedDayUpdateInput,
+} from '@pkg/schema';
 import {
   asCalendarId,
   asEpochMinutes,
   MINUTES_PER_DAY,
   type CompiledCalendar,
 } from '@pkg/scheduler';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 
 import { db } from '../db/client.js';
 import {
@@ -49,6 +53,16 @@ export interface WorkAndCostInput {
  * Derive assignment work + cost from task duration, units, and resource rates.
  * Rates come in as Drizzle numeric strings — Number() here (the "way out").
  */
+/** Planned cost from work minutes + resource rates (hourly standardRate + costPerUse). */
+export function computeCostFromWork(
+  resource: Pick<WorkAndCostInput, 'standardRate' | 'costPerUse'>,
+  workMinutes: number,
+): number {
+  const rate = Number(resource.standardRate ?? 0);
+  const costPerUse = Number(resource.costPerUse ?? 0);
+  return (workMinutes / 60) * rate + costPerUse;
+}
+
 export function computeWorkAndCost(
   task: Pick<WorkAndCostInput, 'durationMinutes'>,
   resource: Pick<WorkAndCostInput, 'standardRate' | 'costPerUse'>,
@@ -56,10 +70,7 @@ export function computeWorkAndCost(
 ): { workMinutes: number; cost: number } {
   const duration = task.durationMinutes ?? 0;
   const workMinutes = Math.round(duration * units);
-  const rate = Number(resource.standardRate ?? 0);
-  const costPerUse = Number(resource.costPerUse ?? 0);
-  const cost = (workMinutes / 60) * rate + costPerUse;
-  return { workMinutes, cost };
+  return { workMinutes, cost: computeCostFromWork(resource, workMinutes) };
 }
 
 export interface OverallocationDay {
@@ -77,6 +88,59 @@ export interface AssignmentSpan {
 export interface TimephasedBucket {
   readonly periodDate: string;
   readonly plannedWorkMinutes: number;
+}
+
+/** Default working-day length used when converting day units ↔ minutes. */
+export const WORKING_MINUTES_PER_DAY = 480;
+
+/** Snap units to a clean step (default 0.05) so values like 0.9104 become 0.90. */
+export function roundUnits(units: number, step = 0.05): number {
+  if (!Number.isFinite(units)) return units;
+  if (units === 0) return 0;
+  const rounded = Math.round(units / step) * step;
+  return Math.round(rounded * 1000) / 1000;
+}
+
+export function dayUnitsFromMinutes(
+  plannedWorkMinutes: number,
+  minutesPerDay = WORKING_MINUTES_PER_DAY,
+): number {
+  if (minutesPerDay <= 0) return 0;
+  return roundUnits(plannedWorkMinutes / minutesPerDay);
+}
+
+export function minutesFromDayUnits(
+  units: number,
+  minutesPerDay = WORKING_MINUTES_PER_DAY,
+): number {
+  return Math.max(0, Math.round(units * minutesPerDay));
+}
+
+/** Peak day-units across a contour — used as assignment.units after a day edit. */
+export function peakUnitsFromBuckets(
+  buckets: readonly { plannedWorkMinutes: number | null | undefined }[],
+  minutesPerDay = WORKING_MINUTES_PER_DAY,
+): number {
+  let peak = 0;
+  for (const b of buckets) {
+    const u = dayUnitsFromMinutes(b.plannedWorkMinutes ?? 0, minutesPerDay);
+    if (u > peak) peak = u;
+  }
+  return peak > 0 ? peak : 1;
+}
+
+/** Normalize DB/API period dates to YYYY-MM-DD. */
+export function normalizePeriodDate(value: string | Date | null | undefined): string | null {
+  if (value == null) return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) return null;
+    return value.toISOString().slice(0, 10);
+  }
+  const s = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const parsed = new Date(s);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10);
 }
 
 /** UTC calendar-day keys (YYYY-MM-DD) from start through finish inclusive. */
@@ -252,7 +316,7 @@ export async function createAssignment(
           'units may only be set on work resources (material/cost resources have no % allocation)',
         );
       }
-      const units = unitsExplicit ? input.units! : 1.0;
+      const units = unitsExplicit ? roundUnits(input.units!) : 1.0;
 
       const { workMinutes, cost } = computeWorkAndCost(task, resource, units);
 
@@ -312,10 +376,11 @@ export async function updateAssignment(
     const patch: {
       units?: string | null;
       workMinutes?: number;
-      cost?: string;
+      cost?: string | null;
       actualWorkMinutes?: number | null;
       actualCost?: string | null;
     } = {};
+    let refreshTimephased = false;
 
     if (input.units !== undefined) {
       if (resource.resourceType !== 'work') {
@@ -323,10 +388,35 @@ export async function updateAssignment(
           'units may only be updated on work-resource assignments (material/cost resources have no % allocation)',
         );
       }
-      const { workMinutes, cost } = computeWorkAndCost(task, resource, input.units);
-      patch.units = numericToDb(input.units) ?? null;
+      const units = roundUnits(input.units);
+      const { workMinutes, cost } = computeWorkAndCost(task, resource, units);
+      patch.units = numericToDb(units) ?? null;
       patch.workMinutes = workMinutes;
-      patch.cost = String(cost);
+      if (input.cost === undefined) patch.cost = String(cost);
+      refreshTimephased = true;
+    }
+
+    if (input.workMinutes !== undefined) {
+      const workMinutes = input.workMinutes;
+      const duration = task.durationMinutes ?? 0;
+      if (duration > 0) {
+        const units = roundUnits(workMinutes / duration);
+        if (resource.resourceType === 'work') {
+          if (units <= 0) {
+            throw new BadRequestError('workMinutes must be positive when the task has a duration');
+          }
+          patch.units = numericToDb(units) ?? null;
+        }
+      }
+      patch.workMinutes = workMinutes;
+      if (input.cost === undefined) {
+        patch.cost = String(computeCostFromWork(resource, workMinutes));
+      }
+      refreshTimephased = true;
+    }
+
+    if (input.cost !== undefined) {
+      patch.cost = input.cost === null ? null : String(input.cost);
     }
 
     if (input.actualWorkMinutes !== undefined) {
@@ -344,8 +434,8 @@ export async function updateAssignment(
 
     if (!updated) throw new NotFoundError('Assignment not found');
 
-    // Timephased planned work depends on units/duration — only rebuild when units changed.
-    if (input.units !== undefined) {
+    // Timephased planned work depends on units/work — rebuild when either changes.
+    if (refreshTimephased) {
       await refreshTimephasedDistribution(tx, id);
     }
 
@@ -360,6 +450,146 @@ export async function updateAssignment(
     });
 
     return updated;
+  }, db);
+}
+
+export interface TimephasedDayUpdateResult {
+  readonly assignment: typeof assignments.$inferSelect;
+  readonly timephased: Array<typeof assignmentTimephased.$inferSelect>;
+}
+
+/**
+ * Set planned work for one calendar day without redistributing the whole contour.
+ * Recomputes assignment.workMinutes as the sum of day buckets and snaps units to 0.05.
+ */
+export async function updateTimephasedDay(
+  assignmentId: string,
+  input: TimephasedDayUpdateInput,
+  actorUserId: string,
+): Promise<TimephasedDayUpdateResult> {
+  return withSerializableRetry(async (tx) => {
+    const [existing] = await tx
+      .select()
+      .from(assignments)
+      .where(eq(assignments.id, assignmentId))
+      .limit(1);
+    if (!existing) throw new NotFoundError('Assignment not found');
+
+    const [task] = await tx.select().from(tasks).where(eq(tasks.id, existing.taskId)).limit(1);
+    if (!task) throw new NotFoundError('Task not found');
+
+    const [resource] = await tx
+      .select()
+      .from(resources)
+      .where(eq(resources.id, existing.resourceId))
+      .limit(1);
+    if (!resource) throw new NotFoundError('Resource not found');
+    if (resource.resourceType !== 'work') {
+      throw new BadRequestError('Day allocation can only be edited for work-resource assignments');
+    }
+    if (!task.earlyStart || !task.earlyFinish) {
+      throw new BadRequestError('Task must be scheduled before day allocation can be edited');
+    }
+
+    const spanDays = eachUtcDayInclusive(task.earlyStart, task.earlyFinish);
+    if (!spanDays.includes(input.periodDate)) {
+      throw new BadRequestError(
+        `periodDate ${input.periodDate} is outside the task schedule (${spanDays[0]}…${spanDays[spanDays.length - 1]})`,
+      );
+    }
+
+    const periodDate = normalizePeriodDate(input.periodDate);
+    if (!periodDate) {
+      throw new BadRequestError('periodDate must be YYYY-MM-DD');
+    }
+
+    const plannedWorkMinutes =
+      input.plannedWorkMinutes !== undefined
+        ? input.plannedWorkMinutes
+        : minutesFromDayUnits(roundUnits(input.units ?? 0));
+
+    // Seed an even contour once if nothing exists yet, then overlay this day.
+    let currentBuckets = await tx
+      .select()
+      .from(assignmentTimephased)
+      .where(eq(assignmentTimephased.assignmentId, assignmentId));
+    if (currentBuckets.length === 0 && (existing.workMinutes ?? 0) > 0) {
+      await refreshTimephasedDistribution(tx, assignmentId);
+      currentBuckets = await tx
+        .select()
+        .from(assignmentTimephased)
+        .where(eq(assignmentTimephased.assignmentId, assignmentId));
+    }
+
+    const dayRow = currentBuckets.find((b) => normalizePeriodDate(b.periodDate) === periodDate);
+    const storedPeriodDate = dayRow
+      ? (normalizePeriodDate(dayRow.periodDate) ?? periodDate)
+      : periodDate;
+
+    if (plannedWorkMinutes <= 0) {
+      if (dayRow) {
+        await tx
+          .delete(assignmentTimephased)
+          .where(
+            and(
+              eq(assignmentTimephased.assignmentId, assignmentId),
+              eq(assignmentTimephased.periodDate, storedPeriodDate),
+            ),
+          );
+      }
+    } else if (dayRow) {
+      await tx
+        .update(assignmentTimephased)
+        .set({ plannedWorkMinutes })
+        .where(
+          and(
+            eq(assignmentTimephased.assignmentId, assignmentId),
+            eq(assignmentTimephased.periodDate, storedPeriodDate),
+          ),
+        );
+    } else {
+      await tx.insert(assignmentTimephased).values({
+        assignmentId,
+        periodDate,
+        plannedWorkMinutes,
+        actualWorkMinutes: null,
+      });
+    }
+
+    const buckets = await tx
+      .select()
+      .from(assignmentTimephased)
+      .where(eq(assignmentTimephased.assignmentId, assignmentId))
+      .orderBy(asc(assignmentTimephased.periodDate));
+
+    const workMinutes = buckets.reduce((sum, b) => sum + (b.plannedWorkMinutes ?? 0), 0);
+    // Peak day units — NOT work/duration average — so editing one day does not
+    // rewrite the level shown for every other day of the assignment.
+    const units = workMinutes > 0 ? peakUnitsFromBuckets(buckets) : 1;
+
+    const [updated] = await tx
+      .update(assignments)
+      .set({
+        workMinutes,
+        units: numericToDb(units) ?? null,
+        cost: String(computeCostFromWork(resource, workMinutes)),
+      })
+      .where(eq(assignments.id, assignmentId))
+      .returning();
+
+    if (!updated) throw new NotFoundError('Assignment not found');
+
+    await writeAuditLog(tx, {
+      userId: actorUserId,
+      projectId: task.projectId,
+      action: 'assignment.timephased.update',
+      entityType: 'assignment',
+      entityId: assignmentId,
+      before: existing,
+      after: { assignment: updated, periodDate, plannedWorkMinutes },
+    });
+
+    return { assignment: updated, timephased: buckets };
   }, db);
 }
 

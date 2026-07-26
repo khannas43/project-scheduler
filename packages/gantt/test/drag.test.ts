@@ -7,6 +7,7 @@ import { MINUTES_PER_DAY, PIXELS_PER_DAY, ROW_HEIGHT } from '../src/constants.js
 import { snapMinutesToDay } from '../src/drag.js';
 import { GanttView } from '../src/ganttView.js';
 import type { GanttTask } from '../src/types.js';
+import { stubStackRect } from './dom.js';
 
 function stubCanvas(): void {
   // happy-dom has no Path2D; arrows layer only needs a constructible stub.
@@ -112,18 +113,15 @@ describe('GanttView drag-to-move', () => {
       dependencies: [],
       onCommitMove,
     });
-    // Force layout size on the stack.
-    Object.defineProperty(view.container.firstElementChild, 'getBoundingClientRect', {
-      value: () => ({ left: 0, top: 0, width: 800, height: 400, right: 800, bottom: 400 }),
-    });
+    const stack = stubStackRect(view);
     view.paint();
 
-    const stack = view.container.firstElementChild as HTMLElement;
     const ppm = PIXELS_PER_DAY / MINUTES_PER_DAY;
     dispatch(stack, 'pointerdown', { clientX: ppm * (MINUTES_PER_DAY / 2), clientY: ROW_HEIGHT / 2 });
 
+    // Summary bars are not movable — empty/summary hits pan the viewport instead.
     expect(view.getActiveDrag()).toBeNull();
-    expect(setPointerCapture).not.toHaveBeenCalled();
+    expect(view.getActivePan()).not.toBeNull();
     expect(onCommitMove).not.toHaveBeenCalled();
     view.destroy();
   });
@@ -136,10 +134,7 @@ describe('GanttView drag-to-move', () => {
       dependencies: [],
       onCommitMove,
     });
-    const stack = view.container.firstElementChild as HTMLElement;
-    Object.defineProperty(stack, 'getBoundingClientRect', {
-      value: () => ({ left: 0, top: 0, width: 800, height: 400, right: 800, bottom: 400 }),
-    });
+    const stack = stubStackRect(view);
     view.paint();
 
     const ppm = PIXELS_PER_DAY / MINUTES_PER_DAY;
@@ -170,10 +165,7 @@ describe('GanttView drag-to-move', () => {
       dependencies: [],
       onCommitMove,
     });
-    const stack = view.container.firstElementChild as HTMLElement;
-    Object.defineProperty(stack, 'getBoundingClientRect', {
-      value: () => ({ left: 0, top: 0, width: 800, height: 400, right: 800, bottom: 400 }),
-    });
+    const stack = stubStackRect(view);
     view.paint();
 
     const ppm = PIXELS_PER_DAY / MINUTES_PER_DAY;

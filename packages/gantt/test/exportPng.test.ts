@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MINUTES_PER_DAY } from '../src/constants.js';
 import { GanttView } from '../src/ganttView.js';
 import type { GanttTask } from '../src/types.js';
+import { stubStackRect } from './dom.js';
 
 function stubCanvas(): void {
   function Path2DStub(this: { moveTo: () => void; lineTo: () => void; rect: () => void }): void {
@@ -76,20 +77,16 @@ describe('GanttView.exportToPngDataUrl', () => {
       },
     ];
     const view = new GanttView({ container, tasks, dependencies: [] });
-    // Match stack rect used for resize.
-    const stack = container.firstElementChild as HTMLElement;
-    Object.defineProperty(stack, 'getBoundingClientRect', {
-      value: () => ({ left: 0, top: 0, width: 800, height: 400, right: 800, bottom: 400 }),
-    });
+    stubStackRect(view);
     view.paint();
 
     const dataUrl = view.exportToPngDataUrl();
     expect(dataUrl).toBe('data:image/png;base64,COMPOSITED');
 
-    // Offscreen composite canvas's context should have drawn three layer images.
+    // Offscreen composite canvas's context should have drawn header + three layers.
     const contexts = vi.mocked(HTMLCanvasElement.prototype.getContext).mock.results;
     const lastCtx = contexts[contexts.length - 1]?.value as { drawImage: ReturnType<typeof vi.fn> };
-    expect(lastCtx.drawImage.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(lastCtx.drawImage.mock.calls.length).toBeGreaterThanOrEqual(4);
 
     view.destroy();
   });

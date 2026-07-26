@@ -2,8 +2,8 @@ import { Outlet, createRootRoute, createRoute, createRouter, redirect } from '@t
 
 import { AppShell } from './components/AppShell.js';
 import { LoginPage, RequireAuth } from './features/auth/index.js';
-import { ProjectListPage } from './features/projects/index.js';
-import { ResourceSheet } from './features/resources/index.js';
+import { ProjectListPage, ProjectSettingsPage } from './features/projects/index.js';
+import { ResourceCalendarPage, ResourceSheet } from './features/resources/index.js';
 import { RolesPage } from './features/roles/index.js';
 import { ReportsPage } from './features/reports/index.js';
 import { ProjectDetailPage } from './features/tasks/index.js';
@@ -65,6 +65,12 @@ const projectResourcesRoute = createRoute({
   component: ResourceSheet,
 });
 
+const projectResourceCalendarRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/projects/$projectId/resources/$resourceId',
+  component: ResourceCalendarPage,
+});
+
 const projectBaselinesRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/projects/$projectId/baselines',
@@ -77,6 +83,12 @@ const projectReportsRoute = createRoute({
   component: ReportsPage,
 });
 
+const projectSettingsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/projects/$projectId/settings',
+  component: ProjectSettingsPage,
+});
+
 const routeTree = rootRoute.addChildren([
   indexRoute,
   loginRoute,
@@ -86,8 +98,10 @@ const routeTree = rootRoute.addChildren([
       projectDetailRoute,
       projectRolesRoute,
       projectResourcesRoute,
+      projectResourceCalendarRoute,
       projectBaselinesRoute,
       projectReportsRoute,
+      projectSettingsRoute,
     ]),
   ]),
 ]);

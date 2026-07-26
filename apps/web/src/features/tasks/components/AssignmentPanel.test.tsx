@@ -163,9 +163,11 @@ describe('AssignmentPanel', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('Alice')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /edit assignment for alice/i })).toBeInTheDocument();
     });
-    expect(screen.queryByText('Bob')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /edit assignment for bob/i }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('480')).toBeInTheDocument();
     expect(screen.getByText('400')).toBeInTheDocument();
   });
@@ -224,6 +226,61 @@ describe('AssignmentPanel', () => {
     });
   });
 
+  it('edits units, work, and cost from the row editor', async () => {
+    const user = userEvent.setup();
+    vi.mocked(tasksApi.updateAssignment).mockResolvedValue(
+      assignment({
+        id: 'a1',
+        taskId,
+        resourceId: resA,
+        units: '0.5',
+        workMinutes: 240,
+        cost: '200',
+      }),
+    );
+
+    wrap(
+      <AssignmentPanel
+        projectId={projectId}
+        task={task()}
+        assignments={[
+          assignment({
+            id: 'a1',
+            taskId,
+            resourceId: resA,
+            units: '1',
+            workMinutes: 480,
+            cost: '400',
+          }),
+        ]}
+        onClose={vi.fn()}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /edit assignment for alice/i })).toBeInTheDocument(),
+    );
+
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+
+    const workInput = screen.getByRole('textbox', { name: /^work minutes for alice$/i });
+    await user.clear(workInput);
+    await user.type(workInput, '240');
+
+    const costInput = screen.getByRole('textbox', { name: /^cost for alice$/i });
+    await user.clear(costInput);
+    await user.type(costInput, '200');
+
+    await user.click(screen.getByRole('button', { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(tasksApi.updateAssignment).toHaveBeenCalledWith('a1', {
+        workMinutes: 240,
+        cost: 200,
+      });
+    });
+  });
+
   it('does not fetch timephased until View distribution is expanded', async () => {
     const user = userEvent.setup();
 
@@ -236,7 +293,9 @@ describe('AssignmentPanel', () => {
       />,
     );
 
-    await waitFor(() => expect(screen.getByText('Alice')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /edit assignment for alice/i })).toBeInTheDocument(),
+    );
     expect(tasksApi.getAssignmentTimephased).not.toHaveBeenCalled();
 
     await user.click(screen.getByRole('button', { name: /view distribution/i }));

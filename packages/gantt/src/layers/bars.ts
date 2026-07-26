@@ -58,6 +58,16 @@ export function drawBars(input: BarsDrawInput): BarsDrawResult {
       ctx.fill();
     }
 
+    // Duration cue when the bar is wide enough (calendar days on the axis).
+    if (w >= 36 && task.durationMinutes > 0) {
+      const days = task.durationMinutes / MINUTES_PER_DAY;
+      const label = Number.isInteger(days) ? `${days}d` : `${Math.round(days * 10) / 10}d`;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, x + 4, y + BAR_HEIGHT / 2, Math.max(0, w - 8));
+    }
+
     spatial.push({ x, y, w, h: BAR_HEIGHT, taskId: task.id });
   }
 

@@ -5,12 +5,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiError } from '../../../lib/apiClient.js';
 import { useErrorBanner } from '../../../stores/errorBanner.js';
-import type { DependencyMutationResponse, DependencyRow, TaskRow, TaskTreeResponse } from '../types.js';
-import { useCreateDependency } from './useDependencies.js';
+import type {
+  DependencyMutationResponse,
+  DependencyRow,
+  TaskMutationResponse,
+  TaskRow,
+  TaskTreeResponse,
+} from '../types.js';
+import { useCreateDependency, useDeleteDependency } from './useDependencies.js';
 import { tasksQueryKey } from './useTaskTree.js';
 
 vi.mock('../api.js', () => ({
   createDependency: vi.fn(),
+  deleteDependency: vi.fn(),
   patchTask: vi.fn(),
   getTaskTree: vi.fn(),
 }));
@@ -212,5 +219,44 @@ describe('useCreateDependency', () => {
 
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: tasksQueryKey(projectId) });
     expect(client.getQueryData(tasksQueryKey(projectId))).toBeUndefined();
+  });
+});
+
+describe('useDeleteDependency', () => {
+  beforeEach(() => {
+    useErrorBanner.getState().clear();
+    vi.mocked(tasksApi.deleteDependency).mockReset();
+  });
+
+  it('removes the dependency from cache and merges affected tasks', async () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const tree = baseTree();
+    client.setQueryData(tasksQueryKey(projectId), {
+      ...tree,
+      dependencies: [createdDependency()],
+    });
+
+    const res: TaskMutationResponse = {
+      task: null,
+      affected: [baseTask(succId, { earlyStart: '2026-01-05T09:00:00.000Z', version: 3 })],
+      projectVersion: 3,
+      warnings: [],
+    };
+    vi.mocked(tasksApi.deleteDependency).mockResolvedValue(res);
+
+    const { result } = renderHook(() => useDeleteDependency(projectId), {
+      wrapper: createWrapper(client),
+    });
+
+    await act(async () => {
+      await result.current.mutateAsync(depId);
+    });
+
+    expect(tasksApi.deleteDependency).toHaveBeenCalledWith(depId);
+    const cached = client.getQueryData<TaskTreeResponse>(tasksQueryKey(projectId));
+    expect(cached?.dependencies).toEqual([]);
+    expect(cached?.projectVersion).toBe(3);
   });
 });

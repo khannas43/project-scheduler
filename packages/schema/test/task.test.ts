@@ -87,6 +87,27 @@ describe('TaskCreateInputSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('accepts placeAtWbs for outline insertion (2.5 / 2.5.1)', () => {
+    expect(
+      TaskCreateInputSchema.safeParse({
+        ...validCreate,
+        placeAtWbs: '2.5',
+      }).success,
+    ).toBe(true);
+    expect(
+      TaskCreateInputSchema.safeParse({
+        ...validCreate,
+        placeAtWbs: '2.5.1',
+      }).success,
+    ).toBe(true);
+    expect(
+      TaskCreateInputSchema.safeParse({
+        ...validCreate,
+        placeAtWbs: 'Design',
+      }).success,
+    ).toBe(false);
+  });
+
   it('rejects an invalid constraintType', () => {
     expect(
       TaskCreateInputSchema.safeParse({

@@ -6,6 +6,19 @@ export {
 } from './project.js';
 
 export {
+  DateFormatSchema,
+  DateTimeDisplaySchema,
+  ProjectSettingsSchema,
+  ProjectSettingsPatchSchema,
+  DEFAULT_PROJECT_SETTINGS,
+  normalizeProjectSettings,
+  type DateFormat,
+  type DateTimeDisplay,
+  type ProjectSettings,
+  type ProjectSettingsPatch,
+} from './projectSettings.js';
+
+export {
   CalendarCreateInputSchema,
   CalendarUpdateInputSchema,
   CalendarExceptionCreateInputSchema,
@@ -44,6 +57,8 @@ export {
 export {
   AssignmentCreateInputSchema,
   AssignmentUpdateInputSchema,
+  TimephasedDayUpdateInputSchema,
   type AssignmentCreateInput,
   type AssignmentUpdateInput,
+  type TimephasedDayUpdateInput,
 } from './assignment.js';

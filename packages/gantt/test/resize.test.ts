@@ -7,6 +7,7 @@ import { MINUTES_PER_DAY, PIXELS_PER_DAY, RESIZE_EDGE_PX, ROW_HEIGHT } from '../
 import { snapDurationMinutes } from '../src/drag.js';
 import { GanttView } from '../src/ganttView.js';
 import type { GanttTask } from '../src/types.js';
+import { stubStackRect } from './dom.js';
 
 function stubCanvas(): void {
   function Path2DStub(this: { moveTo: () => void; lineTo: () => void; rect: () => void }): void {
@@ -55,10 +56,7 @@ function dispatch(
 }
 
 function setupStack(view: GanttView): HTMLElement {
-  const stack = view.container.firstElementChild as HTMLElement;
-  Object.defineProperty(stack, 'getBoundingClientRect', {
-    value: () => ({ left: 0, top: 0, width: 800, height: 400, right: 800, bottom: 400 }),
-  });
+  const stack = stubStackRect(view);
   view.paint();
   return stack;
 }
@@ -206,7 +204,7 @@ describe('GanttView drag-to-resize', () => {
 
     dispatch(stack, 'pointerdown', { clientX: barW - 1, clientY: ROW_HEIGHT / 2 });
     expect(view.getActiveResize()).toBeNull();
-    expect(setPointerCapture).not.toHaveBeenCalled();
+    expect(view.getActivePan()).not.toBeNull();
     expect(onCommitResize).not.toHaveBeenCalled();
     view.destroy();
   });
@@ -248,7 +246,7 @@ describe('GanttView drag-to-resize', () => {
     expect(stack.style.cursor).toBe('ew-resize');
 
     dispatch(stack, 'pointermove', { clientX: barW / 2, clientY: y });
-    expect(stack.style.cursor).toBe('');
+    expect(stack.style.cursor).toBe('default');
 
     view.destroy();
   });

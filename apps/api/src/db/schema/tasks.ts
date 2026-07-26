@@ -68,6 +68,11 @@ export const tasks = pgTable(
     totalFloatMinutes: integer('total_float_minutes'),
     freeFloatMinutes: integer('free_float_minutes'),
     isCritical: boolean('is_critical').notNull().default(false),
+    /**
+     * When set, forces `is_critical` on schedule writeback (true/false).
+     * `null` means follow the CPM calculation.
+     */
+    criticalOverride: boolean('critical_override'),
 
     // Tracking
     percentComplete: numeric('percent_complete', { precision: 5, scale: 2 }),

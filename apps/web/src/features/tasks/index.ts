@@ -1,7 +1,10 @@
 export {
   getTaskTree,
   patchTask,
+  createTask,
+  deleteTask,
   createDependency,
+  deleteDependency,
   createAssignment,
   updateAssignment,
   deleteAssignment,
@@ -12,9 +15,16 @@ export { ProjectDetailPage } from './components/ProjectDetailPage.js';
 export { TaskGrid } from './components/TaskGrid.js';
 export { GanttPanel } from './components/GanttPanel.js';
 export { AssignmentPanel } from './components/AssignmentPanel.js';
+export { CreateTaskModal } from './components/CreateTaskModal.js';
 export { useTaskTree, tasksQueryKey } from './hooks/useTaskTree.js';
 export { useTaskEdit, projectQueryKey } from './hooks/useTaskEdit.js';
-export { useCreateDependency } from './hooks/useDependencies.js';
+export { useCreateTask } from './hooks/useCreateTask.js';
+export { useDeleteTask } from './hooks/useDeleteTask.js';
+export {
+  useCreateDependency,
+  useDeleteDependency,
+  useSetTaskPredecessors,
+} from './hooks/useDependencies.js';
 export {
   useCreateAssignment,
   useUpdateAssignment,

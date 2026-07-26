@@ -10,6 +10,8 @@ export type TaskEditFields = {
   readonly durationMinutes?: number | null;
   readonly constraintType?: string | null;
   readonly constraintDate?: string | null;
+  readonly criticalOverride?: boolean | null;
+  readonly isMilestone?: boolean;
 };
 
 export interface UndoCommand {
@@ -105,7 +107,9 @@ function hasEditFields(fields: TaskEditFields): boolean {
     fields.name !== undefined ||
     fields.durationMinutes !== undefined ||
     fields.constraintType !== undefined ||
-    fields.constraintDate !== undefined
+    fields.constraintDate !== undefined ||
+    fields.criticalOverride !== undefined ||
+    fields.isMilestone !== undefined
   );
 }
 
@@ -116,11 +120,15 @@ export function captureAfterFields(patch: TaskEditPatch): TaskEditFields {
     durationMinutes?: number | null;
     constraintType?: string | null;
     constraintDate?: string | null;
+    criticalOverride?: boolean | null;
+    isMilestone?: boolean;
   } = {};
   if (patch.name !== undefined) after.name = patch.name;
   if (patch.durationMinutes !== undefined) after.durationMinutes = patch.durationMinutes;
   if (patch.constraintType !== undefined) after.constraintType = patch.constraintType;
   if (patch.constraintDate !== undefined) after.constraintDate = patch.constraintDate;
+  if (patch.criticalOverride !== undefined) after.criticalOverride = patch.criticalOverride;
+  if (patch.isMilestone !== undefined) after.isMilestone = patch.isMilestone;
   return after;
 }
 
@@ -130,11 +138,15 @@ export function captureBeforeFields(task: TaskRow, patch: TaskEditPatch): TaskEd
     durationMinutes?: number | null;
     constraintType?: string | null;
     constraintDate?: string | null;
+    criticalOverride?: boolean | null;
+    isMilestone?: boolean;
   } = {};
   if (patch.name !== undefined) before.name = task.name;
   if (patch.durationMinutes !== undefined) before.durationMinutes = task.durationMinutes;
   if (patch.constraintType !== undefined) before.constraintType = task.constraintType;
   if (patch.constraintDate !== undefined) before.constraintDate = task.constraintDate;
+  if (patch.criticalOverride !== undefined) before.criticalOverride = task.criticalOverride ?? null;
+  if (patch.isMilestone !== undefined) before.isMilestone = task.isMilestone;
   return before;
 }
 

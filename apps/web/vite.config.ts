@@ -13,7 +13,10 @@ export default defineConfig({
     },
   },
   server: {
+    host: true,
     port: 5173,
+    // Allow ngrok / similar tunnels for temporary public demos.
+    allowedHosts: ['.ngrok-free.dev', '.ngrok-free.app', '.ngrok.io'],
     proxy: {
       // Cookie path is /api/auth — same-origin in dev via this proxy.
       '/api': {

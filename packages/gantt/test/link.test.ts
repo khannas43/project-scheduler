@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MINUTES_PER_DAY, PIXELS_PER_DAY, ROW_HEIGHT } from '../src/constants.js';
 import { GanttView } from '../src/ganttView.js';
 import type { GanttTask } from '../src/types.js';
+import { stubStackRect } from './dom.js';
 
 function stubCanvas(): void {
   function Path2DStub(this: { moveTo: () => void; lineTo: () => void; rect: () => void }): void {
@@ -54,10 +55,7 @@ function dispatch(
 }
 
 function setupStack(view: GanttView): HTMLElement {
-  const stack = view.container.firstElementChild as HTMLElement;
-  Object.defineProperty(stack, 'getBoundingClientRect', {
-    value: () => ({ left: 0, top: 0, width: 800, height: 400, right: 800, bottom: 400 }),
-  });
+  const stack = stubStackRect(view);
   // Constructor resize() ran before the stack rect was stubbed (1×1 viewport),
   // which culls later bars via the time window — re-measure then paint.
   window.dispatchEvent(new Event('resize'));

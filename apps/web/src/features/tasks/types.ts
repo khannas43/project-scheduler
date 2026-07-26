@@ -29,6 +29,8 @@ export interface TaskRow {
   readonly totalFloatMinutes: number | null;
   readonly freeFloatMinutes: number | null;
   readonly isCritical: boolean;
+  /** When set, forces critical display/storage; null/absent follows CPM. */
+  readonly criticalOverride?: boolean | null;
   readonly version: number;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -107,4 +109,6 @@ export interface TaskEditPatch {
   readonly durationMinutes?: number | null;
   readonly constraintType?: string | null;
   readonly constraintDate?: string | null;
+  readonly criticalOverride?: boolean | null;
+  readonly isMilestone?: boolean;
 }

@@ -100,6 +100,7 @@ describe('route-guard drift (§6.4)', () => {
     byKey('DELETE', '/api/assignments/:id', PERMISSIONS.RESOURCE_ASSIGN.key);
     // GET is skipped by the SAFE_METHODS loop above — assert the guard key explicitly.
     byKey('GET', '/api/assignments/:id/timephased', PERMISSIONS.RESOURCE_ASSIGN.key);
+    byKey('PATCH', '/api/assignments/:id/timephased', PERMISSIONS.RESOURCE_ASSIGN.key);
 
     // Baselines + EVM — GETs need explicit assertion (SAFE_METHODS filter skips them).
     byKey('POST', '/api/projects/:id/baselines', PERMISSIONS.BASELINE_SAVE.key);

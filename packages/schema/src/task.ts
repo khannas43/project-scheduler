@@ -34,6 +34,15 @@ const SchedulingModeSchema = z.enum(['cpm', 'agile']);
 export const TaskCreateInputSchema = z.object({
   projectId: z.uuid(),
   parentId: z.uuid().nullable().optional(),
+  /**
+   * Optional insert position as an outline code (`2.5`, `2.5.1`).
+   * Server places the task there and renumbers later siblings; the stored
+   * `wbsCode`/`wbsPath` remain server-owned.
+   */
+  placeAtWbs: z
+    .string()
+    .regex(/^\d+(\.\d+)*$/, 'placeAtWbs must look like 2.5 or 2.5.1')
+    .optional(),
   name: z.string().min(1),
   notes: z.string().nullable().optional(),
   isMilestone: z.boolean().optional(),
@@ -56,6 +65,11 @@ export const TaskUpdateInputSchema = TaskCreateInputSchema.partial().extend({
   actualFinish: z.iso.datetime().nullable().optional(),
   actualDurationMinutes: z.number().int().nonnegative().nullable().optional(),
   remainingDurationMinutes: z.number().int().nonnegative().nullable().optional(),
+  /**
+   * Force critical (true/false), or null to clear and follow CPM float again.
+   * Distinct from engine-owned `isCritical`.
+   */
+  criticalOverride: z.boolean().nullable().optional(),
 });
 
 /** Body for POST /api/tasks/:id/move (§5.2). */

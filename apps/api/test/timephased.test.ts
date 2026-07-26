@@ -32,9 +32,40 @@ vi.mock('../src/services/scheduleRunner.js', () => ({
 }));
 
 const {
+  dayUnitsFromMinutes,
   distributeWorkAcrossWorkingDays,
+  minutesFromDayUnits,
+  normalizePeriodDate,
+  peakUnitsFromBuckets,
   refreshTimephasedDistribution,
+  roundUnits,
 } = await import('../src/services/assignmentService.js');
+
+describe('roundUnits', () => {
+  it('snaps messy fractions to 0.05 steps', () => {
+    expect(roundUnits(0.91)).toBe(0.9);
+    expect(roundUnits(0.96)).toBe(0.95);
+    expect(roundUnits(0.910416)).toBe(0.9);
+    expect(roundUnits(1.0)).toBe(1);
+    expect(roundUnits(0.5)).toBe(0.5);
+  });
+
+  it('converts day units ↔ minutes cleanly', () => {
+    expect(minutesFromDayUnits(0.5)).toBe(240);
+    expect(dayUnitsFromMinutes(240)).toBe(0.5);
+    expect(dayUnitsFromMinutes(437)).toBe(0.9);
+  });
+
+  it('uses peak day units across a contour (not the average)', () => {
+    expect(
+      peakUnitsFromBuckets([
+        { plannedWorkMinutes: 240 }, // 0.5
+        { plannedWorkMinutes: 480 }, // 1.0
+      ]),
+    ).toBe(1);
+    expect(normalizePeriodDate('2026-01-05T00:00:00.000Z')).toBe('2026-01-05');
+  });
+});
 
 describe('distributeWorkAcrossWorkingDays', () => {
   it('splits work evenly across Mon–Fri working days', () => {

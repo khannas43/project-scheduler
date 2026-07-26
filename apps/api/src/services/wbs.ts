@@ -36,3 +36,42 @@ export function nlevel(path: string): number {
   if (path.length === 0) return 0;
   return path.split('.').length;
 }
+
+const WBS_CODE_RE = /^\d+(\.\d+)*$/;
+
+/** True for outline codes like `2`, `2.5`, `2.5.1`. */
+export function isValidWbsCode(code: string): boolean {
+  return WBS_CODE_RE.test(code);
+}
+
+/**
+ * Parse a target outline code into parent path + 1-based sibling index.
+ * `2.5` → parent `2`, index 5; `2.5.1` → parent `2.5`, index 1; `3` → root, index 3.
+ */
+export function parseWbsInsertTarget(wbsCode: string): {
+  parentPath: string | null;
+  siblingIndex: number;
+} {
+  const trimmed = wbsCode.trim();
+  if (!isValidWbsCode(trimmed)) {
+    throw new RangeError(`Invalid WBS code: ${wbsCode}`);
+  }
+  const parts = trimmed.split('.').map(Number);
+  const siblingIndex = parts[parts.length - 1]!;
+  if (!Number.isInteger(siblingIndex) || siblingIndex < 1) {
+    throw new RangeError(`Invalid WBS sibling index in: ${wbsCode}`);
+  }
+  const parentParts = parts.slice(0, -1);
+  return {
+    parentPath: parentParts.length === 0 ? null : parentParts.join('.'),
+    siblingIndex,
+  };
+}
+
+/** Next free outline code under a parent (or at root when parentCode is null). */
+export function suggestNextWbsCode(
+  parentCode: string | null,
+  siblingCount: number,
+): string {
+  return childWbsPath(parentCode, siblingCount + 1);
+}

@@ -49,12 +49,26 @@ export function projectStartEpochMinutes(project: Project): number {
 export function applyPatchToTree(tree: TaskTreeResponse, patch: TaskEditPatch): TaskTreeResponse {
   const tasks = tree.tasks.map((task) => {
     if (task.id !== patch.taskId) return task;
+    const isMilestone = patch.isMilestone !== undefined ? patch.isMilestone : task.isMilestone;
+    const durationMinutes =
+      patch.durationMinutes !== undefined
+        ? patch.durationMinutes
+        : isMilestone && patch.isMilestone === true
+          ? 0
+          : task.durationMinutes;
     return {
       ...task,
       ...(patch.name !== undefined ? { name: patch.name } : {}),
-      ...(patch.durationMinutes !== undefined ? { durationMinutes: patch.durationMinutes } : {}),
+      ...(patch.isMilestone !== undefined ? { isMilestone: patch.isMilestone } : {}),
+      durationMinutes,
       ...(patch.constraintType !== undefined ? { constraintType: patch.constraintType } : {}),
       ...(patch.constraintDate !== undefined ? { constraintDate: patch.constraintDate } : {}),
+      ...(patch.criticalOverride !== undefined
+        ? {
+            criticalOverride: patch.criticalOverride,
+            ...(patch.criticalOverride !== null ? { isCritical: patch.criticalOverride } : {}),
+          }
+        : {}),
     };
   });
   return { ...tree, tasks };
@@ -144,7 +158,7 @@ export function recomputeOptimisticTree(
       lateFinish: computed.lateFinish === null ? null : epochMinutesToIso(computed.lateFinish),
       totalFloatMinutes: computed.totalFloatMinutes,
       freeFloatMinutes: computed.freeFloatMinutes,
-      isCritical: computed.isCritical,
+      isCritical: task.criticalOverride ?? computed.isCritical,
     };
   });
 

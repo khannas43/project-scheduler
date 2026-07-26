@@ -1,5 +1,9 @@
 import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
-import { AssignmentCreateInputSchema, AssignmentUpdateInputSchema } from '@pkg/schema';
+import {
+  AssignmentCreateInputSchema,
+  AssignmentUpdateInputSchema,
+  TimephasedDayUpdateInputSchema,
+} from '@pkg/schema';
 import { z } from 'zod';
 
 import { requireAuth } from '../middleware/auth.js';
@@ -61,5 +65,21 @@ export const assignmentRoutes: FastifyPluginAsyncZod = async (fastify) => {
       schema: { params: AssignmentIdParams },
     },
     async (request) => assignmentService.listTimephasedForAssignment(request.params.id),
+  );
+
+  fastify.patch(
+    '/api/assignments/:id/timephased',
+    {
+      preHandler: [requireAuth, requirePermission('resource.assign')],
+      schema: {
+        params: AssignmentIdParams,
+        body: TimephasedDayUpdateInputSchema,
+      },
+    },
+    async (request) => {
+      const user = request.user;
+      if (!user) throw new Error('requireAuth must run first');
+      return assignmentService.updateTimephasedDay(request.params.id, request.body, user.id);
+    },
   );
 };

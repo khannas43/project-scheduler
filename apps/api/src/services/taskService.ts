@@ -8,9 +8,10 @@ import {
   rescheduleProject,
   withSerializableRetry,
   writeAuditLog,
+  type Db,
   type MutationResult,
 } from './scheduleRunner.js';
-import { childWbsPath, wbsCodeFromPath } from './wbs.js';
+import { childWbsPath, parseWbsInsertTarget, wbsCodeFromPath } from './wbs.js';
 
 type TaskCreateBody = Omit<TaskCreateInput, 'projectId'>;
 
@@ -28,17 +29,18 @@ function rejectSummaryDurationOrConstraint(
 }
 
 async function nextSiblingPlacement(
+  tx: Db,
   projectId: string,
   parentId: string | null,
 ): Promise<{ sortOrder: number; wbsPath: string }> {
   const siblings =
     parentId === null
-      ? await db
+      ? await tx
           .select({ sortOrder: tasks.sortOrder })
           .from(tasks)
           .where(and(eq(tasks.projectId, projectId), isNull(tasks.parentId)))
           .orderBy(asc(tasks.sortOrder))
-      : await db
+      : await tx
           .select({ sortOrder: tasks.sortOrder })
           .from(tasks)
           .where(and(eq(tasks.projectId, projectId), eq(tasks.parentId, parentId)))
@@ -49,7 +51,7 @@ async function nextSiblingPlacement(
 
   let parentPath: string | null = null;
   if (parentId) {
-    const [parent] = await db
+    const [parent] = await tx
       .select({ wbsPath: tasks.wbsPath })
       .from(tasks)
       .where(eq(tasks.id, parentId))
@@ -59,6 +61,124 @@ async function nextSiblingPlacement(
   }
 
   return { sortOrder, wbsPath: childWbsPath(parentPath, siblings.length + 1) };
+}
+
+/**
+ * Make room at `insertSortOrder` under a parent by bumping later siblings
+ * (and their subtrees) up one outline slot — highest index first to avoid
+ * temporary path collisions.
+ */
+async function shiftSiblingsForInsert(
+  tx: Db,
+  projectId: string,
+  parentId: string | null,
+  parentPath: string | null,
+  insertSortOrder: number,
+): Promise<void> {
+  const siblingRows =
+    parentId === null
+      ? await tx
+          .select()
+          .from(tasks)
+          .where(and(eq(tasks.projectId, projectId), isNull(tasks.parentId)))
+          .orderBy(asc(tasks.sortOrder))
+      : await tx
+          .select()
+          .from(tasks)
+          .where(and(eq(tasks.projectId, projectId), eq(tasks.parentId, parentId)))
+          .orderBy(asc(tasks.sortOrder));
+
+  const toShift = siblingRows
+    .filter((s) => (s.sortOrder ?? 0) >= insertSortOrder)
+    .sort((a, b) => (b.sortOrder ?? 0) - (a.sortOrder ?? 0));
+
+  for (const sibling of toShift) {
+    if (!sibling.wbsPath) continue;
+    const oldPath = sibling.wbsPath;
+    const newSort = (sibling.sortOrder ?? 0) + 1;
+    const newPath = childWbsPath(parentPath, newSort + 1);
+
+    await tx.execute(sql`
+      UPDATE tasks
+      SET
+        wbs_path = ${newPath}::ltree || subpath(wbs_path, nlevel(${oldPath}::ltree)),
+        wbs_code = (${newPath}::ltree || subpath(wbs_path, nlevel(${oldPath}::ltree)))::text
+      WHERE wbs_path <@ ${oldPath}::ltree
+        AND project_id = ${projectId}::uuid
+    `);
+
+    await tx
+      .update(tasks)
+      .set({
+        sortOrder: newSort,
+        wbsPath: newPath,
+        wbsCode: wbsCodeFromPath(newPath),
+      })
+      .where(eq(tasks.id, sibling.id));
+  }
+}
+
+async function resolveCreatePlacement(
+  tx: Db,
+  projectId: string,
+  input: TaskCreateBody,
+): Promise<{ parentId: string | null; sortOrder: number; wbsPath: string }> {
+  if (input.placeAtWbs) {
+    let target;
+    try {
+      target = parseWbsInsertTarget(input.placeAtWbs);
+    } catch {
+      throw new BadRequestError(`Invalid placeAtWbs: ${input.placeAtWbs}`);
+    }
+
+    let parentId: string | null = null;
+    let parentPath: string | null = target.parentPath;
+    if (target.parentPath) {
+      const [parent] = await tx
+        .select()
+        .from(tasks)
+        .where(and(eq(tasks.projectId, projectId), eq(tasks.wbsPath, target.parentPath)))
+        .limit(1);
+      if (!parent) {
+        throw new BadRequestError(
+          `Parent WBS ${target.parentPath} not found — create it before ${input.placeAtWbs}`,
+        );
+      }
+      parentId = parent.id;
+      parentPath = parent.wbsPath;
+    }
+    // placeAtWbs is authoritative for parent/position; parentId in the body is ignored.
+
+    const siblings =
+      parentId === null
+        ? await tx
+            .select({ sortOrder: tasks.sortOrder })
+            .from(tasks)
+            .where(and(eq(tasks.projectId, projectId), isNull(tasks.parentId)))
+        : await tx
+            .select({ sortOrder: tasks.sortOrder })
+            .from(tasks)
+            .where(and(eq(tasks.projectId, projectId), eq(tasks.parentId, parentId)));
+
+    // Clamp into [0, siblingCount] so oversized codes append instead of leaving gaps.
+    const insertSortOrder = Math.min(Math.max(target.siblingIndex - 1, 0), siblings.length);
+    await shiftSiblingsForInsert(tx, projectId, parentId, parentPath, insertSortOrder);
+    return {
+      parentId,
+      sortOrder: insertSortOrder,
+      wbsPath: childWbsPath(parentPath, insertSortOrder + 1),
+    };
+  }
+
+  const parentId = input.parentId === undefined ? null : input.parentId;
+  if (parentId) {
+    const [parent] = await tx.select().from(tasks).where(eq(tasks.id, parentId)).limit(1);
+    if (!parent || parent.projectId !== projectId) {
+      throw new NotFoundError('Parent task not found in this project');
+    }
+  }
+  const placement = await nextSiblingPlacement(tx, projectId, parentId);
+  return { parentId, ...placement };
 }
 
 /** §5.3: full tree in one response — flat array + parent pointers + assignments. */
@@ -108,58 +228,84 @@ export async function createTask(
   input: TaskCreateBody,
   userId: string,
 ): Promise<typeof tasks.$inferSelect> {
-  const [project] = await db.select().from(projects).where(eq(projects.id, projectId)).limit(1);
-  if (!project) throw new NotFoundError('Project not found');
+  return withSerializableRetry(async (tx) => {
+    const [project] = await tx.select().from(projects).where(eq(projects.id, projectId)).limit(1);
+    if (!project) throw new NotFoundError('Project not found');
 
-  const isSummary = input.isSummary ?? false;
-  rejectSummaryDurationOrConstraint(isSummary, input);
+    const isSummary = input.isSummary ?? false;
+    rejectSummaryDurationOrConstraint(isSummary, input);
 
-  const parentId = input.parentId === undefined ? null : input.parentId;
-  if (parentId) {
-    const [parent] = await db.select().from(tasks).where(eq(tasks.id, parentId)).limit(1);
-    if (!parent || parent.projectId !== projectId) {
-      throw new NotFoundError('Parent task not found in this project');
+    const { parentId, sortOrder, wbsPath } = await resolveCreatePlacement(tx, projectId, input);
+
+    if (parentId) {
+      const [parent] = await tx.select().from(tasks).where(eq(tasks.id, parentId)).limit(1);
+      if (!parent || parent.projectId !== projectId) {
+        throw new NotFoundError('Parent task not found in this project');
+      }
+
+      // Adding a child under a leaf promotes the parent to a summary (WBS group).
+      if (!parent.isSummary) {
+        await tx
+          .update(tasks)
+          .set({
+            isSummary: true,
+            durationMinutes: null,
+            constraintType: null,
+            constraintDate: null,
+          })
+          .where(eq(tasks.id, parentId));
+      }
     }
-  }
 
-  const { sortOrder, wbsPath } = await nextSiblingPlacement(projectId, parentId);
+    const isMilestone = !isSummary && (input.isMilestone ?? false);
+    const durationMinutes = isSummary
+      ? null
+      : isMilestone
+        ? (input.durationMinutes ?? 0)
+        : (input.durationMinutes ?? null);
 
-  const [created] = await db
-    .insert(tasks)
-    .values({
+    const [created] = await tx
+      .insert(tasks)
+      .values({
+        projectId,
+        parentId,
+        name: input.name,
+        notes: input.notes ?? null,
+        isMilestone,
+        isSummary,
+        schedulingMode: input.schedulingMode ?? 'cpm',
+        durationMinutes,
+        taskType: input.taskType ?? null,
+        isEffortDriven: input.isEffortDriven ?? true,
+        isManuallyScheduled: input.isManuallyScheduled ?? false,
+        constraintType: isSummary ? null : (input.constraintType ?? null),
+        constraintDate: input.constraintDate ? new Date(input.constraintDate) : null,
+        deadline: input.deadline ? new Date(input.deadline) : null,
+        calendarId: input.calendarId ?? null,
+        sortOrder,
+        wbsPath,
+        wbsCode: wbsCodeFromPath(wbsPath),
+      })
+      .returning();
+
+    if (!created) throw new Error('Insert returned no row');
+
+    await writeAuditLog(tx, {
+      userId,
       projectId,
-      parentId,
-      name: input.name,
-      notes: input.notes ?? null,
-      isMilestone: input.isMilestone ?? false,
-      isSummary,
-      schedulingMode: input.schedulingMode ?? 'cpm',
-      durationMinutes: isSummary ? null : (input.durationMinutes ?? null),
-      taskType: input.taskType ?? null,
-      isEffortDriven: input.isEffortDriven ?? true,
-      isManuallyScheduled: input.isManuallyScheduled ?? false,
-      constraintType: isSummary ? null : (input.constraintType ?? null),
-      constraintDate: input.constraintDate ? new Date(input.constraintDate) : null,
-      deadline: input.deadline ? new Date(input.deadline) : null,
-      calendarId: input.calendarId ?? null,
-      sortOrder,
-      wbsPath,
-      wbsCode: wbsCodeFromPath(wbsPath),
-    })
-    .returning();
+      action: 'task.create',
+      entityType: 'task',
+      entityId: created.id,
+      after: created,
+    });
 
-  if (!created) throw new Error('Insert returned no row');
+    // Schedule so the new task appears on the Gantt with CPM dates.
+    await rescheduleProject(tx, projectId, { focusTaskId: created.id });
 
-  await writeAuditLog(db, {
-    userId,
-    projectId,
-    action: 'task.create',
-    entityType: 'task',
-    entityId: created.id,
-    after: created,
-  });
-
-  return created;
+    const [fresh] = await tx.select().from(tasks).where(eq(tasks.id, created.id)).limit(1);
+    if (!fresh) throw new Error('Created task missing after reschedule');
+    return fresh;
+  }, db);
 }
 
 export async function updateTask(
@@ -181,17 +327,47 @@ export async function updateTask(
     void _p;
     void _parent;
 
+    // Milestones are zero-duration leaf markers — not summaries.
+    let nextIsMilestone = nextIsSummary
+      ? false
+      : patch.isMilestone !== undefined
+        ? patch.isMilestone
+        : existing.isMilestone;
+    // A positive duration edit clears the milestone flag (same as MS Project).
+    if (
+      !nextIsSummary &&
+      patch.isMilestone === undefined &&
+      patch.durationMinutes !== undefined &&
+      patch.durationMinutes !== null &&
+      patch.durationMinutes > 0
+    ) {
+      nextIsMilestone = false;
+    }
+
+    let nextDuration =
+      patch.durationMinutes !== undefined
+        ? nextIsSummary
+          ? null
+          : patch.durationMinutes
+        : undefined;
+    // Marking as milestone forces duration 0 unless the client sent an explicit duration.
+    if (patch.isMilestone === true && !nextIsSummary && nextDuration === undefined) {
+      nextDuration = 0;
+    }
+
+    const milestoneChanged = nextIsMilestone !== existing.isMilestone;
+
     const [updated] = await tx
       .update(tasks)
       .set({
         ...(patch.name !== undefined ? { name: patch.name } : {}),
         ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
-        ...(patch.isMilestone !== undefined ? { isMilestone: patch.isMilestone } : {}),
+        ...(milestoneChanged || patch.isMilestone !== undefined
+          ? { isMilestone: nextIsMilestone }
+          : {}),
         ...(patch.isSummary !== undefined ? { isSummary: patch.isSummary } : {}),
         ...(patch.schedulingMode !== undefined ? { schedulingMode: patch.schedulingMode } : {}),
-        ...(patch.durationMinutes !== undefined
-          ? { durationMinutes: nextIsSummary ? null : patch.durationMinutes }
-          : {}),
+        ...(nextDuration !== undefined ? { durationMinutes: nextDuration } : {}),
         ...(patch.taskType !== undefined ? { taskType: patch.taskType } : {}),
         ...(patch.isEffortDriven !== undefined ? { isEffortDriven: patch.isEffortDriven } : {}),
         ...(patch.isManuallyScheduled !== undefined
@@ -224,6 +400,9 @@ export async function updateTask(
           : {}),
         ...(patch.remainingDurationMinutes !== undefined
           ? { remainingDurationMinutes: patch.remainingDurationMinutes }
+          : {}),
+        ...(patch.criticalOverride !== undefined
+          ? { criticalOverride: patch.criticalOverride }
           : {}),
         version: sql`${tasks.version} + 1`,
       })

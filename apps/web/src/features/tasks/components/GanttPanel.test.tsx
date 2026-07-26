@@ -6,15 +6,27 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Project } from '../../projects/index.js';
 import type { DependencyRow, TaskRow } from '../types.js';
-import { downloadDataUrl, GanttPanel } from './GanttPanel.js';
+import {
+  calendarMinutesToWorking,
+  downloadDataUrl,
+  ganttDurationMinutes,
+  GanttPanel,
+} from './GanttPanel.js';
 
 const { exportToPngDataUrl } = vi.hoisted(() => ({
   exportToPngDataUrl: vi.fn(() => 'data:image/png;base64,AAAA'),
 }));
 
 vi.mock('@pkg/gantt', () => ({
+  MINUTES_PER_DAY: 24 * 60,
+  pixelsPerMinuteForScale: (scale: 'day' | 'week' | 'month') => {
+    const pxPerDay = { day: 64, week: 24, month: 6 }[scale];
+    return pxPerDay / (24 * 60);
+  },
   GanttView: class {
     setData = vi.fn();
+    setPixelsPerMinute = vi.fn();
+    setOriginDateIso = vi.fn();
     destroy = vi.fn();
     exportToPngDataUrl = exportToPngDataUrl;
   },
@@ -31,9 +43,16 @@ const project: Project = {
   status: 'active',
   startDate: '2026-01-01T00:00:00.000Z',
   finishDate: null,
+  statusDate: null,
   calendarId: '22222222-2222-4222-8222-222222222222',
   ownerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   isArchived: false,
+  settings: {
+    dateFormat: 'yyyy-mm-dd',
+    dateTimeDisplay: 'date',
+    activeBaselineId: null,
+    showBaselineOnGantt: false,
+  },
   version: 1,
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -107,9 +126,49 @@ describe('downloadDataUrl', () => {
   });
 });
 
+describe('gantt duration mapping', () => {
+  it('uses earlyFinish − earlyStart as calendar bar length', () => {
+    expect(ganttDurationMinutes(tasks[0]!)).toBe(480);
+  });
+
+  it('maps multi-day working duration to calendar days when dates are missing', () => {
+    expect(
+      ganttDurationMinutes({
+        ...tasks[0]!,
+        earlyStart: null,
+        earlyFinish: null,
+        durationMinutes: 960,
+      }),
+    ).toBe(2 * 24 * 60);
+  });
+
+  it('converts snapped calendar days back to working minutes', () => {
+    expect(calendarMinutesToWorking(24 * 60)).toBe(480);
+    expect(calendarMinutesToWorking(3 * 24 * 60)).toBe(1440);
+  });
+});
+
 describe('GanttPanel — Save as PNG', () => {
   beforeEach(() => {
     exportToPngDataUrl.mockClear();
+    localStorage.clear();
+  });
+
+  it('exposes Day / Week / Month scale controls', async () => {
+    const user = userEvent.setup();
+    wrap(
+      <GanttPanel
+        project={project}
+        tasks={tasks}
+        dependencies={dependencies}
+        onHoverTask={() => undefined}
+      />,
+    );
+
+    expect(screen.getByTestId('gantt-scale-week')).toHaveAttribute('aria-pressed', 'true');
+    await user.click(screen.getByTestId('gantt-scale-day'));
+    expect(screen.getByTestId('gantt-scale-day')).toHaveAttribute('aria-pressed', 'true');
+    expect(localStorage.getItem('project-scheduler.gantt.timeScale')).toBe('day');
   });
 
   it('exports the composited canvas and triggers a browser download', async () => {

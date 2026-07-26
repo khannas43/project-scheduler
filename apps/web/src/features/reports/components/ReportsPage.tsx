@@ -227,7 +227,7 @@ export function ReportsPage() {
                 <th>Name</th>
                 <th>Start</th>
                 <th>Finish</th>
-                <th>Duration</th>
+                <th>Duration (days)</th>
                 <th>Float</th>
                 <th>%</th>
               </tr>
@@ -239,7 +239,11 @@ export function ReportsPage() {
                   <td>{r.name}</td>
                   <td>{formatDate(r.earlyStart)}</td>
                   <td>{formatDate(r.earlyFinish)}</td>
-                  <td>{formatNumber(r.durationMinutes)}</td>
+                  <td>
+                    {r.durationMinutes === null
+                      ? '—'
+                      : String(Math.round((r.durationMinutes / 480) * 100) / 100)}
+                  </td>
                   <td>{formatNumber(r.totalFloatMinutes)}</td>
                   <td>{formatNumber(r.percentComplete)}</td>
                 </tr>

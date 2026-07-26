@@ -88,6 +88,8 @@ async function main() {
   await seedPermissions();
   await seedSystemRoles();
   await seedAdminUser();
+  const { seedDemoProjects } = await import('./seedDemoProjects.js');
+  await seedDemoProjects();
 }
 
 main()

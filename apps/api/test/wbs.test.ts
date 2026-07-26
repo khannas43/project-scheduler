@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
-import { childWbsPath, nlevel, remapWbsPath, wbsCodeFromPath } from '../src/services/wbs.js';
+import {
+  childWbsPath,
+  nlevel,
+  parseWbsInsertTarget,
+  remapWbsPath,
+  suggestNextWbsCode,
+  wbsCodeFromPath,
+} from '../src/services/wbs.js';
 
 describe('WBS path helpers (§3.7)', () => {
   it('childWbsPath builds root and nested labels', () => {
@@ -27,5 +34,16 @@ describe('WBS path helpers (§3.7)', () => {
 
   it('wbsCodeFromPath mirrors the ltree path for display', () => {
     expect(wbsCodeFromPath('1.3.2')).toBe('1.3.2');
+  });
+
+  it('parseWbsInsertTarget splits parent path and sibling index', () => {
+    expect(parseWbsInsertTarget('2.5')).toEqual({ parentPath: '2', siblingIndex: 5 });
+    expect(parseWbsInsertTarget('2.5.1')).toEqual({ parentPath: '2.5', siblingIndex: 1 });
+    expect(parseWbsInsertTarget('3')).toEqual({ parentPath: null, siblingIndex: 3 });
+  });
+
+  it('suggestNextWbsCode appends the next sibling label', () => {
+    expect(suggestNextWbsCode('2', 4)).toBe('2.5');
+    expect(suggestNextWbsCode(null, 2)).toBe('3');
   });
 });

@@ -381,7 +381,8 @@ export async function rescheduleProject(
       lateFinish: computed.lateFinish === null ? null : epochMinutesToDate(computed.lateFinish),
       totalFloatMinutes: computed.totalFloatMinutes,
       freeFloatMinutes: computed.freeFloatMinutes,
-      isCritical: computed.isCritical,
+      // Honour user critical override when set; otherwise CPM float threshold.
+      isCritical: row.criticalOverride ?? computed.isCritical,
     };
 
     // Summaries only: persist rolled-up % complete. Never clobber a leaf's

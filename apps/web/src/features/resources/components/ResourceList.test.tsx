@@ -9,6 +9,29 @@ import { useErrorBanner } from '../../../stores/errorBanner.js';
 import type { Resource } from '../types.js';
 import { ResourceList } from './ResourceList.js';
 
+vi.mock('@tanstack/react-router', () => ({
+  Link: ({
+    children,
+    to,
+    params,
+    className,
+    ...rest
+  }: {
+    children: ReactNode;
+    to: string;
+    params?: Record<string, string>;
+    className?: string;
+  }) => (
+    <a
+      href={`${to}?${new URLSearchParams(params ?? {}).toString()}`}
+      className={className}
+      {...rest}
+    >
+      {children}
+    </a>
+  ),
+}));
+
 vi.mock('../api.js', () => ({
   listResources: vi.fn(),
   createResource: vi.fn(),
@@ -52,7 +75,7 @@ describe('ResourceList', () => {
     useErrorBanner.getState().clear();
   });
 
-  it('renders resources and overallocation badges without blocking the table', async () => {
+  it('renders resources, calendar links, and overallocation badges', async () => {
     vi.mocked(resourcesApi.getOverallocations).mockImplementation(async (_pid, resourceId) => {
       if (resourceId === 'r-over') {
         return [
@@ -74,14 +97,26 @@ describe('ResourceList', () => {
       />,
     );
 
-    expect(screen.getByText('Alice')).toBeInTheDocument();
-    expect(screen.getByText('Bob')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Alice' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Bob' })).toBeInTheDocument();
+    expect(screen.getByTestId('resource-calendar-r-over')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText(/2 days over/i)).toBeInTheDocument();
     });
-    // Clean resource has no badge — only one overallocation pill in the table.
     expect(screen.getAllByText(/days? over/i)).toHaveLength(1);
+  });
+
+  it('opens edit from the Edit action', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    vi.mocked(resourcesApi.getOverallocations).mockResolvedValue([]);
+    const alice = resource({ id: 'r1', name: 'Alice' });
+
+    wrap(<ResourceList projectId={projectId} resources={[alice]} onEdit={onEdit} />);
+
+    await user.click(screen.getByRole('button', { name: /^edit$/i }));
+    expect(onEdit).toHaveBeenCalledWith(alice);
   });
 
   it('surfaces delete-with-assignments 400 on the error banner', async () => {
@@ -107,7 +142,9 @@ describe('ResourceList', () => {
     await user.click(screen.getByRole('button', { name: /^delete$/i }));
 
     await waitFor(() => {
-      expect(useErrorBanner.getState().message).toMatch(/Cannot delete a resource with existing assignments/);
+      expect(useErrorBanner.getState().message).toMatch(
+        /Cannot delete a resource with existing assignments/,
+      );
       expect(useErrorBanner.getState().code).toBe('bad_request');
     });
   });

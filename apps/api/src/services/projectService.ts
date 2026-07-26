@@ -1,5 +1,9 @@
 import { SYSTEM_ROLES } from '@pkg/rbac';
-import type { ProjectCreateInput, ProjectUpdateInput } from '@pkg/schema';
+import {
+  normalizeProjectSettings,
+  type ProjectCreateInput,
+  type ProjectUpdateInput,
+} from '@pkg/schema';
 import { and, eq, sql } from 'drizzle-orm';
 
 import { db } from '../db/client.js';
@@ -148,6 +152,14 @@ export async function updateProject(
           : {}),
         ...(patch.calendarId !== undefined ? { calendarId: patch.calendarId } : {}),
         ...(patch.isArchived !== undefined ? { isArchived: patch.isArchived } : {}),
+        ...(patch.settings !== undefined
+          ? {
+              settings: {
+                ...normalizeProjectSettings(existing.settings),
+                ...patch.settings,
+              },
+            }
+          : {}),
         version: sql`${projects.version} + 1`,
       })
       .where(and(eq(projects.id, projectId), eq(projects.version, version)))

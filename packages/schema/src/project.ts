@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { ProjectSettingsPatchSchema } from './projectSettings.js';
+
 /**
  * Project inbound shapes (§3.2). `finishDate` is engine-computed and omitted
  * from input schemas by design — stripping, not validation.
@@ -18,6 +20,8 @@ export const ProjectUpdateInputSchema = ProjectCreateInputSchema.partial().exten
   version: z.number().int().nonnegative(),
   /** Status date for progress reporting (§5.8) — not on create. */
   statusDate: z.iso.datetime().nullable().optional(),
+  /** Partial merge into projects.settings jsonb. */
+  settings: ProjectSettingsPatchSchema.optional(),
 });
 
 export type ProjectCreateInput = z.infer<typeof ProjectCreateInputSchema>;

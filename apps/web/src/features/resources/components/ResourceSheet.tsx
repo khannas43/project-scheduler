@@ -41,22 +41,23 @@ export function ResourceSheet() {
             </Link>
           </p>
           <h1>Resources</h1>
-          <p className="lede muted">Manage the instance-wide resource pool for this workspace.</p>
+          <p className="lede muted">
+            Manage the resource pool for this workspace. Open Calendar on a row to see every
+            task that resource is on and edit dates or units.
+          </p>
         </div>
-        {panel.kind === 'none' ? (
-          <button
-            type="button"
-            onClick={() => setPanel({ kind: 'create' })}
-            disabled={loading || Boolean(resourcesQuery.error)}
-          >
-            New resource
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={() => setPanel({ kind: 'create' })}
+          disabled={loading || Boolean(resourcesQuery.error) || panel.kind !== 'none'}
+        >
+          New resource
+        </button>
       </header>
 
       {loading ? <p className="muted">Loading resources…</p> : null}
 
-      {!loading && resourcesQuery.data && panel.kind === 'none' ? (
+      {!loading && resourcesQuery.data ? (
         <ResourceList
           projectId={projectId}
           resources={resourcesQuery.data}
