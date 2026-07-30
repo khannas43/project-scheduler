@@ -81,7 +81,12 @@ async function seedAdminUser(): Promise<void> {
       fullName: 'Admin',
       isActive: true,
     })
-    .onConflictDoNothing({ target: users.email });
+    .onConflictDoUpdate({
+      target: users.email,
+      // Keep the hash in sync with SEED_ADMIN_PASSWORD so re-seed fixes a
+      // stale password instead of silently leaving the old one in place.
+      set: { passwordHash, isActive: true },
+    });
 }
 
 async function main() {
