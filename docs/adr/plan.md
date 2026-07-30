@@ -6,7 +6,7 @@ should be updated in place as work completes rather than superseded like an
 ADR would be. If it goes stale, trust `git log` and the actual code over this
 file, and fix this file to match.
 
-**Status as of 2026-07-25.** Cross-checked against `docs/PROJECT_SCOPE.md` §8
+**Status as of 2026-07-30.** Cross-checked against `docs/PROJECT_SCOPE.md` §8
 and `docs/TECHNICAL_DESIGN.md` §13 (the authoritative build order — this plan
 sequences within it, it doesn't override it).
 
@@ -34,11 +34,12 @@ number, not a timeline estimate.
 | 3 — Resources | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 4 — Tracking | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 5 — Interop & reporting | 4 | 4 (all items done) | 0 | 0 | 100% |
-| 6 — Agile | 7 | 3 (rounds 1–3) | 0 | 4 | ~43% |
-| **Total** | **57** | **53** | **0** | **4** | **~93%** |
+| 6 — Agile | 7 | 7 (all rounds done) | 0 | 0 | 100% |
+| **Total** | **57** | **57** | **0** | **0** | **100%** |
 
-**~93% done, ~7% pending** (53/57 done — Phases 0–5 complete plus Phase 6
-rounds 1–3). Remaining: Phase 6 round 4 (charts).
+**100% checklist coverage** (57/57 done — Phases 0–6 complete). CFD remains
+explicitly deferred as a separate future feature (documented on the Agile
+charts page), not a silent omission from Phase 6 Round 4.
 
 ---
 
@@ -707,6 +708,14 @@ variance columns, earned value metrics, S-curve) is now fully done.**
   Board Group by None/Resource/Epic; Backlog epic badge + Start/Close
   sprint ceremonies (no dedicated planning page).
 
+- **Phase 6, round 4 — Velocity, burndown, burnup charts** (final). Closes
+  Phase 6 and the roadmap checklist. Rejects assigning tasks into closed
+  sprints (Backlog closed sections are read-only); `GET …/velocity` and
+  `GET …/points-summary` feed hand-rolled SVG charts (ideal line + current
+  point, SCurveChart precedent). CFD is explicitly out of scope — audit log
+  is write-only and closeSprint's aggregate carry-over would make any
+  reconstructed CFD silently wrong; the UI documents why, not a fake chart.
+
 ## Next up
 
 TECHNICAL_DESIGN.md §13's Phase 0/1/2 build order is **entirely done**
@@ -715,10 +724,9 @@ avoid two copies drifting out of sync). **Phase 0's exit demo**
 (`docker compose up`, log in, create a custom role, watch a 403) is
 fully reachable end-to-end today.
 
-**Phases 3, 4, and 5 (Resources, Tracking, Interop & reporting) are
-also entirely done** — see their sections below, including Phase 4's
-previously-flagged Gantt status-date progress line, now closed. Phase 6
-rounds 1–3 are done; remaining is Round 4 (charts).
+**Phases 3–6 are entirely done** — Phase 6 Round 4 closed the agile charts
+slice (velocity / burndown / burnup). CFD remains a documented future
+feature, not an open checklist item in this plan.
 
 ## What can run in parallel (one terminal per Claude Code session)
 
@@ -795,16 +803,16 @@ against our own generated files (no MS Project install in this
 environment, same standing caveat as every golden case), but not yet
 against a real MS Project export.
 
-## Phase 6 — Agile module (PROJECT_SCOPE.md §8) — in progress
+## Phase 6 — Agile module (PROJECT_SCOPE.md §8) — **done**
 
-Split into four rounds.
+Split into four rounds — all complete.
 
 1. **Round 1 (backend foundation)** — **done** (see Done section above).
 2. **Round 2 (board + backlog UI)** — **done** (see Done section above).
 3. **Round 3 (epics, ceremonies, Gantt sprint bars)** — **done** (see Done
    section above).
-
-**Still pending**: Round 4 burndown/burnup/velocity/CFD.
+4. **Round 4 (velocity / burndown / burnup)** — **done** (see Done section
+   above). CFD deferred with an explicit UI explanation.
 
 `packages/ui` (shadcn/ui-based shared components) has no dedicated line item
 above — it accretes as `apps/web` needs components.
