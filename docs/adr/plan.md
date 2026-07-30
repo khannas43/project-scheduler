@@ -33,16 +33,14 @@ number, not a timeline estimate.
 | 2 — Full scheduling | 8 | 8 (all items done) | 0 | 0 | 100% |
 | 3 — Resources | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 4 — Tracking | 6 | 6 (all items done) | 0 | 0 | 100% |
-| 5 — Interop & reporting | 4 | 3 (MSPDI XML round-trip; CSV/Excel/PDF/PNG export; built-in reports) | 0 | 1 (dashboards) | 75% |
+| 5 — Interop & reporting | 4 | 4 (all items done) | 0 | 0 | 100% |
 | 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **49** | **0** | **8** | **~86%** |
+| **Total** | **57** | **50** | **0** | **7** | **~88%** |
 
-**~86% done, ~14% pending, 0% in progress** (49/57 done — Phases 0–4
-fully complete, plus Phase 5's MSPDI round-trip, export, and built-in-
-reports items; 8/57 not started, nothing currently in progress).
-Remaining: Phase 5's
-dashboards item, then Phase 6 (agile), plus the small
-Gantt progress-line item noted under Phase 4.
+**~88% done, ~12% pending, 0% in progress** (50/57 done — Phases 0–5
+fully complete; 7/57 not started — Phase 6 agile — nothing currently
+in progress). Remaining: Phase 6 (agile) — the Gantt status-date
+progress line flagged under Phase 4 is also done (see Done section).
 
 ---
 
@@ -517,6 +515,89 @@ variance columns, earned value metrics, S-curve) is now fully done.**
   including hand-tracing the `finishVarianceMinutes` sign convention
   end to end (a flipped sign there would have silently inverted what
   counts as "behind baseline") — no bugs found.
+- **Project + portfolio dashboards** (Phase 5, item 4 of 4) —
+  `dashboardService.ts` composes the already-tested built-in reports
+  (`getProjectSummary`, `getOverallocatedResourcesReport`,
+  `getMilestoneReport`, `getSlippingTasksReport`) rather than
+  re-deriving EV/health math. Pure `computeProjectHealth` thresholds
+  SPI/CPI (`no_baseline` / `unknown` / `behind` / `at_risk` /
+  `on_track`, worse metric governs). `GET /api/projects/:id/dashboard`
+  under `report.view`; `GET /api/dashboard/portfolio` auth-only
+  (membership via `listProjectsForUser`, same pattern as
+  `GET /api/projects`). Web: `features/dashboard/` with project
+  dashboard (health badge, stat tiles, upcoming milestones, top
+  slipping tasks, EV→baselines link) and portfolio table; topbar
+  Portfolio link + project sub-nav Dashboard link. No new charting
+  dependency; no archived filter (no such column); portfolio N+1 is
+  deliberate at this scale.
+- **Planner usability pass** (not a numbered roadmap item — closes
+  latent gaps in already-100%-marked phases, plus a few additions
+  beyond PROJECT_SCOPE.md's original bullet list; doesn't move the
+  Phase 0–6 progress table). `apps/web`'s task grid had edit-only
+  support since Phase 0 — no UI ever existed to create or delete a
+  task, only the API did. Adds `CreateTaskModal`/`useCreateTask`/
+  `useDeleteTask`, an inline predecessor cell (`predecessors.ts`
+  resolves typed WBS codes like `1.2, 1.4` to dependency ids, still
+  plain-FS-only — same deliberate scope limit as Gantt drag-to-link),
+  a `ProjectSettingsPage` for project-level date/baseline fields, a
+  `criticalOverride` column + UI toggle so a user can force a task's
+  critical-path flag independent of the CPM-computed value (migration
+  `0002_critical_override.sql`; `scheduleRunner.ts`'s write-back
+  honours `row.criticalOverride ?? computed.isCritical` — the override
+  is purely cosmetic, it doesn't change float/date math), a resource
+  day-allocation calendar (`ResourceCalendarPage`, `resourceCalendar.ts`,
+  `updateTimephasedDay` — editable per-day planned work, distinct from
+  the still-open `resources.calendar_id` CPM-availability gap noted
+  under Phase 3 below, which this does **not** close), and Gantt pan +
+  a real time-scale header (`packages/gantt`'s `layers/timeHeader.ts`).
+  This round landed and was pushed **without the usual review-before-
+  commit pass** — reviewed after the fact instead of before. Found and
+  fixed: a failing test (`useCreateTask.test.ts` missing the new
+  `isMilestone` field), two lint errors already on `main`
+  (`prefer-const` in `ganttView.ts`; a `react-hooks/exhaustive-deps`
+  eslint-disable referencing a rule this repo's config doesn't
+  register — no `eslint-plugin-react-hooks` dependency exists anywhere
+  in the monorepo), and one real functional bug: unchecking the
+  Milestone toggle sent `isMilestone: false` with no `durationMinutes`,
+  leaving the task stuck at 0 minutes — checking it *on* correctly
+  paired `durationMinutes: 0`, unchecking had no matching fallback.
+  Fixed to restore a working day (480 min) on uncheck, with a
+  regression test for the previously-uncovered direction. The new WBS
+  insert-at-position logic (`taskService.ts`'s `shiftSiblingsForInsert`,
+  raw ltree SQL for renumbering a subtree in place) has no test
+  coverage — hand-verified correct against a worked 3-sibling
+  insert-in-the-middle trace, but flagged as a real gap, not silently
+  accepted.
+- **Gantt status-date progress line** (closes the small gap flagged
+  under Phase 4) — a dashed violet vertical marker at
+  `project.statusDate`, drawn above task bars so it stays visible
+  crossing one. New `packages/gantt/src/layers/statusDateLine.ts`
+  (`drawStatusDateLine`), wired into `GanttView` as a genuine fifth
+  canvas layer (`statusLine`, z-order between `bars` and
+  `interaction` — `interaction` shifted from z=4 to z=5 to make room)
+  rather than folded into an existing layer, so it redraws on its own
+  dirty flag instead of piggybacking on bars' data-driven repaints.
+  `parseStatusDateUtcMs` deliberately diverges from the existing
+  `parseOriginUtcMs`: an unset/unparseable status date resolves to
+  `null` (draw nothing), not epoch `0` like origin does — a missing
+  status date must mean no line, not a line at 1970.
+  `setOriginDateIso` now also marks the new layer dirty, since the
+  line's x position is origin-relative even though the status date
+  itself didn't change. Included in `exportToPngDataUrl()`'s
+  composite (drawn last, on top of bars) since a stakeholder exporting
+  a snapshot would want the marker in it — unlike the interaction
+  layer's hover/drag ghosts, deliberately excluded from every export.
+  Scoped deliberately narrow, matching the gap's original framing: no
+  text label, no MS-Project-style per-task ahead/behind zigzag (would
+  need `percentComplete` piped into `GanttTask`, which doesn't exist
+  today — real, separate scope, not added here). `apps/web`'s
+  `GanttPanel` syncs it via `setStatusDateIso` in a `useEffect` keyed
+  on `project.statusDate`, mirroring the existing `setOriginDateIso`
+  sync exactly. All 48 `packages/gantt` tests pass, including new
+  pure draw-math cases (hand-verified against `minutesToX`, not just
+  "was called") and a PNG-export compositing case. Reviewed in full —
+  no bugs found in the implementation; the doc update itself had a
+  gap, since fixed (see below).
 
 ## Next up
 
@@ -526,10 +607,10 @@ avoid two copies drifting out of sync). **Phase 0's exit demo**
 (`docker compose up`, log in, create a custom role, watch a 403) is
 fully reachable end-to-end today.
 
-**Phases 3 and 4 (Resources, Tracking) are also entirely done** — see
-their sections below. **Phase 5 (Interop & reporting) is in
-progress** — see the "Phase 5" section below. The actual next work is
-Phase 5's one remaining item: dashboards (project + portfolio).
+**Phases 3, 4, and 5 (Resources, Tracking, Interop & reporting) are
+also entirely done** — see their sections below, including Phase 4's
+previously-flagged Gantt status-date progress line, now closed. The
+actual next work is Phase 6 (agile).
 
 ## What can run in parallel (one terminal per Claude Code session)
 
@@ -580,18 +661,14 @@ overallocations surface" — verifiable end-to-end today via
    — **done**, via `getBaselineDetail`.
 5. **Earned value metrics** (PV/EV/AC/SPI/CPI) — **done**.
 6. **S-curve** — **done** as a standalone chart in `EarnedValuePanel`.
-   **Not built**: a progress-line overlay directly on the Gantt canvas
-   at the status date — `PROJECT_SCOPE.md`'s phrasing groups this with
-   the S-curve, but it's really a separate `packages/gantt` rendering
-   feature (a vertical marker line, akin to the existing hover/drag
-   ghost layer) that was never scoped into either Cursor round. Small,
-   easy pickup whenever a Gantt-focused round happens next.
+7. **Gantt status-date progress line** — **done** (see Done section
+   above).
 
 **Exit criterion met**: "A baselined plan reports accurate SPI/CPI
 against recorded actuals" — verifiable end-to-end via
 `/projects/$projectId/baselines`.
 
-## Phase 5 — Interop & reporting (PROJECT_SCOPE.md §8, in progress)
+## Phase 5 — Interop & reporting (PROJECT_SCOPE.md §8) — done
 
 1. **MS Project XML (MSPDI) round-trip** — **done** (export + import,
    see Done section above).
@@ -601,7 +678,8 @@ against recorded actuals" — verifiable end-to-end via
    report builder (arbitrary columns/filters/grouping/chart-type,
    saved definitions) and the Agile-dependent reports (sprint report,
    velocity history) are deliberately deferred, not silently dropped.
-4. **Project and portfolio dashboards** — not started.
+4. **Project and portfolio dashboards** — **done** (see Done section
+   above).
 
 **Exit criterion** ("round-trip with MS Project preserves the plan")
 is **partially verifiable** — the export→import round-trip is proven
