@@ -2,8 +2,10 @@ import type { TaskCreateInput, TaskMoveInput, TaskUpdateInput } from '@pkg/schem
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 
 import { db } from '../db/client.js';
-import { assignments, calendars, projects, taskDependencies, tasks } from '../db/schema/index.js';
+import { assignments, calendars, projects, sprints, taskDependencies, tasks } from '../db/schema/index.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../middleware/errors.js';
+import { maxBacklogRank, nextBacklogRank, reorderTaskInBacklog } from './backlogRank.js';
+import { hasDependencies } from './dependencyService.js';
 import {
   rescheduleProject,
   withSerializableRetry,
@@ -25,6 +27,57 @@ function rejectSummaryDurationOrConstraint(
   }
   if (input.constraintType !== undefined && input.constraintType !== null) {
     throw new BadRequestError('Summary tasks cannot have constraintType set (§4.7)');
+  }
+}
+
+/** Mode-specific fields that must not be written under the wrong planning mode. */
+function rejectCrossModeFields(
+  effectiveMode: string,
+  patch: {
+    storyPoints?: number | null | undefined;
+    sprintId?: string | null | undefined;
+    durationMinutes?: number | null | undefined;
+    constraintType?: string | null | undefined;
+    constraintDate?: string | null | undefined;
+    deadline?: string | null | undefined;
+    taskType?: string | null | undefined;
+  },
+): void {
+  if (effectiveMode === 'cpm') {
+    if (patch.storyPoints !== undefined) {
+      throw new BadRequestError('storyPoints is only valid for agile tasks');
+    }
+    if (patch.sprintId !== undefined) {
+      throw new BadRequestError('sprintId is only valid for agile tasks');
+    }
+  }
+  if (effectiveMode === 'agile') {
+    if (patch.durationMinutes !== undefined) {
+      throw new BadRequestError('durationMinutes is only valid for CPM tasks');
+    }
+    if (patch.constraintType !== undefined) {
+      throw new BadRequestError('constraintType is only valid for CPM tasks');
+    }
+    if (patch.constraintDate !== undefined) {
+      throw new BadRequestError('constraintDate is only valid for CPM tasks');
+    }
+    if (patch.deadline !== undefined) {
+      throw new BadRequestError('deadline is only valid for CPM tasks');
+    }
+    if (patch.taskType !== undefined) {
+      throw new BadRequestError('taskType is only valid for CPM tasks');
+    }
+  }
+}
+
+async function assertSprintInProject(
+  tx: Db,
+  sprintId: string,
+  projectId: string,
+): Promise<void> {
+  const [sprint] = await tx.select().from(sprints).where(eq(sprints.id, sprintId)).limit(1);
+  if (!sprint || sprint.projectId !== projectId) {
+    throw new NotFoundError('Sprint not found in this project');
   }
 }
 
@@ -264,6 +317,13 @@ export async function createTask(
         ? (input.durationMinutes ?? 0)
         : (input.durationMinutes ?? null);
 
+    const schedulingMode = input.schedulingMode ?? 'cpm';
+    rejectCrossModeFields(schedulingMode, input);
+
+    if (input.sprintId) {
+      await assertSprintInProject(tx, input.sprintId, projectId);
+    }
+
     const [created] = await tx
       .insert(tasks)
       .values({
@@ -273,7 +333,7 @@ export async function createTask(
         notes: input.notes ?? null,
         isMilestone,
         isSummary,
-        schedulingMode: input.schedulingMode ?? 'cpm',
+        schedulingMode,
         durationMinutes,
         taskType: input.taskType ?? null,
         isEffortDriven: input.isEffortDriven ?? true,
@@ -282,6 +342,13 @@ export async function createTask(
         constraintDate: input.constraintDate ? new Date(input.constraintDate) : null,
         deadline: input.deadline ? new Date(input.deadline) : null,
         calendarId: input.calendarId ?? null,
+        storyPoints:
+          input.storyPoints === undefined
+            ? null
+            : input.storyPoints === null
+              ? null
+              : String(input.storyPoints),
+        sprintId: input.sprintId ?? null,
         sortOrder,
         wbsPath,
         wbsCode: wbsCodeFromPath(wbsPath),
@@ -327,6 +394,27 @@ export async function updateTask(
     void _p;
     void _parent;
 
+    const modeChanging =
+      patch.schedulingMode !== undefined && patch.schedulingMode !== existing.schedulingMode;
+    const effectiveMode = patch.schedulingMode ?? existing.schedulingMode;
+
+    if (modeChanging && patch.schedulingMode === 'agile') {
+      if (nextIsSummary || existing.isSummary) {
+        throw new BadRequestError('Summary tasks cannot switch to agile mode');
+      }
+      if (await hasDependencies(tx, taskId)) {
+        throw new BadRequestError(
+          'Cannot switch to agile mode while the task has dependencies — remove its dependencies first',
+        );
+      }
+    }
+
+    rejectCrossModeFields(effectiveMode, patch);
+
+    if (patch.sprintId) {
+      await assertSprintInProject(tx, patch.sprintId, existing.projectId);
+    }
+
     // Milestones are zero-duration leaf markers — not summaries.
     let nextIsMilestone = nextIsSummary
       ? false
@@ -356,6 +444,36 @@ export async function updateTask(
     }
 
     const milestoneChanged = nextIsMilestone !== existing.isMilestone;
+
+    // Mode-switch field clearing / backlog placement.
+    let modeClear: Record<string, unknown> = {};
+    if (modeChanging && patch.schedulingMode === 'agile') {
+      const backlogRank = await nextBacklogRank(await maxBacklogRank(tx, existing.projectId));
+      modeClear = {
+        durationMinutes: null,
+        constraintType: null,
+        constraintDate: null,
+        deadline: null,
+        criticalOverride: null,
+        earlyStart: null,
+        earlyFinish: null,
+        lateStart: null,
+        lateFinish: null,
+        totalFloatMinutes: null,
+        freeFloatMinutes: null,
+        isCritical: false,
+        backlogRank,
+      };
+      // Duration was cleared by the mode switch — don't also apply a CPM duration patch.
+      nextDuration = undefined;
+    } else if (modeChanging && patch.schedulingMode === 'cpm') {
+      modeClear = {
+        storyPoints: null,
+        sprintId: null,
+        boardColumnId: null,
+        backlogRank: null,
+      };
+    }
 
     const [updated] = await tx
       .update(tasks)
@@ -404,6 +522,13 @@ export async function updateTask(
         ...(patch.criticalOverride !== undefined
           ? { criticalOverride: patch.criticalOverride }
           : {}),
+        ...(patch.storyPoints !== undefined
+          ? {
+              storyPoints: patch.storyPoints === null ? null : String(patch.storyPoints),
+            }
+          : {}),
+        ...(patch.sprintId !== undefined ? { sprintId: patch.sprintId } : {}),
+        ...modeClear,
         version: sql`${tasks.version} + 1`,
       })
       .where(and(eq(tasks.id, taskId), eq(tasks.version, version)))
@@ -516,5 +641,31 @@ export async function moveTask(
     });
 
     return result;
+  }, db);
+}
+
+/** POST /api/tasks/:id/backlog-rank — reposition an agile task among neighbors. */
+export async function reorderTaskBacklog(
+  taskId: string,
+  neighbors: { beforeTaskId?: string | null | undefined; afterTaskId?: string | null | undefined },
+  userId: string,
+): Promise<typeof tasks.$inferSelect> {
+  return withSerializableRetry(async (tx) => {
+    const [existing] = await tx.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+    if (!existing) throw new NotFoundError('Task not found');
+
+    const updated = await reorderTaskInBacklog(tx, taskId, neighbors);
+
+    await writeAuditLog(tx, {
+      userId,
+      projectId: existing.projectId,
+      action: 'task.backlog_rank',
+      entityType: 'task',
+      entityId: taskId,
+      before: { backlogRank: existing.backlogRank },
+      after: { backlogRank: updated.backlogRank },
+    });
+
+    return updated;
   }, db);
 }

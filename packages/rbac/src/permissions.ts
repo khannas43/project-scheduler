@@ -47,6 +47,7 @@ export const PERMISSIONS = {
   ACTUALS_APPROVE: { key: 'actuals.approve', category: 'Tracking', description: 'Approve reported actuals' },
 
   // Agile
+  SPRINT_VIEW: { key: 'sprint.view', category: 'Agile', description: 'View sprints' },
   SPRINT_CREATE: { key: 'sprint.create', category: 'Agile', description: 'Create sprints' },
   SPRINT_EDIT: { key: 'sprint.edit', category: 'Agile', description: 'Edit sprints' },
   BOARD_MOVE_CARD: { key: 'board.move_card', category: 'Agile', description: 'Move a card on the agile board' },

@@ -10,6 +10,7 @@ import {
 describe('ProjectSettingsSchema', () => {
   it('fills defaults for an empty object', () => {
     expect(ProjectSettingsSchema.parse({})).toEqual(DEFAULT_PROJECT_SETTINGS);
+    expect(DEFAULT_PROJECT_SETTINGS.storyPointScale).toBe('fibonacci');
   });
 
   it('accepts a full settings object', () => {
@@ -18,9 +19,11 @@ describe('ProjectSettingsSchema', () => {
       dateTimeDisplay: 'datetime',
       activeBaselineId: '550e8400-e29b-41d4-a716-446655440000',
       showBaselineOnGantt: true,
+      storyPointScale: 'linear',
     });
     expect(result.dateFormat).toBe('dd/mm/yyyy');
     expect(result.showBaselineOnGantt).toBe(true);
+    expect(result.storyPointScale).toBe('linear');
   });
 });
 

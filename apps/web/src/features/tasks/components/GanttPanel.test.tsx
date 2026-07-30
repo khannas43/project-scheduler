@@ -53,6 +53,7 @@ const project: Project = {
     dateTimeDisplay: 'date',
     activeBaselineId: null,
     showBaselineOnGantt: false,
+    storyPointScale: 'fibonacci',
   },
   version: 1,
   createdAt: '2026-01-01T00:00:00.000Z',

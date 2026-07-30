@@ -23,6 +23,8 @@ export const ProjectSettingsSchema = z.object({
   /** Baseline used by default for variance / EV / Gantt overlay. */
   activeBaselineId: z.uuid().nullable().default(null),
   showBaselineOnGantt: z.boolean().default(false),
+  /** Fibonacci (1,2,3,5,8…) or linear (1,2,3,4…) story-point scale. */
+  storyPointScale: z.enum(['fibonacci', 'linear']).default('fibonacci'),
 });
 
 /**
@@ -35,6 +37,7 @@ export const ProjectSettingsPatchSchema = z.object({
   dateTimeDisplay: DateTimeDisplaySchema.optional(),
   activeBaselineId: z.uuid().nullable().optional(),
   showBaselineOnGantt: z.boolean().optional(),
+  storyPointScale: z.enum(['fibonacci', 'linear']).optional(),
 });
 
 export type DateFormat = z.infer<typeof DateFormatSchema>;
@@ -47,6 +50,7 @@ export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
   dateTimeDisplay: 'date',
   activeBaselineId: null,
   showBaselineOnGantt: false,
+  storyPointScale: 'fibonacci',
 };
 
 /** Parse stored jsonb into a full settings object (invalid → defaults). */

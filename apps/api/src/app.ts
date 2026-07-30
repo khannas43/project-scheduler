@@ -19,6 +19,7 @@ import { projectRoutes } from './routes/projects.js';
 import { reportRoutes } from './routes/reports.js';
 import { resourceRoutes } from './routes/resources.js';
 import { roleRoutes } from './routes/roles.js';
+import { sprintRoutes } from './routes/sprints.js';
 import { taskRoutes } from './routes/tasks.js';
 
 /** Separate from server.ts (which calls .listen()) so tests can `fastify.inject()` against it (§11). */
@@ -71,6 +72,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(mspdiRoutes);
   await fastify.register(reportRoutes);
   await fastify.register(dashboardRoutes);
+  await fastify.register(sprintRoutes);
 
   return fastify;
 }

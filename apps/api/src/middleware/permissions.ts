@@ -8,6 +8,7 @@ import {
   baselines,
   calendarExceptions,
   calendars,
+  sprints,
   taskDependencies,
   tasks,
 } from '../db/schema/index.js';
@@ -127,6 +128,17 @@ export async function resolveProjectId(request: FastifyRequest): Promise<string 
       .select({ projectId: baselines.projectId })
       .from(baselines)
       .where(eq(baselines.id, id))
+      .limit(1);
+    return row?.projectId;
+  }
+
+  // PATCH/DELETE /api/sprints/:id — :id is a sprint id (direct FK to project).
+  if (routePath.startsWith('/api/sprints/')) {
+    if (!id) return undefined;
+    const [row] = await db
+      .select({ projectId: sprints.projectId })
+      .from(sprints)
+      .where(eq(sprints.id, id))
       .limit(1);
     return row?.projectId;
   }

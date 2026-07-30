@@ -21,9 +21,10 @@ const SchedulingModeSchema = z.enum(['cpm', 'agile']);
  *   totalFloatMinutes, freeFloatMinutes, isCritical
  * - WBS: wbsPath, wbsCode (auto-generated from tree position)
  * - sortOrder (reorder via TaskMoveInputSchema)
+ * - backlogRank (server-computed via POST /api/tasks/:id/backlog-rank)
  *
  * Deferred (not yet built elsewhere in the codebase):
- * - Phase 6 agile: storyPoints, sprintId, boardColumnId, backlogRank
+ * - Phase 6 Round 2: boardColumnId (board_columns table)
  *
  * Tracking fields (percentComplete / actuals) are update-only — a new task
  * has no actuals yet (same omission-by-design convention as finishDate).
@@ -56,6 +57,8 @@ export const TaskCreateInputSchema = z.object({
   constraintDate: z.iso.datetime().nullable().optional(),
   deadline: z.iso.datetime().nullable().optional(),
   calendarId: z.uuid().nullable().optional(),
+  storyPoints: z.number().nonnegative().nullable().optional(),
+  sprintId: z.uuid().nullable().optional(),
 });
 
 export const TaskUpdateInputSchema = TaskCreateInputSchema.partial().extend({

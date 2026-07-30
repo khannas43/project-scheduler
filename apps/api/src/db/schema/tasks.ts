@@ -3,6 +3,7 @@ import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 import { calendars, projects } from './projects.js';
+import { sprints } from './sprints.js';
 
 /**
  * Postgres `ltree` — WBS path as a materialised label path ('1.3.2'), GIST
@@ -81,12 +82,12 @@ export const tasks = pgTable(
     actualDurationMinutes: integer('actual_duration_minutes'),
     remainingDurationMinutes: integer('remaining_duration_minutes'),
 
-    // Agile (Phase 6) — sprints/board_columns aren't modelled in §3 yet, so
-    // these stay plain nullable uuids until those tables exist to reference.
+    // Agile (Phase 6) — sprint_id FK lands with the sprints table; board_column_id
+    // stays a bare uuid until Round 2 adds board_columns.
     storyPoints: numeric('story_points'),
-    sprintId: uuid('sprint_id'),
+    sprintId: uuid('sprint_id').references(() => sprints.id, { onDelete: 'set null' }),
     boardColumnId: uuid('board_column_id'),
-    backlogRank: text('backlog_rank'), // lexorank for O(1) reordering
+    backlogRank: text('backlog_rank'), // fractional-indexing rank for O(1) reordering
 
     version: integer('version').notNull().default(0), // optimistic lock (§9.1)
 

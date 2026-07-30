@@ -36,9 +36,7 @@ const FORBIDDEN_CREATE_KEYS = [
   'actualFinish',
   'actualDurationMinutes',
   'remainingDurationMinutes',
-  // Phase 6 agile — deferred
-  'storyPoints',
-  'sprintId',
+  // Phase 6 Round 2+ — still deferred / server-owned
   'boardColumnId',
   'backlogRank',
 ] as const;
@@ -126,6 +124,20 @@ describe('TaskCreateInputSchema', () => {
     ).toBe(false);
   });
 
+  it('accepts storyPoints and sprintId (Phase 6 agile fields)', () => {
+    const result = TaskCreateInputSchema.safeParse({
+      ...validCreate,
+      schedulingMode: 'agile',
+      storyPoints: 5,
+      sprintId: PARENT_ID,
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.storyPoints).toBe(5);
+      expect(result.data.sprintId).toBe(PARENT_ID);
+    }
+  });
+
   it('does not declare forbidden keys on the schema shape (omission, not validation)', () => {
     for (const key of FORBIDDEN_CREATE_KEYS) {
       expect(TaskCreateInputSchema.shape).not.toHaveProperty(key);
@@ -174,7 +186,7 @@ describe('TaskCreateInputSchema', () => {
     }
   });
 
-  it('strips Phase 4 tracking and Phase 6 agile fields by omission', () => {
+  it('strips Phase 4 tracking and server-owned agile fields by omission', () => {
     const result = TaskCreateInputSchema.safeParse({
       ...validCreate,
       percentComplete: 50,
@@ -182,14 +194,16 @@ describe('TaskCreateInputSchema', () => {
       storyPoints: 5,
       sprintId: PARENT_ID,
       backlogRank: 'a0',
+      boardColumnId: PARENT_ID,
     });
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data).not.toHaveProperty('percentComplete');
       expect(result.data).not.toHaveProperty('actualStart');
-      expect(result.data).not.toHaveProperty('storyPoints');
-      expect(result.data).not.toHaveProperty('sprintId');
+      expect(result.data.storyPoints).toBe(5);
+      expect(result.data.sprintId).toBe(PARENT_ID);
       expect(result.data).not.toHaveProperty('backlogRank');
+      expect(result.data).not.toHaveProperty('boardColumnId');
     }
   });
 });

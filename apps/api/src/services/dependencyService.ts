@@ -1,5 +1,5 @@
 import type { DependencyCreateInput } from '@pkg/schema';
-import { eq } from 'drizzle-orm';
+import { eq, or } from 'drizzle-orm';
 
 import { db } from '../db/client.js';
 import { projects, taskDependencies, tasks } from '../db/schema/index.js';
@@ -10,8 +10,21 @@ import {
   rescheduleProject,
   withSerializableRetry,
   writeAuditLog,
+  type Db,
   type MutationResult,
 } from './scheduleRunner.js';
+
+/** True when the task appears on either end of any dependency row. */
+export async function hasDependencies(tx: Db, taskId: string): Promise<boolean> {
+  const [row] = await tx
+    .select({ id: taskDependencies.id })
+    .from(taskDependencies)
+    .where(
+      or(eq(taskDependencies.predecessorId, taskId), eq(taskDependencies.successorId, taskId)),
+    )
+    .limit(1);
+  return row !== undefined;
+}
 
 export async function createDependency(
   input: DependencyCreateInput,

@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
 import {
+  TaskBacklogRankInputSchema,
   TaskCreateInputSchema,
   TaskMoveInputSchema,
   TaskUpdateInputSchema,
@@ -80,6 +81,19 @@ export const taskRoutes: FastifyPluginAsyncZod = async (fastify) => {
       const user = request.user;
       if (!user) throw new Error('requireAuth must run first');
       return taskService.moveTask(request.params.id, request.body, user.id);
+    },
+  );
+
+  fastify.post(
+    '/api/tasks/:id/backlog-rank',
+    {
+      preHandler: [requireAuth, requirePermission('backlog.reorder')],
+      schema: { params: TaskIdParams, body: TaskBacklogRankInputSchema },
+    },
+    async (request) => {
+      const user = request.user;
+      if (!user) throw new Error('requireAuth must run first');
+      return taskService.reorderTaskBacklog(request.params.id, request.body, user.id);
     },
   );
 };

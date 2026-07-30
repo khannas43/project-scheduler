@@ -37,6 +37,18 @@ export {
 } from './task.js';
 
 export {
+  SprintCreateFieldsSchema,
+  SprintCreateInputSchema,
+  SprintCreateBodySchema,
+  SprintUpdateInputSchema,
+  TaskBacklogRankInputSchema,
+  type SprintCreateInput,
+  type SprintCreateBody,
+  type SprintUpdateInput,
+  type TaskBacklogRankInput,
+} from './sprint.js';
+
+export {
   DependencyCreateInputSchema,
   DependencyUpdateInputSchema,
   type DependencyCreateInput,

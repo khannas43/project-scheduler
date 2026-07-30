@@ -13,6 +13,9 @@ describe('@pkg/schema barrel', () => {
     expect(schema.TaskCreateInputSchema).toBeDefined();
     expect(schema.TaskUpdateInputSchema).toBeDefined();
     expect(schema.TaskMoveInputSchema).toBeDefined();
+    expect(schema.SprintCreateInputSchema).toBeDefined();
+    expect(schema.SprintUpdateInputSchema).toBeDefined();
+    expect(schema.TaskBacklogRankInputSchema).toBeDefined();
     expect(schema.DependencyCreateInputSchema).toBeDefined();
     expect(schema.DependencyUpdateInputSchema).toBeDefined();
 

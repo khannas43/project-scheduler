@@ -4,3 +4,4 @@ export * from './tasks.js';
 export * from './dependencies.js';
 export * from './resources.js';
 export * from './baselines.js';
+export * from './sprints.js';
