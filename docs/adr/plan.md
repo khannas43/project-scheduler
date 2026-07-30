@@ -34,13 +34,12 @@ number, not a timeline estimate.
 | 3 — Resources | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 4 — Tracking | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 5 — Interop & reporting | 4 | 4 (all items done) | 0 | 0 | 100% |
-| 6 — Agile | 7 | 0 | 0 | 7 | 0% |
-| **Total** | **57** | **50** | **0** | **7** | **~88%** |
+| 6 — Agile | 7 | 1 (round 1 foundation) | 0 | 6 | ~14% |
+| **Total** | **57** | **51** | **0** | **6** | **~89%** |
 
-**~88% done, ~12% pending, 0% in progress** (50/57 done — Phases 0–5
-fully complete; 7/57 not started — Phase 6 agile — nothing currently
-in progress). Remaining: Phase 6 (agile) — the Gantt status-date
-progress line flagged under Phase 4 is also done (see Done section).
+**~89% done, ~11% pending** (51/57 done — Phases 0–5 complete plus Phase 6
+round 1 backend foundation). Remaining: Phase 6 rounds 2–4 (board UI,
+epics/ceremonies/Gantt sprint bars, charts).
 
 ---
 
@@ -598,6 +597,49 @@ variance columns, earned value metrics, S-curve) is now fully done.**
   "was called") and a PNG-export compositing case. Reviewed in full —
   no bugs found in the implementation; the doc update itself had a
   gap, since fixed (see below).
+- **Phase 6, round 1 — Agile backend foundation** (schema, planning-
+  mode switch, sprints, backlog, story points; no UI). New `sprints`
+  table (`project_id`, `name`, `goal`, `start`/`end` date, `capacity`,
+  `state` — plain text, Zod-validated only, matching the
+  `constraint_type`/`task_type` convention of no DB enum/CHECK) plus a
+  real FK on `tasks.sprint_id` (`on delete set null`); `board_column_id`
+  deliberately left as the bare, unreferenced `uuid` it already was —
+  Round 2 adds `board_columns` and its FK together. `schedulingMode`
+  (`'cpm' | 'agile'`) was already wired end-to-end from an earlier
+  round with zero side effects on switching — this round adds them to
+  the existing `updateTask` path rather than a new endpoint. Switching
+  to agile mode rejects (via `BadRequestError`, mirroring
+  `resourceService.ts`'s `deleteResource` guard) if the task has any
+  dependency rows: `scheduleRunner.ts`'s `toTaskInputs` already filtered
+  agile-mode tasks out of `SchedulerInput.tasks`, but `toDependencyInputs`
+  never filtered dependencies referencing them — an agile task with live
+  dependencies would hand the scheduler a dependency pointing outside
+  its own input set. This closes a real, already-latent gap in
+  already-shipped code, not a hypothetical. Switching also clears the
+  seven CPM-output columns plus duration/constraint/deadline/
+  criticalOverride explicitly at switch time — necessary because
+  `toTaskInputs` filtering means an agile task is never visited by the
+  reschedule write-back loop again, so stale CPM dates would otherwise
+  persist forever if not cleared here. Cross-mode field rejection uses
+  the *effective* post-patch mode so a same-patch `{schedulingMode:
+  'agile', storyPoints: 5}` is validated correctly, not just the
+  pre-patch mode. Backlog ranking uses the `fractional-indexing` npm
+  package (added as a new dependency) rather than a hand-rolled
+  midpoint-string algorithm — a deliberate choice, since rank-between
+  algorithms have real rebalancing edge cases not worth reinventing,
+  unlike this codebase's other small hand-rolled helpers. `sprint.view`
+  was added to RBAC (create/edit existed, view didn't) and granted to
+  exactly the same system role that already had create/edit. Two real
+  issues found on review, both fixed: a `prefer-const` lint error in
+  the new backlog-rank test, and a cross-package typecheck break — three
+  `apps/web` test fixtures constructed a literal `ProjectSettings`
+  object that became invalid once `storyPointScale` was added as a
+  required field on that shared type, since Round 1 was scoped
+  backend-only and didn't run `apps/web`'s typecheck. 153 api tests,
+  79 schema tests, 104 web tests, and all 21 turbo lint/typecheck/build
+  tasks pass. **Not built this round** (see the Phase 6 section below
+  for the full remaining breakdown): `board_columns`, sprint ceremonies,
+  epic hierarchy, Gantt sprint bars, charts.
 
 ## Next up
 
@@ -687,11 +729,14 @@ against our own generated files (no MS Project install in this
 environment, same standing caveat as every golden case), but not yet
 against a real MS Project export.
 
-## Phase 6 — Agile module (PROJECT_SCOPE.md §8) — not started
+## Phase 6 — Agile module (PROJECT_SCOPE.md §8) — in progress
 
-Planning-mode field, boards, sprints, backlog, story points, epic
-hierarchy, burndown/burnup/velocity/CFD, sprint bars on the master
-Gantt, sprint close and carry-over.
+Split into four rounds. **Round 1 (backend foundation) — done** (see
+Done section above).
+
+**Still pending**: Round 2 board + backlog UI (`board_columns`); Round 3
+epic hierarchy, sprint ceremonies, Gantt sprint bars; Round 4
+burndown/burnup/velocity/CFD.
 
 `packages/ui` (shadcn/ui-based shared components) has no dedicated line item
 above — it accretes as `apps/web` needs components.
