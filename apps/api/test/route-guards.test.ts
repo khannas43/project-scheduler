@@ -130,6 +130,7 @@ describe('route-guard drift (§6.4)', () => {
     byKey('POST', '/api/projects/:id/sprints', PERMISSIONS.SPRINT_CREATE.key);
     byKey('PATCH', '/api/sprints/:id', PERMISSIONS.SPRINT_EDIT.key);
     byKey('DELETE', '/api/sprints/:id', PERMISSIONS.SPRINT_EDIT.key);
+    byKey('POST', '/api/sprints/:id/close', PERMISSIONS.SPRINT_EDIT.key);
     byKey('POST', '/api/tasks/:id/backlog-rank', PERMISSIONS.BACKLOG_REORDER.key);
 
     byKey('GET', '/api/projects/:id/board-columns', PERMISSIONS.BOARD_VIEW.key);

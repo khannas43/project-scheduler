@@ -1,6 +1,12 @@
 import { apiRequest } from '../../lib/apiClient.js';
 
-import type { CreateSprintInput, SprintRow, UpdateSprintInput } from './types.js';
+import type {
+  CloseSprintInput,
+  CloseSprintResult,
+  CreateSprintInput,
+  SprintRow,
+  UpdateSprintInput,
+} from './types.js';
 
 export function listSprints(projectId: string): Promise<SprintRow[]> {
   return apiRequest<SprintRow[]>(`/api/projects/${projectId}/sprints`);
@@ -16,6 +22,16 @@ export function createSprint(projectId: string, input: CreateSprintInput): Promi
 export function updateSprint(sprintId: string, input: UpdateSprintInput): Promise<SprintRow> {
   return apiRequest<SprintRow>(`/api/sprints/${sprintId}`, {
     method: 'PATCH',
+    body: input,
+  });
+}
+
+export function closeSprint(
+  sprintId: string,
+  input: CloseSprintInput = {},
+): Promise<CloseSprintResult> {
+  return apiRequest<CloseSprintResult>(`/api/sprints/${sprintId}/close`, {
+    method: 'POST',
     body: input,
   });
 }

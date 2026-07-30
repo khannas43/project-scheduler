@@ -6,7 +6,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Project } from '../../projects/index.js';
 import type { DependencyRow, TaskRow } from '../types.js';
+import { TaskIdAdapter } from '../idAdapter.js';
 import {
+  buildGanttData,
   calendarMinutesToWorking,
   downloadDataUrl,
   ganttDurationMinutes,
@@ -35,6 +37,10 @@ vi.mock('@pkg/gantt', () => ({
 
 vi.mock('../hooks/useDependencies.js', () => ({
   useCreateDependency: () => ({ mutate: vi.fn() }),
+}));
+
+vi.mock('../../sprints/hooks/useSprints.js', () => ({
+  useSprints: () => ({ data: [], isLoading: false, isError: false }),
 }));
 
 const project: Project = {
@@ -151,6 +157,78 @@ describe('gantt duration mapping', () => {
   it('converts snapped calendar days back to working minutes', () => {
     expect(calendarMinutesToWorking(24 * 60)).toBe(480);
     expect(calendarMinutesToWorking(3 * 24 * 60)).toBe(1440);
+  });
+});
+
+describe('buildGanttData agile sprint bars', () => {
+  const sprintId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+  const agileWithSprint: TaskRow = {
+    ...tasks[0]!,
+    id: '44444444-4444-4444-8444-444444444444',
+    name: 'Story',
+    schedulingMode: 'agile',
+    isCritical: false,
+    durationMinutes: null,
+    earlyStart: null,
+    earlyFinish: null,
+    sprintId,
+    storyPoints: '3',
+  };
+  const agileNoSprint: TaskRow = {
+    ...agileWithSprint,
+    id: '55555555-5555-4555-8555-555555555555',
+    name: 'Backlog only',
+    sprintId: null,
+  };
+
+  it('places agile tasks on the sprint date range and marks isAgile', () => {
+    const adapter = new TaskIdAdapter([tasks[0]!.id, agileWithSprint.id]);
+    const { ganttTasks } = buildGanttData(
+      project,
+      [tasks[0]!, agileWithSprint],
+      [],
+      adapter,
+      new Set(),
+      [
+        {
+          id: sprintId,
+          projectId: project.id,
+          name: 'Sprint 1',
+          goal: null,
+          startDate: '2026-01-05T00:00:00.000Z',
+          endDate: '2026-01-19T00:00:00.000Z',
+          capacity: null,
+          state: 'active',
+          version: 0,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+    );
+
+    expect(ganttTasks).toHaveLength(2);
+    const agileBar = ganttTasks.find((t) => t.name === 'Story');
+    expect(agileBar).toMatchObject({
+      isAgile: true,
+      isCritical: false,
+      startMinutes: 4 * 24 * 60,
+      durationMinutes: 14 * 24 * 60,
+    });
+  });
+
+  it('excludes agile tasks with no sprintId', () => {
+    const adapter = new TaskIdAdapter([agileNoSprint.id, tasks[0]!.id]);
+    const { ganttTasks } = buildGanttData(
+      project,
+      [agileNoSprint, tasks[0]!],
+      [],
+      adapter,
+      new Set(),
+      [],
+    );
+
+    expect(ganttTasks).toHaveLength(1);
+    expect(ganttTasks[0]?.name).toBe('Pour foundation');
   });
 });
 

@@ -31,6 +31,27 @@ function rejectSummaryDurationOrConstraint(
   }
 }
 
+/** Epics (agile summaries) are containers — no story points / sprint / column. */
+function rejectSummaryAgileFields(
+  isSummary: boolean,
+  input: {
+    storyPoints?: number | null | undefined;
+    sprintId?: string | null | undefined;
+    boardColumnId?: string | null | undefined;
+  },
+): void {
+  if (!isSummary) return;
+  if (input.storyPoints !== undefined && input.storyPoints !== null) {
+    throw new BadRequestError('Summary tasks cannot have storyPoints set');
+  }
+  if (input.sprintId !== undefined && input.sprintId !== null) {
+    throw new BadRequestError('Summary tasks cannot have sprintId set');
+  }
+  if (input.boardColumnId !== undefined && input.boardColumnId !== null) {
+    throw new BadRequestError('Summary tasks cannot have boardColumnId set');
+  }
+}
+
 /** Mode-specific fields that must not be written under the wrong planning mode. */
 function rejectCrossModeFields(
   effectiveMode: string,
@@ -288,6 +309,7 @@ export async function createTask(
 
     const isSummary = input.isSummary ?? false;
     rejectSummaryDurationOrConstraint(isSummary, input);
+    rejectSummaryAgileFields(isSummary, input);
 
     const { parentId, sortOrder, wbsPath } = await resolveCreatePlacement(tx, projectId, input);
 
@@ -298,6 +320,7 @@ export async function createTask(
       }
 
       // Adding a child under a leaf promotes the parent to a summary (WBS group).
+      // Summaries lose leaf-owned fields (CPM inputs and agile leaf fields alike).
       if (!parent.isSummary) {
         await tx
           .update(tasks)
@@ -306,6 +329,10 @@ export async function createTask(
             durationMinutes: null,
             constraintType: null,
             constraintDate: null,
+            storyPoints: null,
+            sprintId: null,
+            boardColumnId: null,
+            backlogRank: null,
           })
           .where(eq(tasks.id, parentId));
       }
@@ -325,8 +352,9 @@ export async function createTask(
       await assertSprintInProject(tx, input.sprintId, projectId);
     }
 
+    // Epics (agile summaries) are containers — no backlog rank.
     const backlogRank =
-      schedulingMode === 'agile'
+      schedulingMode === 'agile' && !isSummary
         ? await nextBacklogRank(await maxBacklogRank(tx, projectId))
         : null;
 
@@ -396,6 +424,10 @@ export async function updateTask(
       durationMinutes: input.durationMinutes,
       constraintType: input.constraintType,
     });
+    rejectSummaryAgileFields(nextIsSummary, {
+      storyPoints: input.storyPoints,
+      sprintId: input.sprintId,
+    });
 
     const { version, projectId: _p, parentId: _parent, ...patch } = input;
     void _p;
@@ -406,9 +438,6 @@ export async function updateTask(
     const effectiveMode = patch.schedulingMode ?? existing.schedulingMode;
 
     if (modeChanging && patch.schedulingMode === 'agile') {
-      if (nextIsSummary || existing.isSummary) {
-        throw new BadRequestError('Summary tasks cannot switch to agile mode');
-      }
       if (await hasDependencies(tx, taskId)) {
         throw new BadRequestError(
           'Cannot switch to agile mode while the task has dependencies — remove its dependencies first',
@@ -455,7 +484,6 @@ export async function updateTask(
     // Mode-switch field clearing / backlog placement.
     let modeClear: Record<string, unknown> = {};
     if (modeChanging && patch.schedulingMode === 'agile') {
-      const backlogRank = await nextBacklogRank(await maxBacklogRank(tx, existing.projectId));
       modeClear = {
         durationMinutes: null,
         constraintType: null,
@@ -469,7 +497,17 @@ export async function updateTask(
         totalFloatMinutes: null,
         freeFloatMinutes: null,
         isCritical: false,
-        backlogRank,
+        // Epics are containers — no backlog rank / leaf agile fields.
+        ...(nextIsSummary
+          ? {
+              storyPoints: null,
+              sprintId: null,
+              boardColumnId: null,
+              backlogRank: null,
+            }
+          : {
+              backlogRank: await nextBacklogRank(await maxBacklogRank(tx, existing.projectId)),
+            }),
       };
       // Duration was cleared by the mode switch — don't also apply a CPM duration patch.
       nextDuration = undefined;
@@ -688,6 +726,9 @@ export async function moveTaskBoardColumn(
     if (!existing) throw new NotFoundError('Task not found');
     if (existing.schedulingMode !== 'agile') {
       throw new BadRequestError('Only agile tasks can be moved on the board');
+    }
+    if (existing.isSummary) {
+      throw new BadRequestError('Summary tasks cannot have boardColumnId set');
     }
 
     if (boardColumnId !== null) {

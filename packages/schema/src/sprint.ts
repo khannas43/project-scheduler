@@ -38,7 +38,8 @@ export const SprintUpdateInputSchema = z
     startDate: z.iso.datetime().optional(),
     endDate: z.iso.datetime().optional(),
     capacity: z.number().nonnegative().nullable().optional(),
-    state: z.enum(['planned', 'active', 'closed']).optional(),
+    /** Closing must use POST /api/sprints/:id/close so carry-over cannot be skipped. */
+    state: z.enum(['planned', 'active']).optional(),
   })
   .refine(
     (v) => {
@@ -47,6 +48,11 @@ export const SprintUpdateInputSchema = z
     },
     { message: 'endDate must be after startDate' },
   );
+
+/** Body for POST /api/sprints/:id/close. */
+export const SprintCloseInputSchema = z.object({
+  carryOverToSprintId: z.uuid().nullable().optional(),
+});
 
 /** Body for POST /api/tasks/:id/backlog-rank. */
 export const TaskBacklogRankInputSchema = z.object({
@@ -57,4 +63,5 @@ export const TaskBacklogRankInputSchema = z.object({
 export type SprintCreateInput = z.infer<typeof SprintCreateInputSchema>;
 export type SprintCreateBody = z.infer<typeof SprintCreateBodySchema>;
 export type SprintUpdateInput = z.infer<typeof SprintUpdateInputSchema>;
+export type SprintCloseInput = z.infer<typeof SprintCloseInputSchema>;
 export type TaskBacklogRankInput = z.infer<typeof TaskBacklogRankInputSchema>;

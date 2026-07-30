@@ -1,4 +1,4 @@
-import { index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, index, integer, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { projects } from './projects.js';
 
@@ -18,6 +18,8 @@ export const boardColumns = pgTable(
     sortOrder: integer('sort_order').notNull(),
     /** Null = unbounded WIP. */
     wipLimit: integer('wip_limit'),
+    /** Done columns mark sprint-close completion for carry-over. */
+    isDone: boolean('is_done').notNull().default(false),
     version: integer('version').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true })

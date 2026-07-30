@@ -49,6 +49,7 @@ export async function createBoardColumn(
         name: input.name,
         sortOrder: input.sortOrder,
         wipLimit: input.wipLimit ?? null,
+        isDone: input.isDone ?? false,
       })
       .returning();
 
@@ -88,6 +89,7 @@ export async function updateBoardColumn(
         ...(patch.name !== undefined ? { name: patch.name } : {}),
         ...(patch.sortOrder !== undefined ? { sortOrder: patch.sortOrder } : {}),
         ...(patch.wipLimit !== undefined ? { wipLimit: patch.wipLimit } : {}),
+        ...(patch.isDone !== undefined ? { isDone: patch.isDone } : {}),
         version: sql`${boardColumns.version} + 1`,
       })
       .where(and(eq(boardColumns.id, columnId), eq(boardColumns.version, version)))

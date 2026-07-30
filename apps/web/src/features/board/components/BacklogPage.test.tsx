@@ -22,6 +22,8 @@ vi.mock('@tanstack/react-router', () => ({
 vi.mock('../../sprints/hooks/useSprints.js', () => ({
   useSprints: vi.fn(),
   useCreateSprint: vi.fn(),
+  useUpdateSprint: vi.fn(),
+  useCloseSprint: vi.fn(),
 }));
 
 vi.mock('../hooks/useBoard.js', () => ({
@@ -33,7 +35,12 @@ vi.mock('../../tasks/hooks/useTaskTree.js', () => ({
   useTaskTree: vi.fn(),
 }));
 
-import { useCreateSprint, useSprints } from '../../sprints/hooks/useSprints.js';
+import {
+  useCloseSprint,
+  useCreateSprint,
+  useSprints,
+  useUpdateSprint,
+} from '../../sprints/hooks/useSprints.js';
 import { useTaskTree } from '../../tasks/hooks/useTaskTree.js';
 import { usePatchTaskSprint, useReorderBacklogRank } from '../hooks/useBoard.js';
 
@@ -101,12 +108,18 @@ function wrap(ui: ReactNode) {
 describe('BacklogPage', () => {
   const reorderMutateAsync = vi.fn();
   const patchMutateAsync = vi.fn();
+  const updateSprintMutateAsync = vi.fn();
+  const closeSprintMutateAsync = vi.fn();
 
   beforeEach(() => {
     reorderMutateAsync.mockReset();
     patchMutateAsync.mockReset();
+    updateSprintMutateAsync.mockReset();
+    closeSprintMutateAsync.mockReset();
     reorderMutateAsync.mockResolvedValue(task({ id: taskA, name: 'Alpha' }));
     patchMutateAsync.mockResolvedValue({});
+    updateSprintMutateAsync.mockResolvedValue({});
+    closeSprintMutateAsync.mockResolvedValue({ sprint: sprint({ state: 'closed' }), carriedOverTaskIds: [] });
 
     vi.mocked(useSprints).mockReturnValue({
       data: [sprint()],
@@ -118,6 +131,16 @@ describe('BacklogPage', () => {
       mutateAsync: vi.fn(),
       isPending: false,
     } as unknown as ReturnType<typeof useCreateSprint>);
+
+    vi.mocked(useUpdateSprint).mockReturnValue({
+      mutateAsync: updateSprintMutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useUpdateSprint>);
+
+    vi.mocked(useCloseSprint).mockReturnValue({
+      mutateAsync: closeSprintMutateAsync,
+      isPending: false,
+    } as unknown as ReturnType<typeof useCloseSprint>);
 
     vi.mocked(useReorderBacklogRank).mockReturnValue({
       mutateAsync: reorderMutateAsync,
@@ -223,6 +246,115 @@ describe('BacklogPage', () => {
         taskId: taskA,
         beforeTaskId: null,
         afterTaskId: taskB,
+      });
+    });
+  });
+
+  it('shows an epic badge on backlog rows', async () => {
+    const epicId = '77777777-7777-4777-8777-777777777777';
+    const tree: TaskTreeResponse = {
+      tasks: [
+        task({
+          id: epicId,
+          name: 'Payments epic',
+          isSummary: true,
+          sprintId: null,
+        }),
+        task({
+          id: taskA,
+          name: 'Alpha',
+          parentId: epicId,
+          backlogRank: 'a0',
+        }),
+      ],
+      dependencies: [],
+      calendars: [],
+      assignments: [],
+      projectVersion: 1,
+    };
+    vi.mocked(useTaskTree).mockReturnValue({
+      data: tree,
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useTaskTree>);
+
+    wrap(<BacklogPage />);
+
+    expect(await screen.findByTestId(`epic-badge-${taskA}`)).toHaveTextContent('Payments epic');
+    // Epic summaries themselves are not backlog cards.
+    expect(screen.queryByText('Payments epic', { selector: '.backlog-item-name' })).toBeNull();
+  });
+
+  it('shows Start sprint for planned sprints with story-point capacity', async () => {
+    vi.mocked(useSprints).mockReturnValue({
+      data: [sprint({ state: 'planned', capacity: '13' })],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useSprints>);
+
+    const plannedTree: TaskTreeResponse = {
+      tasks: [
+        task({
+          id: taskA,
+          name: 'Alpha',
+          sprintId,
+          storyPoints: '5',
+          backlogRank: 'a0',
+        }),
+      ],
+      dependencies: [],
+      calendars: [],
+      assignments: [],
+      projectVersion: 1,
+    };
+    vi.mocked(useTaskTree).mockReturnValue({
+      data: plannedTree,
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useTaskTree>);
+
+    wrap(<BacklogPage />);
+
+    expect(await screen.findByText(/5 \/ 13\s+pts/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId(`start-sprint-${sprintId}`));
+    await waitFor(() => {
+      expect(updateSprintMutateAsync).toHaveBeenCalledWith({
+        sprintId,
+        input: { version: 0, state: 'active' },
+      });
+    });
+  });
+
+  it('closes an active sprint via the carry-over picker', async () => {
+    vi.mocked(useSprints).mockReturnValue({
+      data: [sprint({ state: 'active' })],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useSprints>);
+
+    const activeTree: TaskTreeResponse = {
+      tasks: [task({ id: taskA, name: 'Alpha', sprintId })],
+      dependencies: [],
+      calendars: [],
+      assignments: [],
+      projectVersion: 1,
+    };
+    vi.mocked(useTaskTree).mockReturnValue({
+      data: activeTree,
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useTaskTree>);
+
+    wrap(<BacklogPage />);
+
+    fireEvent.click(await screen.findByTestId(`close-sprint-${sprintId}`));
+    expect(screen.getByTestId(`close-picker-${sprintId}`)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId(`confirm-close-${sprintId}`));
+
+    await waitFor(() => {
+      expect(closeSprintMutateAsync).toHaveBeenCalledWith({
+        sprintId,
+        input: { carryOverToSprintId: null },
       });
     });
   });

@@ -69,7 +69,49 @@ vi.mock('../src/services/backlogRank.js', () => ({
   reorderTaskInBacklog: vi.fn(),
 }));
 
-const { updateTask } = await import('../src/services/taskService.js');
+const { createTask, updateTask } = await import('../src/services/taskService.js');
+
+describe('createTask summary agile fields', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    selectLimit = vi.fn();
+    tx = {
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            limit: selectLimit,
+          })),
+        })),
+      })),
+      update: vi.fn(),
+    };
+    withSerializableRetry.mockImplementation(
+      async (fn: (txArg: unknown) => Promise<unknown>, _db?: unknown) => {
+        void _db;
+        return fn(tx);
+      },
+    );
+  });
+
+  it('rejects storyPoints / sprintId / boardColumnId on summary create', async () => {
+    selectLimit.mockResolvedValueOnce([{ id: 'proj-1' }]);
+    await expect(
+      createTask(
+        'proj-1',
+        {
+          name: 'Epic',
+          isSummary: true,
+          schedulingMode: 'agile',
+          storyPoints: 5,
+        },
+        'user-1',
+      ),
+    ).rejects.toSatisfy(
+      (err: unknown) =>
+        err instanceof BadRequestError && /Summary tasks cannot have storyPoints/.test((err as Error).message),
+    );
+  });
+});
 
 describe('updateTask planning-mode switch', () => {
   beforeEach(() => {
@@ -117,15 +159,32 @@ describe('updateTask planning-mode switch', () => {
     expect(updateSet).not.toHaveBeenCalled();
   });
 
-  it('rejects switching a summary to agile', async () => {
+  it('allows switching a summary to agile (epic) but rejects storyPoints on it', async () => {
     selectLimit.mockResolvedValueOnce([{ ...existingTask, isSummary: true }]);
     hasDependencies.mockResolvedValueOnce(false);
+    const updated = {
+      ...existingTask,
+      isSummary: true,
+      schedulingMode: 'agile',
+      backlogRank: null,
+      version: 4,
+    };
+    updateReturning.mockResolvedValueOnce([updated]);
+    rescheduleProject.mockResolvedValueOnce({ task: updated });
 
+    await updateTask('task-1', { version: 3, schedulingMode: 'agile' }, 'user-1');
+    const setArg = updateSet.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(setArg.schedulingMode).toBe('agile');
+    expect(setArg.backlogRank).toBeNull();
+
+    selectLimit.mockResolvedValueOnce([
+      { ...existingTask, isSummary: true, schedulingMode: 'agile' },
+    ]);
     await expect(
-      updateTask('task-1', { version: 3, schedulingMode: 'agile' }, 'user-1'),
+      updateTask('task-1', { version: 3, storyPoints: 5 }, 'user-1'),
     ).rejects.toSatisfy(
       (err: unknown) =>
-        err instanceof BadRequestError && /Summary tasks cannot switch to agile/.test((err as Error).message),
+        err instanceof BadRequestError && /Summary tasks cannot have storyPoints/.test((err as Error).message),
     );
   });
 

@@ -9,6 +9,8 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { Project } from '../../projects/index.js';
+import { useSprints } from '../../sprints/hooks/useSprints.js';
+import type { SprintRow } from '../../sprints/types.js';
 import { useCreateDependency } from '../hooks/useDependencies.js';
 import { TaskIdAdapter } from '../idAdapter.js';
 import {
@@ -92,23 +94,53 @@ export interface GanttPanelProps {
   readonly onCommitResize?: (patch: TaskEditPatch) => void;
 }
 
-function buildGanttData(
+/**
+ * Map project tasks → Gantt bars. Agile tasks without a sprint are omitted
+ * (same rule as the Board). Agile tasks with a sprint span that sprint's
+ * date range; CPM tasks use earlyStart / duration as before.
+ */
+export function buildGanttData(
   project: Project,
   tasks: readonly TaskRow[],
   dependencies: readonly DependencyRow[],
   adapter: TaskIdAdapter,
   collapsedIds: ReadonlySet<string>,
+  sprints: readonly SprintRow[] = [],
 ): { ganttTasks: GanttTask[]; ganttDeps: GanttDependency[] } {
   const ordered = filterTasksByCollapsed(tasks, collapsedIds);
-  const visibleIds = new Set(ordered.map((t) => t.id));
   const projectStart = projectStartEpochMinutes(project);
+  const sprintsById = new Map(sprints.map((s) => [s.id, s]));
 
   const ganttTasks: GanttTask[] = [];
-  for (let row = 0; row < ordered.length; row += 1) {
-    const task = ordered[row];
-    if (!task) continue;
+  const visibleIds = new Set<string>();
+  let row = 0;
+
+  for (const task of ordered) {
     const numericId = adapter.toNumeric(task.id);
     if (numericId === undefined) continue;
+
+    if (task.schedulingMode === 'agile') {
+      if (!task.sprintId) continue;
+      const sprint = sprintsById.get(task.sprintId);
+      if (!sprint) continue;
+
+      const sprintStart = isoToEpochMinutes(sprint.startDate);
+      const sprintEnd = isoToEpochMinutes(sprint.endDate);
+      ganttTasks.push({
+        id: numericId,
+        name: task.name,
+        row,
+        startMinutes: sprintStart - projectStart,
+        durationMinutes: Math.max(0, sprintEnd - sprintStart),
+        progress: 0,
+        isCritical: false,
+        isSummary: task.isSummary,
+        isAgile: true,
+      });
+      visibleIds.add(task.id);
+      row += 1;
+      continue;
+    }
 
     const earlyStartMin = task.earlyStart ? isoToEpochMinutes(task.earlyStart) : projectStart;
     ganttTasks.push({
@@ -121,6 +153,8 @@ function buildGanttData(
       isCritical: task.isCritical,
       isSummary: task.isSummary,
     });
+    visibleIds.add(task.id);
+    row += 1;
   }
 
   const ganttDeps: GanttDependency[] = [];
@@ -163,6 +197,9 @@ export function GanttPanel({
 
   const [timeScale, setTimeScale] = useState<GanttTimeScale>(() => readStoredTimeScale());
 
+  const sprintsQuery = useSprints(project.id);
+  const sprints = sprintsQuery.data ?? [];
+
   const createDep = useCreateDependency(project.id);
   const createDepRef = useRef(createDep);
   createDepRef.current = createDep;
@@ -172,10 +209,9 @@ export function GanttPanel({
   adapterRef.current = adapter;
 
   const { ganttTasks, ganttDeps } = useMemo(
-    () => buildGanttData(project, tasks, dependencies, adapter, collapsedIds),
-    [project, tasks, dependencies, adapter, collapsedIds],
+    () => buildGanttData(project, tasks, dependencies, adapter, collapsedIds, sprints),
+    [project, tasks, dependencies, adapter, collapsedIds, sprints],
   );
-
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;

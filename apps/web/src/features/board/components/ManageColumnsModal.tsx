@@ -13,13 +13,19 @@ export interface ManageColumnsModalProps {
   readonly onClose: () => void;
 }
 
+type ColumnDraft = { name: string; wipLimit: string; isDone: boolean };
+
 function draftsFromColumns(
   columns: readonly BoardColumnRow[],
-): Record<string, { name: string; wipLimit: string }> {
+): Record<string, ColumnDraft> {
   return Object.fromEntries(
     columns.map((c) => [
       c.id,
-      { name: c.name, wipLimit: c.wipLimit === null ? '' : String(c.wipLimit) },
+      {
+        name: c.name,
+        wipLimit: c.wipLimit === null ? '' : String(c.wipLimit),
+        isDone: c.isDone,
+      },
     ]),
   );
 }
@@ -31,6 +37,7 @@ export function ManageColumnsModal({ projectId, columns, onClose }: ManageColumn
 
   const [newName, setNewName] = useState('');
   const [newWip, setNewWip] = useState('');
+  const [newIsDone, setNewIsDone] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState(() => draftsFromColumns(columns));
 
@@ -66,13 +73,18 @@ export function ManageColumnsModal({ projectId, columns, onClose }: ManageColumn
     setCreateError(null);
     const sortOrder =
       columns.length === 0 ? 0 : Math.max(...columns.map((c) => c.sortOrder)) + 1;
-    await createColumn.mutateAsync({ name, sortOrder, wipLimit });
+    await createColumn.mutateAsync({ name, sortOrder, wipLimit, isDone: newIsDone });
     setNewName('');
     setNewWip('');
+    setNewIsDone(false);
   }
 
   async function handleSave(column: BoardColumnRow) {
-    const draft = drafts[column.id] ?? { name: column.name, wipLimit: '' };
+    const draft = drafts[column.id] ?? {
+      name: column.name,
+      wipLimit: '',
+      isDone: column.isDone,
+    };
     const name = draft.name.trim();
     if (!name) return;
 
@@ -85,7 +97,12 @@ export function ManageColumnsModal({ projectId, columns, onClose }: ManageColumn
 
     await updateColumn.mutateAsync({
       columnId: column.id,
-      input: { version: column.version, name, wipLimit },
+      input: {
+        version: column.version,
+        name,
+        wipLimit,
+        isDone: draft.isDone,
+      },
     });
   }
 
@@ -101,7 +118,9 @@ export function ManageColumnsModal({ projectId, columns, onClose }: ManageColumn
         <header className="assignment-panel-header">
           <div>
             <h2 id="manage-columns-title">Manage columns</h2>
-            <p className="muted">Create, rename, set WIP limits, or delete board columns.</p>
+            <p className="muted">
+              Create, rename, set WIP limits, mark Done columns, or delete board columns.
+            </p>
           </div>
           <button type="button" className="btn-secondary" onClick={onClose} disabled={busy}>
             Close
@@ -113,6 +132,7 @@ export function ManageColumnsModal({ projectId, columns, onClose }: ManageColumn
             const draft = drafts[column.id] ?? {
               name: column.name,
               wipLimit: column.wipLimit === null ? '' : String(column.wipLimit),
+              isDone: column.isDone,
             };
             return (
               <li key={column.id} className="manage-columns-row">
@@ -145,6 +165,20 @@ export function ManageColumnsModal({ projectId, columns, onClose }: ManageColumn
                       }))
                     }
                   />
+                </label>
+                <label className="field checkbox-field">
+                  <input
+                    type="checkbox"
+                    checked={draft.isDone}
+                    disabled={busy}
+                    onChange={(e) =>
+                      setDrafts((prev) => ({
+                        ...prev,
+                        [column.id]: { ...draft, isDone: e.target.checked },
+                      }))
+                    }
+                  />
+                  Done column
                 </label>
                 <div className="form-actions">
                   <button
@@ -200,6 +234,15 @@ export function ManageColumnsModal({ projectId, columns, onClose }: ManageColumn
               placeholder="None"
               disabled={busy}
             />
+          </label>
+          <label className="field checkbox-field">
+            <input
+              type="checkbox"
+              checked={newIsDone}
+              onChange={(e) => setNewIsDone(e.target.checked)}
+              disabled={busy}
+            />
+            Done column
           </label>
           {createError ? <p className="form-error">{createError}</p> : null}
           <div className="form-actions">

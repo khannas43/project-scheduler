@@ -7,6 +7,8 @@ export interface BoardColumnRow {
   readonly sortOrder: number;
   /** Null = unbounded WIP. */
   readonly wipLimit: number | null;
+  /** Done column — marks tasks complete for sprint close / carry-over. */
+  readonly isDone: boolean;
   readonly version: number;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -16,6 +18,7 @@ export interface CreateBoardColumnInput {
   readonly name: string;
   readonly sortOrder: number;
   readonly wipLimit?: number | null;
+  readonly isDone?: boolean;
 }
 
 export interface UpdateBoardColumnInput {
@@ -23,4 +26,5 @@ export interface UpdateBoardColumnInput {
   readonly name?: string;
   readonly sortOrder?: number;
   readonly wipLimit?: number | null;
+  readonly isDone?: boolean;
 }

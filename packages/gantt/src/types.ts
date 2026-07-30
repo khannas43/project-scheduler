@@ -16,6 +16,11 @@ export interface GanttTask {
   readonly isCritical: boolean;
   /** Summary bars refuse drag-to-move (matches API rejectSummaryDurationOrConstraint). */
   readonly isSummary: boolean;
+  /**
+   * Agile / sprint bars — amber fill, refuse drag (server cross-mode guards
+   * would reject constraint/duration commits).
+   */
+  readonly isAgile?: boolean;
 }
 
 export interface GanttDependency {

@@ -52,9 +52,12 @@ describe('SprintUpdateInputSchema', () => {
     ).toBe(false);
   });
 
-  it('accepts state transitions as a plain field', () => {
+  it('accepts planned/active state but rejects closed (must use close endpoint)', () => {
     expect(
       SprintUpdateInputSchema.safeParse({ version: 1, state: 'active' }).success,
     ).toBe(true);
+    expect(
+      SprintUpdateInputSchema.safeParse({ version: 1, state: 'closed' }).success,
+    ).toBe(false);
   });
 });

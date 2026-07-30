@@ -1,5 +1,9 @@
 import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
-import { SprintCreateBodySchema, SprintUpdateInputSchema } from '@pkg/schema';
+import {
+  SprintCloseInputSchema,
+  SprintCreateBodySchema,
+  SprintUpdateInputSchema,
+} from '@pkg/schema';
 import { z } from 'zod';
 
 import { requireAuth } from '../middleware/auth.js';
@@ -59,6 +63,23 @@ export const sprintRoutes: FastifyPluginAsyncZod = async (fastify) => {
       await sprintService.deleteSprint(request.params.id, user.id);
       reply.code(204);
       return null;
+    },
+  );
+
+  fastify.post(
+    '/api/sprints/:id/close',
+    {
+      preHandler: [requireAuth, requirePermission('sprint.edit')],
+      schema: { params: SprintIdParams, body: SprintCloseInputSchema },
+    },
+    async (request) => {
+      const user = request.user;
+      if (!user) throw new Error('requireAuth must run first');
+      return sprintService.closeSprint(
+        request.params.id,
+        request.body.carryOverToSprintId,
+        user.id,
+      );
     },
   );
 };

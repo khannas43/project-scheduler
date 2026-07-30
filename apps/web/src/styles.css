@@ -1881,7 +1881,8 @@ button:disabled {
   align-items: flex-end;
 }
 
-.board-sprint-picker {
+.board-sprint-picker,
+.board-group-by {
   min-width: 12rem;
 }
 
@@ -2000,15 +2001,45 @@ button:disabled {
 
 .backlog-section-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  align-items: baseline;
+  align-items: flex-start;
   gap: 0.75rem;
   margin-bottom: 0.65rem;
+}
+
+.backlog-section-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .backlog-section-header h2 {
   margin: 0;
   font-size: 1.05rem;
+}
+
+.backlog-epic-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.05rem 0.35rem;
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backlog-close-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  padding: 0.65rem 0;
+  margin-bottom: 0.65rem;
+  border-bottom: 1px solid var(--line);
 }
 
 .backlog-list {
@@ -2022,7 +2053,7 @@ button:disabled {
 
 .backlog-item {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto auto auto;
   gap: 0.75rem;
   align-items: center;
   padding: 0.55rem 0.7rem;

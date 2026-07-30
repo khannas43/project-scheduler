@@ -98,6 +98,7 @@ describe('board-column routes', () => {
       name: 'To Do',
       sortOrder: 0,
       wipLimit: null,
+      isDone: false,
       version: 0,
       createdAt: new Date(),
       updatedAt: new Date(),

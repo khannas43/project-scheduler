@@ -47,12 +47,13 @@ export function drawBars(input: BarsDrawInput): BarsDrawResult {
     const w = Math.max(2, task.durationMinutes * ppm);
     const y = task.row * ROW_HEIGHT - scrollTop + BAR_VPAD;
 
-    ctx.fillStyle = task.isCritical ? '#dc2626' : '#3b82f6';
+    // Agile (amber) never shares the critical branch — Round 1 forces isCritical=false.
+    ctx.fillStyle = task.isAgile ? '#d97706' : task.isCritical ? '#dc2626' : '#3b82f6';
     roundRect(ctx, x, y, w, BAR_HEIGHT, 3);
     ctx.fill();
 
     if (task.progress > 0) {
-      ctx.fillStyle = task.isCritical ? '#991b1b' : '#1d4ed8';
+      ctx.fillStyle = task.isAgile ? '#92400e' : task.isCritical ? '#991b1b' : '#1d4ed8';
       const pw = Math.max(0, Math.min(w, w * task.progress));
       roundRect(ctx, x, y, pw, BAR_HEIGHT, 3);
       ctx.fill();

@@ -6,11 +6,14 @@ import { useSprints } from '../../sprints/hooks/useSprints.js';
 import type { SprintRow } from '../../sprints/types.js';
 import { useTaskTree } from '../../tasks/hooks/useTaskTree.js';
 import type { AssignmentRow, TaskRow } from '../../tasks/types.js';
+import { findEpicAncestor } from '../epicAncestor.js';
 import { useBoardColumns, useMoveTaskBoardColumn } from '../hooks/useBoard.js';
 import type { BoardColumnRow } from '../types.js';
 import { ManageColumnsModal } from './ManageColumnsModal.js';
 
 const UNASSIGNED_KEY = '__unassigned__';
+
+type GroupBy = 'none' | 'resource' | 'epic';
 
 function pickDefaultSprintId(sprints: readonly SprintRow[]): string | null {
   if (sprints.length === 0) return null;
@@ -38,7 +41,7 @@ export function BoardPage() {
   const moveColumn = useMoveTaskBoardColumn(projectId);
 
   const [selectedSprintId, setSelectedSprintId] = useState<string | null>(null);
-  const [groupByResource, setGroupByResource] = useState(false);
+  const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [manageOpen, setManageOpen] = useState(false);
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
@@ -54,6 +57,12 @@ export function BoardPage() {
     if (!sprintsQuery.data) return;
     setSelectedSprintId(pickDefaultSprintId(sprintsQuery.data));
   }, [sprintsQuery.data, selectedSprintId]);
+
+  const tasksById = useMemo(() => {
+    const map = new Map<string, TaskRow>();
+    for (const t of taskTree.data?.tasks ?? []) map.set(t.id, t);
+    return map;
+  }, [taskTree.data?.tasks]);
 
   const assignmentsByTask = useMemo(() => {
     const map = new Map<string, AssignmentRow[]>();
@@ -151,33 +160,55 @@ export function BoardPage() {
     );
   }
 
-  function renderColumnBody(_columnKey: string, tasks: readonly TaskRow[]) {
-    void _columnKey;
-    if (!groupByResource) {
-      return tasks.map(renderCard);
-    }
-
+  function renderLanes(
+    tasks: readonly TaskRow[],
+    laneKeyFor: (task: TaskRow) => string,
+    labelFor: (laneKey: string) => string,
+  ) {
     const lanes = new Map<string, TaskRow[]>();
     for (const task of tasks) {
-      const first = assignmentsByTask.get(task.id)?.[0];
-      const key = first?.resourceId ?? '__unassigned_resource__';
+      const key = laneKeyFor(task);
       const list = lanes.get(key) ?? [];
       list.push(task);
       lanes.set(key, list);
     }
 
-    return [...lanes.entries()].map(([resourceId, laneTasks]) => {
-      const label =
-        resourceId === '__unassigned_resource__'
-          ? 'Unassigned'
-          : (resourceNameById.get(resourceId) ?? shortId(resourceId));
-      return (
-        <div key={resourceId} className="board-swimlane">
-          <h3 className="board-swimlane-title">{label}</h3>
-          {laneTasks.map(renderCard)}
-        </div>
+    return [...lanes.entries()].map(([laneKey, laneTasks]) => (
+      <div key={laneKey} className="board-swimlane">
+        <h3 className="board-swimlane-title">{labelFor(laneKey)}</h3>
+        {laneTasks.map(renderCard)}
+      </div>
+    ));
+  }
+
+  function renderColumnBody(_columnKey: string, tasks: readonly TaskRow[]) {
+    void _columnKey;
+    if (groupBy === 'none') {
+      return tasks.map(renderCard);
+    }
+
+    if (groupBy === 'resource') {
+      return renderLanes(
+        tasks,
+        (task) => {
+          const first = assignmentsByTask.get(task.id)?.[0];
+          return first?.resourceId ?? '__unassigned_resource__';
+        },
+        (resourceId) =>
+          resourceId === '__unassigned_resource__'
+            ? 'Unassigned'
+            : (resourceNameById.get(resourceId) ?? shortId(resourceId)),
       );
-    });
+    }
+
+    return renderLanes(
+      tasks,
+      (task) => findEpicAncestor(task, tasksById)?.id ?? '__no_epic__',
+      (epicId) =>
+        epicId === '__no_epic__'
+          ? 'No epic'
+          : (tasksById.get(epicId)?.name ?? shortId(epicId)),
+    );
   }
 
   function renderColumn(column: BoardColumnRow | null) {
@@ -250,13 +281,17 @@ export function BoardPage() {
               ))}
             </select>
           </label>
-          <label className="field checkbox-field">
-            <input
-              type="checkbox"
-              checked={groupByResource}
-              onChange={(e) => setGroupByResource(e.target.checked)}
-            />
-            Group by resource
+          <label className="field board-group-by">
+            Group by
+            <select
+              value={groupBy}
+              onChange={(e) => setGroupBy(e.target.value as GroupBy)}
+              aria-label="Group by"
+            >
+              <option value="none">None</option>
+              <option value="resource">Resource</option>
+              <option value="epic">Epic</option>
+            </select>
           </label>
           <button type="button" className="btn-secondary" onClick={() => setManageOpen(true)}>
             Manage columns

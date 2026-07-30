@@ -126,6 +126,34 @@ describe('GanttView drag-to-move', () => {
     view.destroy();
   });
 
+  it('refuses to start a drag on an agile bar', () => {
+    const onCommitMove = vi.fn();
+    const view = new GanttView({
+      container: host,
+      tasks: [
+        task({
+          id: 1,
+          row: 0,
+          startMinutes: 0,
+          durationMinutes: 2 * MINUTES_PER_DAY,
+          isAgile: true,
+        }),
+      ],
+      dependencies: [],
+      onCommitMove,
+    });
+    const stack = stubStackRect(view);
+    view.paint();
+
+    const ppm = PIXELS_PER_DAY / MINUTES_PER_DAY;
+    dispatch(stack, 'pointerdown', { clientX: ppm * (MINUTES_PER_DAY / 2), clientY: ROW_HEIGHT / 2 });
+
+    expect(view.getActiveDrag()).toBeNull();
+    expect(view.getActivePan()).not.toBeNull();
+    expect(onCommitMove).not.toHaveBeenCalled();
+    view.destroy();
+  });
+
   it('requests pointer capture, snaps on move, and commits on release when changed', () => {
     const onCommitMove = vi.fn();
     const view = new GanttView({

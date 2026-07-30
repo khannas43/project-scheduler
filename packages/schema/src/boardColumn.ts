@@ -5,6 +5,7 @@ export const BoardColumnCreateFieldsSchema = z.object({
   name: z.string().min(1),
   sortOrder: z.number().int(),
   wipLimit: z.number().int().positive().nullable().optional(),
+  isDone: z.boolean().optional(),
 });
 
 export const BoardColumnCreateInputSchema = BoardColumnCreateFieldsSchema;
@@ -17,6 +18,7 @@ export const BoardColumnUpdateInputSchema = z.object({
   name: z.string().min(1).optional(),
   sortOrder: z.number().int().optional(),
   wipLimit: z.number().int().positive().nullable().optional(),
+  isDone: z.boolean().optional(),
 });
 
 /** Body for POST /api/tasks/:id/board-column. */

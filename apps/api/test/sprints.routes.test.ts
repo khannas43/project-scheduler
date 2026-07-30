@@ -27,6 +27,7 @@ vi.mock('../src/services/sprintService.js', async (importOriginal) => {
     createSprint: vi.fn(),
     updateSprint: vi.fn(),
     deleteSprint: vi.fn(),
+    closeSprint: vi.fn(),
   };
 });
 
@@ -39,7 +40,7 @@ vi.mock('../src/services/taskService.js', async (importOriginal) => {
 });
 
 const { getEffectivePermissions } = await import('../src/services/permissionService.js');
-const { listSprints, createSprint } = await import('../src/services/sprintService.js');
+const { listSprints, createSprint, closeSprint } = await import('../src/services/sprintService.js');
 const { reorderTaskBacklog } = await import('../src/services/taskService.js');
 const { buildApp } = await import('../src/app.js');
 const { signAccessToken } = await import('../src/lib/jwt.js');
@@ -53,6 +54,7 @@ describe('sprint + backlog-rank routes', () => {
     vi.mocked(getEffectivePermissions).mockReset();
     vi.mocked(listSprints).mockReset();
     vi.mocked(createSprint).mockReset();
+    vi.mocked(closeSprint).mockReset();
     vi.mocked(reorderTaskBacklog).mockReset();
     taskProjectLimit.mockReset();
     taskProjectLimit.mockResolvedValue([{ projectId: PROJECT }]);
@@ -126,6 +128,41 @@ describe('sprint + backlog-rank routes', () => {
 
     expect(res.statusCode).toBe(201);
     expect(createSprint).toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('closes a sprint with sprint.edit via POST /close', async () => {
+    const SPRINT = '00000000-0000-4000-8000-000000000021';
+    vi.mocked(getEffectivePermissions).mockResolvedValue(new Set(['sprint.edit']));
+    vi.mocked(closeSprint).mockResolvedValue({
+      sprint: {
+        id: SPRINT,
+        projectId: PROJECT,
+        name: 'Sprint 1',
+        goal: null,
+        startDate: new Date('2026-01-01T00:00:00.000Z'),
+        endDate: new Date('2026-01-15T00:00:00.000Z'),
+        capacity: '20',
+        state: 'closed',
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      carriedOverTaskIds: ['task-a'],
+    });
+    const app = await buildApp();
+    const token = await signAccessToken(USER, 'u@example.com');
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/sprints/${SPRINT}/close`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: { carryOverToSprintId: null },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(closeSprint).toHaveBeenCalledWith(SPRINT, null, USER);
+    expect(res.json()).toMatchObject({ carriedOverTaskIds: ['task-a'] });
     await app.close();
   });
 

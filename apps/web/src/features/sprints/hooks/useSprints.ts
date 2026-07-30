@@ -4,7 +4,7 @@ import { ApiError } from '../../../lib/apiClient.js';
 import { useErrorBanner } from '../../../stores/errorBanner.js';
 import { tasksQueryKey } from '../../tasks/hooks/useTaskTree.js';
 import * as sprintsApi from '../api.js';
-import type { CreateSprintInput, UpdateSprintInput } from '../types.js';
+import type { CloseSprintInput, CreateSprintInput, UpdateSprintInput } from '../types.js';
 
 export function sprintsQueryKey(projectId: string) {
   return ['sprints', projectId] as const;
@@ -65,6 +65,26 @@ export function useDeleteSprint(projectId: string) {
 
   return useMutation({
     mutationFn: (sprintId: string) => sprintsApi.deleteSprint(sprintId),
+    onError: (err) => showMutationError(showBanner, err),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: sprintsQueryKey(projectId) });
+      await queryClient.invalidateQueries({ queryKey: tasksQueryKey(projectId) });
+    },
+  });
+}
+
+export function useCloseSprint(projectId: string) {
+  const queryClient = useQueryClient();
+  const showBanner = useErrorBanner((s) => s.show);
+
+  return useMutation({
+    mutationFn: ({
+      sprintId,
+      input,
+    }: {
+      sprintId: string;
+      input?: CloseSprintInput;
+    }) => sprintsApi.closeSprint(sprintId, input ?? {}),
     onError: (err) => showMutationError(showBanner, err),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: sprintsQueryKey(projectId) });

@@ -1,10 +1,16 @@
 import { Link, useParams } from '@tanstack/react-router';
 import { useMemo, useState, type DragEvent, type FormEvent } from 'react';
 
-import { useCreateSprint, useSprints } from '../../sprints/hooks/useSprints.js';
+import {
+  useCloseSprint,
+  useCreateSprint,
+  useSprints,
+  useUpdateSprint,
+} from '../../sprints/hooks/useSprints.js';
 import type { SprintRow } from '../../sprints/types.js';
 import { useTaskTree } from '../../tasks/hooks/useTaskTree.js';
 import type { TaskRow } from '../../tasks/types.js';
+import { findEpicAncestor } from '../epicAncestor.js';
 import { usePatchTaskSprint, useReorderBacklogRank } from '../hooks/useBoard.js';
 
 type SectionKey = string; // 'backlog' | sprintId
@@ -43,11 +49,23 @@ function neighborsForDrop(
   return { beforeTaskId: targetId, afterTaskId: after?.id ?? null };
 }
 
+function sumStoryPoints(tasks: readonly TaskRow[]): number {
+  let total = 0;
+  for (const t of tasks) {
+    if (t.storyPoints == null) continue;
+    const n = Number(t.storyPoints);
+    if (Number.isFinite(n)) total += n;
+  }
+  return total;
+}
+
 export function BacklogPage() {
   const { projectId } = useParams({ strict: false }) as { projectId: string };
   const sprintsQuery = useSprints(projectId);
   const taskTree = useTaskTree(projectId);
   const createSprint = useCreateSprint(projectId);
+  const updateSprint = useUpdateSprint(projectId);
+  const closeSprint = useCloseSprint(projectId);
   const reorder = useReorderBacklogRank(projectId);
   const patchSprint = usePatchTaskSprint(projectId);
 
@@ -57,6 +75,8 @@ export function BacklogPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [formError, setFormError] = useState<string | null>(null);
+  const [closingSprintId, setClosingSprintId] = useState<string | null>(null);
+  const [carryOverToSprintId, setCarryOverToSprintId] = useState<string>('');
 
   const sprints = sprintsQuery.data ?? [];
   const agileTasks = useMemo(
@@ -64,12 +84,20 @@ export function BacklogPage() {
     [taskTree.data?.tasks],
   );
 
+  const tasksById = useMemo(() => {
+    const map = new Map<string, TaskRow>();
+    for (const t of taskTree.data?.tasks ?? []) map.set(t.id, t);
+    return map;
+  }, [taskTree.data?.tasks]);
+
   const sections = useMemo(() => {
     const bySprint = new Map<SectionKey, TaskRow[]>();
     bySprint.set('backlog', []);
     for (const s of sprints) bySprint.set(s.id, []);
 
     for (const task of agileTasks) {
+      // Epics are containers — not backlog cards.
+      if (task.isSummary) continue;
       const key = task.sprintId && bySprint.has(task.sprintId) ? task.sprintId : 'backlog';
       bySprint.get(key)!.push(task);
     }
@@ -166,10 +194,35 @@ export function BacklogPage() {
     setEndDate('');
   }
 
+  function openClosePicker(sprint: SprintRow) {
+    setClosingSprintId(sprint.id);
+    setCarryOverToSprintId('');
+  }
+
+  async function confirmCloseSprint() {
+    if (!closingSprintId) return;
+    await closeSprint.mutateAsync({
+      sprintId: closingSprintId,
+      input: {
+        carryOverToSprintId: carryOverToSprintId === '' ? null : carryOverToSprintId,
+      },
+    });
+    setClosingSprintId(null);
+    setCarryOverToSprintId('');
+  }
+
   function renderSection(key: SectionKey, title: string, sprint?: SprintRow) {
     const tasks = sections.get(key) ?? [];
     const sectionDropKey = `section:${key}`;
     const isSectionOver = dragOverKey === sectionDropKey;
+    const points = sumStoryPoints(tasks);
+    const capacity =
+      sprint?.capacity != null && sprint.capacity !== ''
+        ? Number(sprint.capacity)
+        : null;
+    const carryTargets = sprints.filter(
+      (s) => s.id !== sprint?.id && s.state !== 'closed',
+    );
 
     return (
       <section
@@ -183,23 +236,99 @@ export function BacklogPage() {
         onDrop={(e) => void onDrop(key, null, e)}
       >
         <header className="backlog-section-header">
-          <h2>{title}</h2>
-          {sprint ? (
-            <span className="muted">
-              {sprint.state}
-              {' · '}
-              {new Date(sprint.startDate).toLocaleDateString()} –{' '}
-              {new Date(sprint.endDate).toLocaleDateString()}
-            </span>
-          ) : (
-            <span className="muted">{tasks.length} items</span>
-          )}
+          <div className="backlog-section-heading">
+            <h2>{title}</h2>
+            {sprint ? (
+              <span className="muted">
+                {sprint.state}
+                {' · '}
+                {new Date(sprint.startDate).toLocaleDateString()} –{' '}
+                {new Date(sprint.endDate).toLocaleDateString()}
+                {' · '}
+                {points}
+                {capacity != null && Number.isFinite(capacity)
+                  ? ` / ${capacity}`
+                  : ''}{' '}
+                pts
+              </span>
+            ) : (
+              <span className="muted">{tasks.length} items</span>
+            )}
+          </div>
+          {sprint && sprint.state === 'planned' ? (
+            <button
+              type="button"
+              className="btn-secondary btn-compact"
+              data-testid={`start-sprint-${sprint.id}`}
+              disabled={updateSprint.isPending}
+              onClick={() =>
+                void updateSprint.mutateAsync({
+                  sprintId: sprint.id,
+                  input: { version: sprint.version, state: 'active' },
+                })
+              }
+            >
+              Start sprint
+            </button>
+          ) : null}
+          {sprint && sprint.state === 'active' ? (
+            <button
+              type="button"
+              className="btn-secondary btn-compact"
+              data-testid={`close-sprint-${sprint.id}`}
+              disabled={closeSprint.isPending}
+              onClick={() => openClosePicker(sprint)}
+            >
+              Close sprint
+            </button>
+          ) : null}
         </header>
+
+        {closingSprintId === sprint?.id ? (
+          <div className="backlog-close-picker" data-testid={`close-picker-${sprint.id}`}>
+            <label className="field">
+              Carry incomplete to
+              <select
+                value={carryOverToSprintId}
+                onChange={(e) => setCarryOverToSprintId(e.target.value)}
+                aria-label="Carry incomplete to"
+              >
+                <option value="">Backlog</option>
+                {carryTargets.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="form-actions">
+              <button
+                type="button"
+                className="btn-secondary btn-compact"
+                onClick={() => setClosingSprintId(null)}
+                disabled={closeSprint.isPending}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-compact"
+                data-testid={`confirm-close-${sprint.id}`}
+                disabled={closeSprint.isPending}
+                onClick={() => void confirmCloseSprint()}
+              >
+                {closeSprint.isPending ? 'Closing…' : 'Confirm close'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <ul className="backlog-list">
           {tasks.map((task) => {
             const dropKey = `task:${task.id}`;
             const isDragging = draggingTaskId === task.id;
             const isOver = dragOverKey === dropKey;
+            const epic = findEpicAncestor(task, tasksById);
             return (
               <li
                 key={task.id}
@@ -222,6 +351,11 @@ export function BacklogPage() {
                 data-task-id={task.id}
               >
                 <span className="backlog-item-name">{task.name}</span>
+                {epic ? (
+                  <span className="backlog-epic-badge" data-testid={`epic-badge-${task.id}`}>
+                    {epic.name}
+                  </span>
+                ) : null}
                 <span className="muted mono">{task.wbsCode ?? '—'}</span>
                 <span className="muted">
                   {task.storyPoints != null ? `${task.storyPoints} pts` : '—'}

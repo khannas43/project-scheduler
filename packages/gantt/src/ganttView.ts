@@ -421,9 +421,9 @@ export class GanttView {
     if (this.drag || this.resizeDrag || this.linkDrag || this.pan) return;
     const taskId = hitTest(this.spatialIndex, x, y);
     const task = lookupTask(this.tasksById, taskId);
-    if (task && !task.isSummary && this.isNearRightResizeEdge(x, task)) {
+    if (task && isMovableBar(task) && this.isNearRightResizeEdge(x, task)) {
       this.stack.style.cursor = 'ew-resize';
-    } else if (task && !task.isSummary) {
+    } else if (task && isMovableBar(task)) {
       this.stack.style.cursor = 'default';
     } else {
       this.setIdleCursor();
@@ -474,7 +474,7 @@ export class GanttView {
     }
 
     const task = lookupTask(this.tasksById, taskId);
-    if (!task || task.isSummary) {
+    if (!task || !isMovableBar(task)) {
       this.beginPan(e);
       return;
     }
@@ -612,7 +612,7 @@ export class GanttView {
       const toTaskId = hitTest(this.spatialIndex, x, y);
       if (toTaskId === null || toTaskId === fromTaskId) return;
       const target = lookupTask(this.tasksById, toTaskId);
-      if (!target || target.isSummary) return;
+      if (!target || !isMovableBar(target)) return;
       this.onCommitLink?.(fromTaskId, toTaskId);
       return;
     }
@@ -726,6 +726,11 @@ function require2d(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('CanvasRenderingContext2D unavailable');
   return ctx;
+}
+
+/** Summary and agile bars refuse move/resize/link (server would reject anyway). */
+function isMovableBar(task: GanttTask): boolean {
+  return !task.isSummary && !task.isAgile;
 }
 
 function parseOriginUtcMs(originDateIso: string | null | undefined): number {

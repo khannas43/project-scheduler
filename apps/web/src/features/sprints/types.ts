@@ -32,5 +32,15 @@ export interface UpdateSprintInput {
   readonly startDate?: string;
   readonly endDate?: string;
   readonly capacity?: number | null;
-  readonly state?: SprintState;
+  /** Closing must use closeSprint so carry-over cannot be skipped. */
+  readonly state?: 'planned' | 'active';
+}
+
+export interface CloseSprintInput {
+  readonly carryOverToSprintId?: string | null;
+}
+
+export interface CloseSprintResult {
+  readonly sprint: SprintRow;
+  readonly carriedOverTaskIds: readonly string[];
 }

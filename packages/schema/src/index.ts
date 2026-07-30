@@ -41,10 +41,12 @@ export {
   SprintCreateInputSchema,
   SprintCreateBodySchema,
   SprintUpdateInputSchema,
+  SprintCloseInputSchema,
   TaskBacklogRankInputSchema,
   type SprintCreateInput,
   type SprintCreateBody,
   type SprintUpdateInput,
+  type SprintCloseInput,
   type TaskBacklogRankInput,
 } from './sprint.js';
 

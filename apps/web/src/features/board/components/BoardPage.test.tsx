@@ -105,6 +105,7 @@ function column(partial: Partial<BoardColumnRow> & Pick<BoardColumnRow, 'id' | '
     projectId,
     sortOrder: 0,
     wipLimit: null,
+    isDone: false,
     version: 0,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -192,5 +193,43 @@ describe('BoardPage', () => {
         boardColumnId: colDoing,
       });
     });
+  });
+
+  it('groups cards into epic swimlanes when Group by is Epic', async () => {
+    const epicId = '77777777-7777-4777-8777-777777777777';
+    const tree: TaskTreeResponse = {
+      tasks: [
+        task({
+          id: epicId,
+          name: 'Checkout epic',
+          isSummary: true,
+          sprintId: null,
+          boardColumnId: null,
+          storyPoints: null,
+        }),
+        task({
+          id: taskId,
+          name: 'Story',
+          parentId: epicId,
+          boardColumnId: colTodo,
+        }),
+      ],
+      dependencies: [],
+      calendars: [],
+      assignments: [],
+      projectVersion: 1,
+    };
+    vi.mocked(useTaskTree).mockReturnValue({
+      data: tree,
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useTaskTree>);
+
+    wrap(<BoardPage />);
+
+    fireEvent.change(screen.getByLabelText('Group by'), { target: { value: 'epic' } });
+
+    expect(await screen.findByText('Checkout epic')).toBeInTheDocument();
+    expect(screen.getByText('Story')).toBeInTheDocument();
   });
 });
