@@ -3,6 +3,7 @@ import { Outlet, createRootRoute, createRoute, createRouter, redirect } from '@t
 import { AppShell } from './components/AppShell.js';
 import { LoginPage, RequireAuth } from './features/auth/index.js';
 import { ProjectListPage, ProjectSettingsPage } from './features/projects/index.js';
+import { PortfolioDashboardPage, ProjectDashboardPage } from './features/dashboard/index.js';
 import { ResourceCalendarPage, ResourceSheet } from './features/resources/index.js';
 import { RolesPage } from './features/roles/index.js';
 import { ReportsPage } from './features/reports/index.js';
@@ -47,6 +48,12 @@ const projectsRoute = createRoute({
   component: ProjectListPage,
 });
 
+const portfolioDashboardRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/dashboard',
+  component: PortfolioDashboardPage,
+});
+
 const projectDetailRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/projects/$projectId',
@@ -83,6 +90,12 @@ const projectReportsRoute = createRoute({
   component: ReportsPage,
 });
 
+const projectDashboardRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/projects/$projectId/dashboard',
+  component: ProjectDashboardPage,
+});
+
 const projectSettingsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/projects/$projectId/settings',
@@ -95,12 +108,14 @@ const routeTree = rootRoute.addChildren([
   authenticatedRoute.addChildren([
     shellRoute.addChildren([
       projectsRoute,
+      portfolioDashboardRoute,
       projectDetailRoute,
       projectRolesRoute,
       projectResourcesRoute,
       projectResourceCalendarRoute,
       projectBaselinesRoute,
       projectReportsRoute,
+      projectDashboardRoute,
       projectSettingsRoute,
     ]),
   ]),

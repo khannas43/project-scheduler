@@ -63,7 +63,7 @@ describe('GanttView.exportToPngDataUrl', () => {
     vi.restoreAllMocks();
   });
 
-  it('paints layers and composites background/arrows/bars onto an offscreen canvas', () => {
+  it('paints layers and composites background/arrows/bars/statusLine onto an offscreen canvas', () => {
     const tasks: GanttTask[] = [
       {
         id: 1,
@@ -83,10 +83,43 @@ describe('GanttView.exportToPngDataUrl', () => {
     const dataUrl = view.exportToPngDataUrl();
     expect(dataUrl).toBe('data:image/png;base64,COMPOSITED');
 
-    // Offscreen composite canvas's context should have drawn header + three layers.
+    // Offscreen composite canvas: header + background + arrows + bars + statusLine.
     const contexts = vi.mocked(HTMLCanvasElement.prototype.getContext).mock.results;
     const lastCtx = contexts[contexts.length - 1]?.value as { drawImage: ReturnType<typeof vi.fn> };
-    expect(lastCtx.drawImage.mock.calls.length).toBeGreaterThanOrEqual(4);
+    expect(lastCtx.drawImage.mock.calls.length).toBeGreaterThanOrEqual(5);
+
+    view.destroy();
+  });
+
+  it('exports cleanly when statusDateIso is set (statusLine after bars)', () => {
+    const tasks: GanttTask[] = [
+      {
+        id: 1,
+        name: 'A',
+        row: 0,
+        startMinutes: 0,
+        durationMinutes: MINUTES_PER_DAY,
+        progress: 0,
+        isCritical: false,
+        isSummary: false,
+      },
+    ];
+    const view = new GanttView({
+      container,
+      tasks,
+      dependencies: [],
+      originDateIso: '2026-01-01T00:00:00.000Z',
+      statusDateIso: '2026-01-10T00:00:00.000Z',
+    });
+    stubStackRect(view);
+
+    const dataUrl = view.exportToPngDataUrl();
+    expect(dataUrl).toBe('data:image/png;base64,COMPOSITED');
+
+    const contexts = vi.mocked(HTMLCanvasElement.prototype.getContext).mock.results;
+    const lastCtx = contexts[contexts.length - 1]?.value as { drawImage: ReturnType<typeof vi.fn> };
+    // header + 4 body layers; statusLine is the last body layer drawn.
+    expect(lastCtx.drawImage.mock.calls.length).toBe(5);
 
     view.destroy();
   });

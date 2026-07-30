@@ -519,7 +519,7 @@ export function TaskGrid({
                   taskId: task.id,
                   version: task.version,
                   isMilestone: next,
-                  ...(next ? { durationMinutes: 0 } : {}),
+                  durationMinutes: next ? 0 : WORKING_MINUTES_PER_DAY,
                 });
               }}
             />

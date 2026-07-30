@@ -33,3 +33,5 @@ export type { ResolvedDependency } from './layers/arrows.js';
 export { drawBars } from './layers/bars.js';
 export { drawInteraction } from './layers/interaction.js';
 export type { DragGhost } from './layers/interaction.js';
+export { drawStatusDateLine } from './layers/statusDateLine.js';
+export type { StatusDateLineDrawInput } from './layers/statusDateLine.js';

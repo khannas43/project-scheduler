@@ -13,6 +13,14 @@ export function AppShell() {
         <Link to="/projects" className="topbar-brand">
           Project Scheduler
         </Link>
+        <nav className="topbar-nav" aria-label="Primary">
+          <Link to="/dashboard" className="topbar-nav-link">
+            Portfolio
+          </Link>
+          <Link to="/projects" className="topbar-nav-link">
+            Projects
+          </Link>
+        </nav>
         <div className="topbar-right">
           {user ? <span className="topbar-user">{user.fullName}</span> : null}
           <button type="button" className="btn-secondary" onClick={() => void logout()}>

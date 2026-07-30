@@ -11,6 +11,7 @@ import { drawArrows } from './layers/arrows.js';
 import { drawBackground } from './layers/background.js';
 import { drawBars } from './layers/bars.js';
 import { drawInteraction, type DragGhost } from './layers/interaction.js';
+import { drawStatusDateLine } from './layers/statusDateLine.js';
 import { drawTimeHeader } from './layers/timeHeader.js';
 import { buildTaskById, lookupTask } from './taskIndex.js';
 import type { GanttDependency, GanttTask, ViewportState } from './types.js';
@@ -23,6 +24,8 @@ export interface GanttViewOptions {
   readonly pixelsPerMinute?: number;
   /** ISO date/time for day 0 on the timescale (usually project start). */
   readonly originDateIso?: string | null;
+  /** ISO date/time for the vertical status-date progress line (cleared when null/unset). */
+  readonly statusDateIso?: string | null;
   readonly onHover?: (taskId: number | null) => void;
   /** Fired on pointerup when a non-summary bar was dragged to a new day-snapped start. */
   readonly onCommitMove?: (taskId: number, newStartMinutes: number) => void;
@@ -32,7 +35,7 @@ export interface GanttViewOptions {
   readonly onCommitLink?: (predecessorId: number, successorId: number) => void;
 }
 
-type LayerName = 'background' | 'arrows' | 'bars' | 'interaction';
+type LayerName = 'background' | 'arrows' | 'bars' | 'statusLine' | 'interaction';
 
 interface ActiveDrag {
   readonly pointerId: number;
@@ -86,6 +89,7 @@ export class GanttView {
     background: true,
     arrows: true,
     bars: true,
+    statusLine: true,
     interaction: true,
   };
 
@@ -94,6 +98,7 @@ export class GanttView {
   private dependencies: readonly GanttDependency[];
   private pixelsPerMinute: number;
   private originUtcMs: number;
+  private statusDateUtcMs: number | null;
   private readonly onHover: ((taskId: number | null) => void) | undefined;
   private readonly onCommitMove: ((taskId: number, newStartMinutes: number) => void) | undefined;
   private readonly onCommitResize: ((taskId: number, newDurationMinutes: number) => void) | undefined;
@@ -124,6 +129,7 @@ export class GanttView {
     this.dependencies = options.dependencies;
     this.pixelsPerMinute = options.pixelsPerMinute ?? PIXELS_PER_DAY / MINUTES_PER_DAY;
     this.originUtcMs = parseOriginUtcMs(options.originDateIso);
+    this.statusDateUtcMs = parseStatusDateUtcMs(options.statusDateIso);
     this.onHover = options.onHover;
     this.onCommitMove = options.onCommitMove;
     this.onCommitResize = options.onCommitResize;
@@ -149,12 +155,14 @@ export class GanttView {
       background: this.makeCanvas(1),
       arrows: this.makeCanvas(2),
       bars: this.makeCanvas(3),
-      interaction: this.makeCanvas(4),
+      statusLine: this.makeCanvas(4),
+      interaction: this.makeCanvas(5),
     };
     this.contexts = {
       background: require2d(this.canvases.background),
       arrows: require2d(this.canvases.arrows),
       bars: require2d(this.canvases.bars),
+      statusLine: require2d(this.canvases.statusLine),
       interaction: require2d(this.canvases.interaction),
     };
 
@@ -245,6 +253,7 @@ export class GanttView {
     this.dirty.background = true;
     this.dirty.arrows = true;
     this.dirty.bars = true;
+    this.dirty.statusLine = true;
     this.dirty.interaction = true;
     this.schedule();
   }
@@ -255,6 +264,16 @@ export class GanttView {
     if (next === this.originUtcMs) return;
     this.originUtcMs = next;
     this.dirty.header = true;
+    this.dirty.statusLine = true;
+    this.schedule();
+  }
+
+  /** Update / clear the vertical status-date progress line. */
+  setStatusDateIso(statusDateIso: string | null | undefined): void {
+    const next = parseStatusDateUtcMs(statusDateIso);
+    if (next === this.statusDateUtcMs) return;
+    this.statusDateUtcMs = next;
+    this.dirty.statusLine = true;
     this.schedule();
   }
 
@@ -269,6 +288,7 @@ export class GanttView {
     this.dirty.background = true;
     this.dirty.arrows = true;
     this.dirty.bars = true;
+    this.dirty.statusLine = true;
     this.dirty.interaction = true;
     this.schedule();
   }
@@ -301,8 +321,9 @@ export class GanttView {
   }
 
   /**
-   * Composite header + background + arrows + bars into one PNG data URL (skips
-   * the interaction overlay — hover/drag ghosts shouldn't appear in the snapshot).
+   * Composite header + background + arrows + bars + status line into one PNG
+   * data URL (skips the interaction overlay — hover/drag ghosts shouldn't
+   * appear in the snapshot).
    */
   exportToPngDataUrl(): string {
     this.paint();
@@ -313,8 +334,8 @@ export class GanttView {
     const ctx = out.getContext('2d');
     if (!ctx) throw new Error('CanvasRenderingContext2D unavailable');
     ctx.drawImage(this.headerCanvas, 0, 0);
-    let y = this.headerCanvas.height;
-    for (const name of ['background', 'arrows', 'bars'] as const) {
+    const y = this.headerCanvas.height;
+    for (const name of ['background', 'arrows', 'bars', 'statusLine'] as const) {
       ctx.drawImage(this.canvases[name], 0, y);
     }
     return out.toDataURL('image/png');
@@ -365,6 +386,7 @@ export class GanttView {
     this.dirty.background = true;
     this.dirty.arrows = true;
     this.dirty.bars = true;
+    this.dirty.statusLine = true;
     this.dirty.interaction = true;
     this.schedule();
   }
@@ -675,6 +697,16 @@ export class GanttView {
       this.spatialIndex = spatialIndex;
       this.dirty.bars = false;
     }
+    if (this.dirty.statusLine) {
+      drawStatusDateLine({
+        ctx: this.contexts.statusLine,
+        viewport: vp,
+        pixelsPerMinute: ppm,
+        originUtcMs: this.originUtcMs,
+        statusDateUtcMs: this.statusDateUtcMs,
+      });
+      this.dirty.statusLine = false;
+    }
     if (this.dirty.interaction) {
       drawInteraction({
         ctx: this.contexts.interaction,
@@ -700,4 +732,11 @@ function parseOriginUtcMs(originDateIso: string | null | undefined): number {
   if (!originDateIso) return 0;
   const ms = Date.parse(originDateIso);
   return Number.isFinite(ms) ? ms : 0;
+}
+
+/** Unset / unparseable → null so the status-line layer draws nothing. */
+function parseStatusDateUtcMs(statusDateIso: string | null | undefined): number | null {
+  if (!statusDateIso) return null;
+  const ms = Date.parse(statusDateIso);
+  return Number.isFinite(ms) ? ms : null;
 }

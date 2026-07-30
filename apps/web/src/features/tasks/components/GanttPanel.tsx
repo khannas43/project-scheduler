@@ -186,6 +186,7 @@ export function GanttPanel({
       dependencies: [],
       pixelsPerMinute: pixelsPerMinuteForScale(readStoredTimeScale()),
       originDateIso: projectRef.current.startDate,
+      statusDateIso: projectRef.current.statusDate,
       onHover: (numericId) => {
         if (numericId === null) {
           onHoverRef.current(null);
@@ -240,6 +241,10 @@ export function GanttPanel({
   useEffect(() => {
     viewRef.current?.setOriginDateIso(project.startDate);
   }, [project.startDate]);
+
+  useEffect(() => {
+    viewRef.current?.setStatusDateIso(project.statusDate);
+  }, [project.statusDate]);
 
   useEffect(() => {
     viewRef.current?.setPixelsPerMinute(pixelsPerMinuteForScale(timeScale));

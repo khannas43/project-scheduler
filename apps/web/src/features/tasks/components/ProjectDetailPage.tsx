@@ -241,6 +241,10 @@ export function ProjectDetailPage() {
               Baselines
             </Link>
             {' · '}
+            <Link to="/projects/$projectId/dashboard" params={{ projectId }}>
+              Dashboard
+            </Link>
+            {' · '}
             <Link to="/projects/$projectId/reports" params={{ projectId }}>
               Reports
             </Link>

@@ -366,6 +366,40 @@ describe('TaskGrid', () => {
     });
   });
 
+  it('unmarks a milestone via Yes/No and restores a working-day duration', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    render(
+      <TaskGrid
+        tasks={[
+          task({
+            id: 't1',
+            name: 'Kickoff',
+            version: 7,
+            isMilestone: true,
+            durationMinutes: 0,
+          }),
+        ]}
+        highlightedTaskId={null}
+        collapsedIds={new Set()}
+        onToggleCollapse={vi.fn()}
+        onEdit={onEdit}
+      />,
+    );
+
+    await user.click(
+      within(screen.getByRole('group', { name: /milestone for 1/i })).getByRole('button', {
+        name: /^no$/i,
+      }),
+    );
+    expect(onEdit).toHaveBeenCalledWith({
+      taskId: 't1',
+      version: 7,
+      isMilestone: false,
+      durationMinutes: 480,
+    });
+  });
+
   it('calls onDeleteTask from the row Delete action', async () => {
     const user = userEvent.setup();
     const onDeleteTask = vi.fn();

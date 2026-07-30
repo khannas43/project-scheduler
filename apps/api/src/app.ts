@@ -11,6 +11,7 @@ import { assignmentRoutes } from './routes/assignments.js';
 import { authRoutes } from './routes/auth.js';
 import { baselineRoutes } from './routes/baselines.js';
 import { calendarRoutes } from './routes/calendars.js';
+import { dashboardRoutes } from './routes/dashboards.js';
 import { dependencyRoutes } from './routes/dependencies.js';
 import { healthRoutes } from './routes/health.js';
 import { mspdiRoutes } from './routes/mspdi.js';
@@ -69,6 +70,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(baselineRoutes);
   await fastify.register(mspdiRoutes);
   await fastify.register(reportRoutes);
+  await fastify.register(dashboardRoutes);
 
   return fastify;
 }

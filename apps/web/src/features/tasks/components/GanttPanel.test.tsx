@@ -27,6 +27,7 @@ vi.mock('@pkg/gantt', () => ({
     setData = vi.fn();
     setPixelsPerMinute = vi.fn();
     setOriginDateIso = vi.fn();
+    setStatusDateIso = vi.fn();
     destroy = vi.fn();
     exportToPngDataUrl = exportToPngDataUrl;
   },

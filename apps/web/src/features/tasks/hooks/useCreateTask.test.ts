@@ -83,6 +83,7 @@ describe('useCreateTask', () => {
       name: 'New work',
       parentId: null,
       isSummary: false,
+      isMilestone: false,
       durationMinutes: 480,
     });
 

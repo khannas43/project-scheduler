@@ -49,7 +49,6 @@ export function useAssignmentsTimephasedMap(assignmentIds: readonly string[]) {
     }
     return map;
     // dataStamp tracks per-query cache updates without depending on the queries array identity.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional
   }, [stableIds, dataStamp]);
 }
 

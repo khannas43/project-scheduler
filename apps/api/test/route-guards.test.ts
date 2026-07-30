@@ -124,6 +124,7 @@ describe('route-guard drift (§6.4)', () => {
     byKey('GET', '/api/projects/:id/reports/overallocated-resources', PERMISSIONS.REPORT_VIEW.key);
     byKey('GET', '/api/projects/:id/reports/cost-overview', PERMISSIONS.REPORT_VIEW.key);
     byKey('GET', '/api/projects/:id/reports/slipping-tasks', PERMISSIONS.REPORT_VIEW.key);
+    byKey('GET', '/api/projects/:id/dashboard', PERMISSIONS.REPORT_VIEW.key);
 
     await fastify.close();
   });
