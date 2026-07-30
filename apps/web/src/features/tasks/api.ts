@@ -145,3 +145,28 @@ export function updateAssignmentTimephasedDay(
     body: input,
   });
 }
+
+/** POST /api/tasks/:id/backlog-rank */
+export function reorderBacklogRank(
+  taskId: string,
+  neighbors: {
+    beforeTaskId?: string | null | undefined;
+    afterTaskId?: string | null | undefined;
+  },
+): Promise<TaskRow> {
+  return apiRequest<TaskRow>(`/api/tasks/${taskId}/backlog-rank`, {
+    method: 'POST',
+    body: neighbors,
+  });
+}
+
+/** POST /api/tasks/:id/board-column */
+export function moveTaskBoardColumn(
+  taskId: string,
+  boardColumnId: string | null,
+): Promise<TaskRow> {
+  return apiRequest<TaskRow>(`/api/tasks/${taskId}/board-column`, {
+    method: 'POST',
+    body: { boardColumnId },
+  });
+}

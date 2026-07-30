@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncZod } from '@fastify/type-provider-zod';
 import {
   TaskBacklogRankInputSchema,
+  TaskBoardColumnInputSchema,
   TaskCreateInputSchema,
   TaskMoveInputSchema,
   TaskUpdateInputSchema,
@@ -94,6 +95,23 @@ export const taskRoutes: FastifyPluginAsyncZod = async (fastify) => {
       const user = request.user;
       if (!user) throw new Error('requireAuth must run first');
       return taskService.reorderTaskBacklog(request.params.id, request.body, user.id);
+    },
+  );
+
+  fastify.post(
+    '/api/tasks/:id/board-column',
+    {
+      preHandler: [requireAuth, requirePermission('board.move_card')],
+      schema: { params: TaskIdParams, body: TaskBoardColumnInputSchema },
+    },
+    async (request) => {
+      const user = request.user;
+      if (!user) throw new Error('requireAuth must run first');
+      return taskService.moveTaskBoardColumn(
+        request.params.id,
+        request.body.boardColumnId,
+        user.id,
+      );
     },
   );
 };

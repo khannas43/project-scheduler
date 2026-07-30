@@ -59,6 +59,8 @@ export const SYSTEM_ROLES = {
       PERMISSIONS.SPRINT_VIEW.key,
       PERMISSIONS.SPRINT_CREATE.key,
       PERMISSIONS.SPRINT_EDIT.key,
+      PERMISSIONS.BOARD_VIEW.key,
+      PERMISSIONS.BOARD_MANAGE.key,
       PERMISSIONS.BOARD_MOVE_CARD.key,
       PERMISSIONS.BACKLOG_REORDER.key,
       PERMISSIONS.REPORT_VIEW.key,
@@ -86,6 +88,7 @@ export const SYSTEM_ROLES = {
       PERMISSIONS.DEPENDENCY_DELETE.key,
       PERMISSIONS.SCHEDULE_RECALCULATE.key,
       PERMISSIONS.SCHEDULE_OVERRIDE_CONSTRAINT.key,
+      PERMISSIONS.BOARD_VIEW.key,
     ],
   },
 
@@ -97,6 +100,7 @@ export const SYSTEM_ROLES = {
       PERMISSIONS.PROJECT_VIEW.key,
       PERMISSIONS.TASK_VIEW.key,
       PERMISSIONS.ACTUALS_REPORT_OWN.key,
+      PERMISSIONS.BOARD_VIEW.key,
       PERMISSIONS.BOARD_MOVE_CARD.key,
       // Scope §5.12 lists task-level comments as a v1 feature, but §3.2's
       // permission namespace has no corresponding key yet — nothing to grant here.
@@ -113,6 +117,7 @@ export const SYSTEM_ROLES = {
       PERMISSIONS.RESOURCE_VIEW.key,
       PERMISSIONS.BASELINE_VIEW.key,
       PERMISSIONS.REPORT_VIEW.key,
+      PERMISSIONS.BOARD_VIEW.key,
     ],
   },
 } as const satisfies Record<string, SystemRole>;

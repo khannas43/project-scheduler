@@ -50,6 +50,8 @@ export const PERMISSIONS = {
   SPRINT_VIEW: { key: 'sprint.view', category: 'Agile', description: 'View sprints' },
   SPRINT_CREATE: { key: 'sprint.create', category: 'Agile', description: 'Create sprints' },
   SPRINT_EDIT: { key: 'sprint.edit', category: 'Agile', description: 'Edit sprints' },
+  BOARD_VIEW: { key: 'board.view', category: 'Agile', description: 'View the agile board' },
+  BOARD_MANAGE: { key: 'board.manage', category: 'Agile', description: 'Manage board columns' },
   BOARD_MOVE_CARD: { key: 'board.move_card', category: 'Agile', description: 'Move a card on the agile board' },
   BACKLOG_REORDER: { key: 'backlog.reorder', category: 'Agile', description: 'Reorder the backlog' },
 

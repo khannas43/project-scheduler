@@ -36,6 +36,13 @@
       "when": 1785400000000,
       "tag": "0004_sprints",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785401000000,
+      "tag": "0005_board_columns",
+      "breakpoints": true
     }
   ]
 }

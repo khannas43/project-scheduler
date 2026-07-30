@@ -56,7 +56,7 @@ export function applyPatchToTree(tree: TaskTreeResponse, patch: TaskEditPatch): 
         : isMilestone && patch.isMilestone === true
           ? 0
           : task.durationMinutes;
-    return {
+    let next: TaskRow = {
       ...task,
       ...(patch.name !== undefined ? { name: patch.name } : {}),
       ...(patch.isMilestone !== undefined ? { isMilestone: patch.isMilestone } : {}),
@@ -69,7 +69,45 @@ export function applyPatchToTree(tree: TaskTreeResponse, patch: TaskEditPatch): 
             ...(patch.criticalOverride !== null ? { isCritical: patch.criticalOverride } : {}),
           }
         : {}),
+      ...(patch.sprintId !== undefined ? { sprintId: patch.sprintId } : {}),
+      ...(patch.storyPoints !== undefined
+        ? { storyPoints: patch.storyPoints === null ? null : String(patch.storyPoints) }
+        : {}),
     };
+
+    if (patch.schedulingMode !== undefined && patch.schedulingMode !== task.schedulingMode) {
+      if (patch.schedulingMode === 'agile') {
+        next = {
+          ...next,
+          schedulingMode: 'agile',
+          durationMinutes: null,
+          constraintType: null,
+          constraintDate: null,
+          deadline: null,
+          criticalOverride: null,
+          earlyStart: null,
+          earlyFinish: null,
+          lateStart: null,
+          lateFinish: null,
+          totalFloatMinutes: null,
+          freeFloatMinutes: null,
+          isCritical: false,
+        };
+      } else {
+        next = {
+          ...next,
+          schedulingMode: 'cpm',
+          storyPoints: null,
+          sprintId: null,
+          boardColumnId: null,
+          backlogRank: null,
+        };
+      }
+    } else if (patch.schedulingMode !== undefined) {
+      next = { ...next, schedulingMode: patch.schedulingMode };
+    }
+
+    return next;
   });
   return { ...tree, tasks };
 }

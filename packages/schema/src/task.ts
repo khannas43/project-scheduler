@@ -22,9 +22,7 @@ const SchedulingModeSchema = z.enum(['cpm', 'agile']);
  * - WBS: wbsPath, wbsCode (auto-generated from tree position)
  * - sortOrder (reorder via TaskMoveInputSchema)
  * - backlogRank (server-computed via POST /api/tasks/:id/backlog-rank)
- *
- * Deferred (not yet built elsewhere in the codebase):
- * - Phase 6 Round 2: boardColumnId (board_columns table)
+ * - boardColumnId (set only via POST /api/tasks/:id/board-column)
  *
  * Tracking fields (percentComplete / actuals) are update-only — a new task
  * has no actuals yet (same omission-by-design convention as finishDate).

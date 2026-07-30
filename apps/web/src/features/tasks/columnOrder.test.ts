@@ -18,6 +18,7 @@ describe('task grid column order', () => {
       'earlyStart',
       'name',
       'wbsCode',
+      'schedulingMode',
       'durationMinutes',
       'predecessors',
       'earlyFinish',

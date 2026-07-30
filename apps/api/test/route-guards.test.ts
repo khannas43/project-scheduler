@@ -132,6 +132,12 @@ describe('route-guard drift (§6.4)', () => {
     byKey('DELETE', '/api/sprints/:id', PERMISSIONS.SPRINT_EDIT.key);
     byKey('POST', '/api/tasks/:id/backlog-rank', PERMISSIONS.BACKLOG_REORDER.key);
 
+    byKey('GET', '/api/projects/:id/board-columns', PERMISSIONS.BOARD_VIEW.key);
+    byKey('POST', '/api/projects/:id/board-columns', PERMISSIONS.BOARD_MANAGE.key);
+    byKey('PATCH', '/api/board-columns/:id', PERMISSIONS.BOARD_MANAGE.key);
+    byKey('DELETE', '/api/board-columns/:id', PERMISSIONS.BOARD_MANAGE.key);
+    byKey('POST', '/api/tasks/:id/board-column', PERMISSIONS.BOARD_MOVE_CARD.key);
+
     await fastify.close();
   });
 });

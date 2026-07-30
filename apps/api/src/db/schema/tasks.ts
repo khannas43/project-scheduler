@@ -2,6 +2,7 @@ import { boolean, customType, index, integer, numeric, pgTable, text, timestamp,
 import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
+import { boardColumns } from './boardColumns.js';
 import { calendars, projects } from './projects.js';
 import { sprints } from './sprints.js';
 
@@ -82,11 +83,12 @@ export const tasks = pgTable(
     actualDurationMinutes: integer('actual_duration_minutes'),
     remainingDurationMinutes: integer('remaining_duration_minutes'),
 
-    // Agile (Phase 6) — sprint_id FK lands with the sprints table; board_column_id
-    // stays a bare uuid until Round 2 adds board_columns.
+    // Agile (Phase 6)
     storyPoints: numeric('story_points'),
     sprintId: uuid('sprint_id').references(() => sprints.id, { onDelete: 'set null' }),
-    boardColumnId: uuid('board_column_id'),
+    boardColumnId: uuid('board_column_id').references(() => boardColumns.id, {
+      onDelete: 'set null',
+    }),
     backlogRank: text('backlog_rank'), // fractional-indexing rank for O(1) reordering
 
     version: integer('version').notNull().default(0), // optimistic lock (§9.1)

@@ -49,6 +49,18 @@ export {
 } from './sprint.js';
 
 export {
+  BoardColumnCreateFieldsSchema,
+  BoardColumnCreateInputSchema,
+  BoardColumnCreateBodySchema,
+  BoardColumnUpdateInputSchema,
+  TaskBoardColumnInputSchema,
+  type BoardColumnCreateInput,
+  type BoardColumnCreateBody,
+  type BoardColumnUpdateInput,
+  type TaskBoardColumnInput,
+} from './boardColumn.js';
+
+export {
   DependencyCreateInputSchema,
   DependencyUpdateInputSchema,
   type DependencyCreateInput,

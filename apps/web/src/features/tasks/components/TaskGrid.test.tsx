@@ -32,6 +32,10 @@ function task(partial: Partial<TaskRow> & Pick<TaskRow, 'id' | 'name'>): TaskRow
     totalFloatMinutes: 0,
     freeFloatMinutes: 0,
     isCritical: true,
+    storyPoints: null,
+    sprintId: null,
+    boardColumnId: null,
+    backlogRank: null,
     version: 2,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -464,5 +468,57 @@ describe('TaskGrid', () => {
     expect(screen.queryByText('Child')).not.toBeInTheDocument();
     expect(screen.getByText('Root A')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /expand 1/i })).toBeInTheDocument();
+  });
+
+  it('confirms mode switch before committing schedulingMode', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    render(
+      <TaskGrid
+        tasks={[task({ id: 't1', name: 'Dig', version: 5, schedulingMode: 'cpm' })]}
+        highlightedTaskId={null}
+        collapsedIds={new Set()}
+        onToggleCollapse={vi.fn()}
+        onEdit={onEdit}
+      />,
+    );
+
+    expect(screen.getByRole('columnheader', { name: /mode/i })).toBeInTheDocument();
+    const modeGroup = screen.getByRole('group', { name: /mode for/i });
+    await user.click(within(modeGroup).getByRole('button', { name: /^agile$/i }));
+
+    expect(screen.getByRole('dialog', { name: /switch to agile/i })).toBeInTheDocument();
+    expect(screen.getByText('durationMinutes')).toBeInTheDocument();
+    expect(onEdit).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: /switch mode/i }));
+    expect(onEdit).toHaveBeenCalledWith({
+      taskId: 't1',
+      version: 5,
+      schedulingMode: 'agile',
+    });
+  });
+
+  it('cancels mode switch without calling onEdit', async () => {
+    const user = userEvent.setup();
+    const onEdit = vi.fn();
+    render(
+      <TaskGrid
+        tasks={[task({ id: 't1', name: 'Dig', version: 5, schedulingMode: 'agile' })]}
+        highlightedTaskId={null}
+        collapsedIds={new Set()}
+        onToggleCollapse={vi.fn()}
+        onEdit={onEdit}
+      />,
+    );
+
+    const modeGroup = screen.getByRole('group', { name: /mode for/i });
+    await user.click(within(modeGroup).getByRole('button', { name: /^cpm$/i }));
+    expect(screen.getByRole('dialog', { name: /switch to cpm/i })).toBeInTheDocument();
+    expect(screen.getByText('storyPoints')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /cancel/i }));
+    expect(screen.queryByRole('dialog', { name: /switch to cpm/i })).not.toBeInTheDocument();
+    expect(onEdit).not.toHaveBeenCalled();
   });
 });

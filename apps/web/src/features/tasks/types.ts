@@ -31,6 +31,10 @@ export interface TaskRow {
   readonly isCritical: boolean;
   /** When set, forces critical display/storage; null/absent follows CPM. */
   readonly criticalOverride?: boolean | null;
+  readonly storyPoints: string | null;
+  readonly sprintId: string | null;
+  readonly boardColumnId: string | null;
+  readonly backlogRank: string | null;
   readonly version: number;
   readonly createdAt: string;
   readonly updatedAt: string;
@@ -111,4 +115,7 @@ export interface TaskEditPatch {
   readonly constraintDate?: string | null;
   readonly criticalOverride?: boolean | null;
   readonly isMilestone?: boolean;
+  readonly schedulingMode?: 'cpm' | 'agile';
+  readonly sprintId?: string | null;
+  readonly storyPoints?: number | null;
 }

@@ -6,6 +6,7 @@ import { db } from '../db/client.js';
 import {
   assignments,
   baselines,
+  boardColumns,
   calendarExceptions,
   calendars,
   sprints,
@@ -139,6 +140,17 @@ export async function resolveProjectId(request: FastifyRequest): Promise<string 
       .select({ projectId: sprints.projectId })
       .from(sprints)
       .where(eq(sprints.id, id))
+      .limit(1);
+    return row?.projectId;
+  }
+
+  // PATCH/DELETE /api/board-columns/:id — :id is a board column id.
+  if (routePath.startsWith('/api/board-columns/')) {
+    if (!id) return undefined;
+    const [row] = await db
+      .select({ projectId: boardColumns.projectId })
+      .from(boardColumns)
+      .where(eq(boardColumns.id, id))
       .limit(1);
     return row?.projectId;
   }

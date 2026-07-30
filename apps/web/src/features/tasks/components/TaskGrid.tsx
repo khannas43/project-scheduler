@@ -290,6 +290,106 @@ function YesNoToggle({
   );
 }
 
+type SchedulingMode = 'cpm' | 'agile';
+
+const MODE_CLEAR_FIELDS: Record<SchedulingMode, readonly string[]> = {
+  agile: ['durationMinutes', 'constraintType', 'constraintDate', 'deadline', 'criticalOverride'],
+  cpm: ['storyPoints', 'sprintId', 'boardColumnId', 'backlogRank'],
+};
+
+/** Plain-language note, not a field name — kept out of the mono field list below. */
+const MODE_CLEAR_NOTE: Record<SchedulingMode, string | null> = {
+  agile: 'The computed CPM dates, float, and critical-path flag are also cleared.',
+  cpm: null,
+};
+
+function ModeToggle({
+  value,
+  ariaLabel,
+  onChange,
+  disabled = false,
+}: {
+  readonly value: SchedulingMode;
+  readonly ariaLabel: string;
+  readonly onChange: (next: SchedulingMode) => void;
+  readonly disabled?: boolean;
+}) {
+  return (
+    <div className="yes-no-toggle" role="group" aria-label={ariaLabel}>
+      <button
+        type="button"
+        className={value === 'cpm' ? 'is-active' : undefined}
+        aria-pressed={value === 'cpm'}
+        disabled={disabled}
+        onClick={() => {
+          if (value !== 'cpm') onChange('cpm');
+        }}
+      >
+        CPM
+      </button>
+      <button
+        type="button"
+        className={value === 'agile' ? 'is-active' : undefined}
+        aria-pressed={value === 'agile'}
+        disabled={disabled}
+        onClick={() => {
+          if (value !== 'agile') onChange('agile');
+        }}
+      >
+        Agile
+      </button>
+    </div>
+  );
+}
+
+function ModeSwitchConfirmModal({
+  task,
+  nextMode,
+  onConfirm,
+  onCancel,
+}: {
+  readonly task: TaskRow;
+  readonly nextMode: SchedulingMode;
+  readonly onConfirm: () => void;
+  readonly onCancel: () => void;
+}) {
+  const cleared = MODE_CLEAR_FIELDS[nextMode];
+  const note = MODE_CLEAR_NOTE[nextMode];
+  const label = task.wbsCode ? `${task.wbsCode} ${task.name}` : task.name;
+  return (
+    <div className="modal-backdrop" role="presentation" onClick={onCancel}>
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="mode-switch-title"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 id="mode-switch-title">Switch to {nextMode === 'agile' ? 'Agile' : 'CPM'}?</h2>
+        <p className="muted">
+          Changing mode for <strong>{label}</strong> clears these fields on the server:
+        </p>
+        <ul>
+          {cleared.map((field) => (
+            <li key={field}>
+              <span className="mono">{field}</span>
+            </li>
+          ))}
+        </ul>
+        {note ? <p className="muted">{note}</p> : null}
+        <div className="form-actions">
+          <button type="button" className="btn-secondary" onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="button" onClick={onConfirm}>
+            Switch mode
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const DRAG_HINT = ' Drag the header to reorder columns.';
 
 const COLUMN_TIPS = {
@@ -302,6 +402,7 @@ const COLUMN_TIPS = {
   totalFloat: `Slack in working minutes: how long you can delay this task without delaying the project finish. 0 means critical; negative means the plan is over-constrained.${DRAG_HINT}`,
   critical: `Toggle to mark critical or not. This sets a sticky override; the schedule still computes float. Uncheck/check to force Yes or No.${DRAG_HINT}`,
   milestone: `Mark as a milestone (zero-duration checkpoint). Duration becomes 0; setting a positive duration clears the milestone.${DRAG_HINT}`,
+  mode: `Scheduling mode: CPM (critical-path dates) or Agile (board/backlog). Switching clears mode-specific fields.${DRAG_HINT}`,
   resources: `Open the panel to assign people or equipment to this task.${DRAG_HINT}`,
   actions: `Row actions such as adding a subtask or deleting the task.${DRAG_HINT}`,
 } as const;
@@ -333,6 +434,10 @@ export function TaskGrid({
   const [columnOrder, setColumnOrder] = useState<string[]>(() => loadColumnOrder());
   const [draggingColumnId, setDraggingColumnId] = useState<string | null>(null);
   const [dragOverColumnId, setDragOverColumnId] = useState<string | null>(null);
+  const [pendingModeSwitch, setPendingModeSwitch] = useState<{
+    task: TaskRow;
+    nextMode: SchedulingMode;
+  } | null>(null);
 
   useEffect(() => {
     saveColumnOrder(columnOrder);
@@ -401,6 +506,26 @@ export function TaskGrid({
               )}
               <InlineCell task={task} field="name" display={task.name} onCommit={onEdit} />
             </div>
+          );
+        },
+      }),
+      columnHelper.accessor('schedulingMode', {
+        header: () => <ColumnHeader label="Mode" tip={COLUMN_TIPS.mode} />,
+        cell: (info) => {
+          const task = info.row.original;
+          if (task.isSummary) {
+            return <span className="muted">—</span>;
+          }
+          const mode: SchedulingMode = task.schedulingMode === 'agile' ? 'agile' : 'cpm';
+          return (
+            <ModeToggle
+              value={mode}
+              ariaLabel={`Mode for ${task.wbsCode ?? task.name}`}
+              onChange={(next) => {
+                if (next === mode) return;
+                setPendingModeSwitch({ task, nextMode: next });
+              }}
+            />
           );
         },
       }),
@@ -704,6 +829,22 @@ export function TaskGrid({
           </tbody>
         </table>
       </div>
+      {pendingModeSwitch ? (
+        <ModeSwitchConfirmModal
+          task={pendingModeSwitch.task}
+          nextMode={pendingModeSwitch.nextMode}
+          onCancel={() => setPendingModeSwitch(null)}
+          onConfirm={() => {
+            const { task, nextMode } = pendingModeSwitch;
+            setPendingModeSwitch(null);
+            onEdit({
+              taskId: task.id,
+              version: task.version,
+              schedulingMode: nextMode,
+            });
+          }}
+        />
+      ) : null}
     </div>
   );
 }

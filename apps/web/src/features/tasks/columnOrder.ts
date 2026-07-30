@@ -2,6 +2,7 @@
 export const DEFAULT_TASK_GRID_COLUMN_ORDER = [
   'wbsCode',
   'name',
+  'schedulingMode',
   'durationMinutes',
   'predecessors',
   'earlyStart',

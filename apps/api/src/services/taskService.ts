@@ -2,9 +2,10 @@ import type { TaskCreateInput, TaskMoveInput, TaskUpdateInput } from '@pkg/schem
 import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 
 import { db } from '../db/client.js';
-import { assignments, calendars, projects, sprints, taskDependencies, tasks } from '../db/schema/index.js';
+import { assignments, boardColumns, calendars, projects, sprints, taskDependencies, tasks } from '../db/schema/index.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../middleware/errors.js';
 import { maxBacklogRank, nextBacklogRank, reorderTaskInBacklog } from './backlogRank.js';
+import { countTasksInColumn } from './boardColumnService.js';
 import { hasDependencies } from './dependencyService.js';
 import {
   rescheduleProject,
@@ -324,6 +325,11 @@ export async function createTask(
       await assertSprintInProject(tx, input.sprintId, projectId);
     }
 
+    const backlogRank =
+      schedulingMode === 'agile'
+        ? await nextBacklogRank(await maxBacklogRank(tx, projectId))
+        : null;
+
     const [created] = await tx
       .insert(tasks)
       .values({
@@ -349,6 +355,7 @@ export async function createTask(
               ? null
               : String(input.storyPoints),
         sprintId: input.sprintId ?? null,
+        backlogRank,
         sortOrder,
         wbsPath,
         wbsCode: wbsCodeFromPath(wbsPath),
@@ -664,6 +671,61 @@ export async function reorderTaskBacklog(
       entityId: taskId,
       before: { backlogRank: existing.backlogRank },
       after: { backlogRank: updated.backlogRank },
+    });
+
+    return updated;
+  }, db);
+}
+
+/** POST /api/tasks/:id/board-column — move an agile card into / out of a column. */
+export async function moveTaskBoardColumn(
+  taskId: string,
+  boardColumnId: string | null,
+  userId: string,
+): Promise<typeof tasks.$inferSelect> {
+  return withSerializableRetry(async (tx) => {
+    const [existing] = await tx.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+    if (!existing) throw new NotFoundError('Task not found');
+    if (existing.schedulingMode !== 'agile') {
+      throw new BadRequestError('Only agile tasks can be moved on the board');
+    }
+
+    if (boardColumnId !== null) {
+      const [column] = await tx
+        .select()
+        .from(boardColumns)
+        .where(eq(boardColumns.id, boardColumnId))
+        .limit(1);
+      if (!column || column.projectId !== existing.projectId) {
+        throw new NotFoundError('Board column not found in this project');
+      }
+
+      if (column.wipLimit !== null && existing.boardColumnId !== boardColumnId) {
+        const currentCount = await countTasksInColumn(tx, boardColumnId);
+        if (currentCount >= column.wipLimit) {
+          throw new BadRequestError(
+            `Cannot move task into column — WIP limit of ${column.wipLimit} would be exceeded`,
+          );
+        }
+      }
+    }
+
+    const [updated] = await tx
+      .update(tasks)
+      .set({ boardColumnId })
+      .where(eq(tasks.id, taskId))
+      .returning();
+
+    if (!updated) throw new Error('Board column update returned no row');
+
+    await writeAuditLog(tx, {
+      userId,
+      projectId: existing.projectId,
+      action: 'task.board_column',
+      entityType: 'task',
+      entityId: taskId,
+      before: { boardColumnId: existing.boardColumnId },
+      after: { boardColumnId: updated.boardColumnId },
     });
 
     return updated;

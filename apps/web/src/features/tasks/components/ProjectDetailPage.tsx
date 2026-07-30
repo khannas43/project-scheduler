@@ -249,6 +249,14 @@ export function ProjectDetailPage() {
               Reports
             </Link>
             {' · '}
+            <Link to="/projects/$projectId/board" params={{ projectId }}>
+              Board
+            </Link>
+            {' · '}
+            <Link to="/projects/$projectId/backlog" params={{ projectId }}>
+              Backlog
+            </Link>
+            {' · '}
             <Link to="/projects/$projectId/settings" params={{ projectId }}>
               Settings
             </Link>

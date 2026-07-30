@@ -10,6 +10,7 @@ import './middleware/permissions.js'; // FastifyRequest.permissionsCache module 
 import { assignmentRoutes } from './routes/assignments.js';
 import { authRoutes } from './routes/auth.js';
 import { baselineRoutes } from './routes/baselines.js';
+import { boardColumnRoutes } from './routes/boardColumns.js';
 import { calendarRoutes } from './routes/calendars.js';
 import { dashboardRoutes } from './routes/dashboards.js';
 import { dependencyRoutes } from './routes/dependencies.js';
@@ -73,6 +74,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(reportRoutes);
   await fastify.register(dashboardRoutes);
   await fastify.register(sprintRoutes);
+  await fastify.register(boardColumnRoutes);
 
   return fastify;
 }
