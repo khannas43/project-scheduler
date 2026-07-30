@@ -34,12 +34,12 @@ number, not a timeline estimate.
 | 3 — Resources | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 4 — Tracking | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 5 — Interop & reporting | 4 | 4 (all items done) | 0 | 0 | 100% |
-| 6 — Agile | 7 | 1 (round 1 foundation) | 0 | 6 | ~14% |
-| **Total** | **57** | **51** | **0** | **6** | **~89%** |
+| 6 — Agile | 7 | 2 (rounds 1–2) | 0 | 5 | ~29% |
+| **Total** | **57** | **52** | **0** | **5** | **~91%** |
 
-**~89% done, ~11% pending** (51/57 done — Phases 0–5 complete plus Phase 6
-round 1 backend foundation). Remaining: Phase 6 rounds 2–4 (board UI,
-epics/ceremonies/Gantt sprint bars, charts).
+**~91% done, ~9% pending** (52/57 done — Phases 0–5 complete plus Phase 6
+rounds 1–2). Remaining: Phase 6 rounds 3–4 (epics/ceremonies/Gantt sprint
+bars, charts).
 
 ---
 
@@ -640,6 +640,59 @@ variance columns, earned value metrics, S-curve) is now fully done.**
   tasks pass. **Not built this round** (see the Phase 6 section below
   for the full remaining breakdown): `board_columns`, sprint ceremonies,
   epic hierarchy, Gantt sprint bars, charts.
+- **Phase 6, round 2 — Board + backlog UI**. Closes the `board_columns`
+  piece Round 1 deliberately deferred: table + real FK on
+  `tasks.board_column_id`, `board.view`/`board.manage` RBAC (mirrored
+  1:1 from wherever `task.view` was already granted), and
+  `board.move_card` — pre-registered since before Round 1 but never
+  wired to a route until now — gated a new dedicated
+  `POST /api/tasks/:id/board-column` rather than the general task patch,
+  the same "dedicated endpoint for a narrow action" shape Round 1 set
+  with backlog-rank. `moveTaskBoardColumn`'s WIP-limit check skips
+  entirely on a same-column no-op move rather than excluding the task's
+  own row from the count — a cleaner solution to the self-counting edge
+  case than what was originally specified. Also fixed a genuine Round 1
+  gap while it was fresh: `createTask` never assigned a `backlogRank`
+  when a task was created directly in agile mode (only the switch-to-
+  agile path in `updateTask` did) — closed here since Round 2 is the
+  round that actually builds the backlog UI this would have silently
+  broken. **Conceptual model**: board (workflow column,
+  `boardColumnId`) and backlog (sprint assignment, `sprintId` +
+  `backlogRank`) are two independent dimensions of an agile task, not a
+  placed/unplaced split of one — the Board page shows only the
+  currently-selected sprint's tasks grouped by column; the Backlog page
+  shows every agile task grouped by sprint (plus an unassigned
+  "Backlog" bucket), ordered by rank. Both use native HTML5
+  drag-and-drop, mirroring `TaskGrid.tsx`'s only existing DOM DnD
+  precedent (column-header reordering) rather than adding a DnD
+  library. "Swimlanes by assignee" is deliberately built as "group by
+  resource" (first `AssignmentRow.resourceId`) and labelled as such —
+  there is no genuine single-assignee field in this schema, only
+  multi-resource assignments with hours/cost, so the UI doesn't
+  overclaim a concept that doesn't exist. "Swimlanes by epic" is not
+  built — epic hierarchy is Round 3. Independently reviewed in full;
+  found and fixed three issues: a `prefer-const`-class lint error
+  (unused mock parameter missing its `void` marker, same class of gap
+  as prior rounds' lint misses); a monospace-styled prose phrase
+  ("CPM dates / float / critical") sitting inside the mode-switch
+  confirm modal's field-name list, inconsistent with the five real
+  field names around it, split into a separate plain-text note; and a
+  real functional gap in `BacklogPage.tsx`'s cross-section drag-drop —
+  dragging a task into a different sprint's section patched `sprintId`
+  but never recomputed `backlogRank` for the destination section, so
+  the task kept whatever rank it had in its old section and could sort
+  to an arbitrary position rather than landing where the user actually
+  dropped it (there was even a test explicitly asserting the rank call
+  did *not* happen — a deliberate simplification, not an oversight, but
+  one that produced a real UX mismatch). Fixed to recompute the rank
+  against the destination section immediately after the sprint patch,
+  with the existing test updated to assert the corrected two-mutation
+  sequence. One flagged, not-fixed gap: `createTask`'s new agile-mode
+  `backlogRank` assignment has no test coverage (the function itself
+  has no unit tests at all in this codebase, agile or otherwise) — the
+  fix was hand-verified correct by inspection, not left unverified.
+  164 api tests, 109 web tests, and all 21 turbo lint/typecheck/build
+  tasks pass.
 
 ## Next up
 
@@ -731,12 +784,13 @@ against a real MS Project export.
 
 ## Phase 6 — Agile module (PROJECT_SCOPE.md §8) — in progress
 
-Split into four rounds. **Round 1 (backend foundation) — done** (see
-Done section above).
+Split into four rounds.
 
-**Still pending**: Round 2 board + backlog UI (`board_columns`); Round 3
-epic hierarchy, sprint ceremonies, Gantt sprint bars; Round 4
-burndown/burnup/velocity/CFD.
+1. **Round 1 (backend foundation)** — **done** (see Done section above).
+2. **Round 2 (board + backlog UI)** — **done** (see Done section above).
+
+**Still pending**: Round 3 epic hierarchy, sprint ceremonies, Gantt sprint
+bars; Round 4 burndown/burnup/velocity/CFD.
 
 `packages/ui` (shadcn/ui-based shared components) has no dedicated line item
 above — it accretes as `apps/web` needs components.
