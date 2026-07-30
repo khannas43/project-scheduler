@@ -214,7 +214,8 @@ export function BacklogPage() {
   function renderSection(key: SectionKey, title: string, sprint?: SprintRow) {
     const tasks = sections.get(key) ?? [];
     const sectionDropKey = `section:${key}`;
-    const isSectionOver = dragOverKey === sectionDropKey;
+    const isReadOnly = sprint?.state === 'closed';
+    const isSectionOver = !isReadOnly && dragOverKey === sectionDropKey;
     const points = sumStoryPoints(tasks);
     const capacity =
       sprint?.capacity != null && sprint.capacity !== ''
@@ -227,13 +228,24 @@ export function BacklogPage() {
     return (
       <section
         key={key}
-        className={['backlog-section', isSectionOver ? 'is-drag-over' : '']
+        className={[
+          'backlog-section',
+          isSectionOver ? 'is-drag-over' : '',
+          isReadOnly ? 'is-readonly' : '',
+        ]
           .filter(Boolean)
           .join(' ')}
         aria-label={title}
         data-section={key}
-        onDragOver={(e) => onDragOver(sectionDropKey, e)}
-        onDrop={(e) => void onDrop(key, null, e)}
+        data-readonly={isReadOnly ? 'true' : undefined}
+        onDragOver={
+          isReadOnly
+            ? undefined
+            : (e) => onDragOver(sectionDropKey, e)
+        }
+        onDrop={
+          isReadOnly ? undefined : (e) => void onDrop(key, null, e)
+        }
       >
         <header className="backlog-section-header">
           <div className="backlog-section-heading">
@@ -327,7 +339,7 @@ export function BacklogPage() {
           {tasks.map((task) => {
             const dropKey = `task:${task.id}`;
             const isDragging = draggingTaskId === task.id;
-            const isOver = dragOverKey === dropKey;
+            const isOver = !isReadOnly && dragOverKey === dropKey;
             const epic = findEpicAncestor(task, tasksById);
             return (
               <li
@@ -339,15 +351,25 @@ export function BacklogPage() {
                 ]
                   .filter(Boolean)
                   .join(' ')}
-                draggable
-                onDragStart={(e) => onCardDragStart(task.id, e)}
+                draggable={!isReadOnly}
+                onDragStart={
+                  isReadOnly ? undefined : (e) => onCardDragStart(task.id, e)
+                }
                 onDragEnd={onDragEnd}
-                onDragOver={(e) => {
-                  e.stopPropagation();
-                  onDragOver(dropKey, e);
-                }}
-                onDrop={(e) => void onDrop(key, task.id, e)}
-                aria-grabbed={isDragging}
+                onDragOver={
+                  isReadOnly
+                    ? undefined
+                    : (e) => {
+                        e.stopPropagation();
+                        onDragOver(dropKey, e);
+                      }
+                }
+                onDrop={
+                  isReadOnly
+                    ? undefined
+                    : (e) => void onDrop(key, task.id, e)
+                }
+                aria-grabbed={isReadOnly ? undefined : isDragging}
                 data-task-id={task.id}
               >
                 <span className="backlog-item-name">{task.name}</span>
@@ -364,7 +386,11 @@ export function BacklogPage() {
             );
           })}
         </ul>
-        {tasks.length === 0 ? <p className="muted backlog-empty">Drop tasks here</p> : null}
+        {tasks.length === 0 ? (
+          <p className="muted backlog-empty">
+            {isReadOnly ? 'Closed — historical record' : 'Drop tasks here'}
+          </p>
+        ) : null}
       </section>
     );
   }

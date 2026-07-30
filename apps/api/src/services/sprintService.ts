@@ -5,8 +5,8 @@ import { db } from '../db/client.js';
 import { boardColumns, projects, sprints, tasks } from '../db/schema/index.js';
 import { BadRequestError, ConflictError, NotFoundError } from '../middleware/errors.js';
 import { maxBacklogRank, nextBacklogRank } from './backlogRank.js';
+import { numericFromDb, numericToDb } from './resourceService.js';
 import { withSerializableRetry, writeAuditLog, type Db } from './scheduleRunner.js';
-import { numericToDb } from './resourceService.js';
 
 type SprintCreateBody = Omit<SprintCreateInput, 'projectId'>;
 
@@ -226,4 +226,118 @@ async function loadDoneColumnIds(tx: Db, projectId: string): Promise<Set<string>
     .from(boardColumns)
     .where(and(eq(boardColumns.projectId, projectId), eq(boardColumns.isDone, true)));
   return new Set(rows.map((r) => r.id));
+}
+
+function sumStoryPoints(values: readonly (string | null)[]): number {
+  let total = 0;
+  for (const v of values) {
+    const n = numericFromDb(v);
+    if (n != null && Number.isFinite(n)) total += n;
+  }
+  return total;
+}
+
+export interface VelocitySprintRow {
+  readonly sprintId: string;
+  readonly sprintName: string;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly completedPoints: number;
+}
+
+/**
+ * Velocity = Σ storyPoints of non-summary tasks still attached to each closed
+ * sprint. After closeSprint, those remaining attachments are exactly the done
+ * work (incomplete tasks were carried out).
+ */
+export async function getProjectVelocity(projectId: string): Promise<VelocitySprintRow[]> {
+  const [project] = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+  if (!project) throw new NotFoundError('Project not found');
+
+  const closed = await db
+    .select()
+    .from(sprints)
+    .where(and(eq(sprints.projectId, projectId), eq(sprints.state, 'closed')))
+    .orderBy(asc(sprints.endDate), asc(sprints.name));
+
+  if (closed.length === 0) return [];
+
+  const rows: VelocitySprintRow[] = [];
+  for (const sprint of closed) {
+    const leafTasks = await db
+      .select({ storyPoints: tasks.storyPoints })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.projectId, projectId),
+          eq(tasks.sprintId, sprint.id),
+          eq(tasks.isSummary, false),
+        ),
+      );
+    rows.push({
+      sprintId: sprint.id,
+      sprintName: sprint.name,
+      startDate: sprint.startDate.toISOString(),
+      endDate: sprint.endDate.toISOString(),
+      completedPoints: sumStoryPoints(leafTasks.map((t) => t.storyPoints)),
+    });
+  }
+  return rows;
+}
+
+export interface SprintPointsSummary {
+  readonly sprintId: string;
+  readonly startDate: string;
+  readonly endDate: string;
+  readonly totalPoints: number;
+  readonly completedPoints: number;
+  readonly remainingPoints: number;
+}
+
+/**
+ * Current-composition points snapshot for burndown/burnup.
+ *
+ * Honesty boundary (mirrors computeEarnedValue): totalPoints reflects the
+ * sprint's *current* task set, not day-1 scope if work was added/removed
+ * after the sprint started. Ideal lines are ordinary math from the sprint
+ * dates; the current-point marker is live data, not a fabricated history.
+ */
+export async function getSprintPointsSummary(sprintId: string): Promise<SprintPointsSummary> {
+  const [sprint] = await db.select().from(sprints).where(eq(sprints.id, sprintId)).limit(1);
+  if (!sprint) throw new NotFoundError('Sprint not found');
+
+  const doneColumnIds = await loadDoneColumnIds(db, sprint.projectId);
+  const leafTasks = await db
+    .select({
+      storyPoints: tasks.storyPoints,
+      boardColumnId: tasks.boardColumnId,
+    })
+    .from(tasks)
+    .where(
+      and(
+        eq(tasks.projectId, sprint.projectId),
+        eq(tasks.sprintId, sprintId),
+        eq(tasks.isSummary, false),
+      ),
+    );
+
+  const totalPoints = sumStoryPoints(leafTasks.map((t) => t.storyPoints));
+  const completedPoints = sumStoryPoints(
+    leafTasks
+      .filter((t) => t.boardColumnId !== null && doneColumnIds.has(t.boardColumnId))
+      .map((t) => t.storyPoints),
+  );
+
+  return {
+    sprintId: sprint.id,
+    startDate: sprint.startDate.toISOString(),
+    endDate: sprint.endDate.toISOString(),
+    totalPoints,
+    completedPoints,
+    remainingPoints: totalPoints - completedPoints,
+  };
 }

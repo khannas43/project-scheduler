@@ -7,6 +7,7 @@ import { PortfolioDashboardPage, ProjectDashboardPage } from './features/dashboa
 import { ResourceCalendarPage, ResourceSheet } from './features/resources/index.js';
 import { RolesPage } from './features/roles/index.js';
 import { BoardPage, BacklogPage } from './features/board/index.js';
+import { AgileChartsPage } from './features/charts/index.js';
 import { ReportsPage } from './features/reports/index.js';
 import { ProjectDetailPage } from './features/tasks/index.js';
 import { BaselinesPage } from './features/tracking/index.js';
@@ -103,6 +104,12 @@ const projectBacklogRoute = createRoute({
   component: BacklogPage,
 });
 
+const projectAgileChartsRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/projects/$projectId/agile-charts',
+  component: AgileChartsPage,
+});
+
 const projectDashboardRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/projects/$projectId/dashboard',
@@ -130,6 +137,7 @@ const routeTree = rootRoute.addChildren([
       projectReportsRoute,
       projectBoardRoute,
       projectBacklogRoute,
+      projectAgileChartsRoute,
       projectDashboardRoute,
       projectSettingsRoute,
     ]),

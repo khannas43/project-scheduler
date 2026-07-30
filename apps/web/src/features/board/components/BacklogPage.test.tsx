@@ -358,4 +358,33 @@ describe('BacklogPage', () => {
       });
     });
   });
+
+  it('marks closed sprint sections as read-only drop targets', async () => {
+    vi.mocked(useSprints).mockReturnValue({
+      data: [sprint({ state: 'closed' })],
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useSprints>);
+
+    const closedTree: TaskTreeResponse = {
+      tasks: [task({ id: taskA, name: 'Done story', sprintId, storyPoints: '5' })],
+      dependencies: [],
+      calendars: [],
+      assignments: [],
+      projectVersion: 1,
+    };
+    vi.mocked(useTaskTree).mockReturnValue({
+      data: closedTree,
+      isLoading: false,
+      isError: false,
+    } as ReturnType<typeof useTaskTree>);
+
+    wrap(<BacklogPage />);
+
+    const section = await screen.findByRole('region', { name: /sprint 1/i });
+    expect(section).toHaveAttribute('data-readonly', 'true');
+    expect(section.className).toMatch(/is-readonly/);
+    const item = screen.getByText('Done story').closest('.backlog-item');
+    expect(item).toHaveAttribute('draggable', 'false');
+  });
 });

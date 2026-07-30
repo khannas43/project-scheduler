@@ -292,4 +292,39 @@ describe('updateTask planning-mode switch', () => {
       updateTask('task-1', { version: 3, schedulingMode: 'agile' }, 'user-1'),
     ).rejects.toBeInstanceOf(ConflictError);
   });
+
+  it('rejects assigning a task to a closed sprint', async () => {
+    selectLimit
+      .mockResolvedValueOnce([{ ...existingTask, schedulingMode: 'agile', sprintId: null }])
+      .mockResolvedValueOnce([
+        { id: 'sprint-closed', projectId: 'proj-1', state: 'closed' },
+      ]);
+
+    await expect(
+      updateTask('task-1', { version: 3, sprintId: 'sprint-closed' }, 'user-1'),
+    ).rejects.toSatisfy(
+      (err: unknown) =>
+        err instanceof BadRequestError && /closed sprint/.test((err as Error).message),
+    );
+    expect(updateSet).not.toHaveBeenCalled();
+  });
+
+  it('allows patches that leave a historically closed sprintId unchanged', async () => {
+    const onClosed = {
+      ...existingTask,
+      schedulingMode: 'agile',
+      sprintId: 'sprint-closed',
+      durationMinutes: null,
+      constraintType: null,
+    };
+    selectLimit.mockResolvedValueOnce([onClosed]);
+    const updated = { ...onClosed, name: 'Renamed', version: 4 };
+    updateReturning.mockResolvedValueOnce([updated]);
+    rescheduleProject.mockResolvedValueOnce({ task: updated });
+
+    await updateTask('task-1', { version: 3, name: 'Renamed' }, 'user-1');
+    expect(updateSet).toHaveBeenCalled();
+    const setArg = updateSet.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(setArg.name).toBe('Renamed');
+  });
 });

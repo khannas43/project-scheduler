@@ -101,6 +101,9 @@ async function assertSprintInProject(
   if (!sprint || sprint.projectId !== projectId) {
     throw new NotFoundError('Sprint not found in this project');
   }
+  if (sprint.state === 'closed') {
+    throw new BadRequestError('Cannot assign tasks to a closed sprint');
+  }
 }
 
 async function nextSiblingPlacement(
@@ -447,7 +450,13 @@ export async function updateTask(
 
     rejectCrossModeFields(effectiveMode, patch);
 
-    if (patch.sprintId) {
+    // Only validate when sprintId is changing — leave historically-attached
+    // closed-sprint tasks alone if the patch does not reassign them.
+    if (
+      patch.sprintId !== undefined &&
+      patch.sprintId !== null &&
+      patch.sprintId !== existing.sprintId
+    ) {
       await assertSprintInProject(tx, patch.sprintId, existing.projectId);
     }
 

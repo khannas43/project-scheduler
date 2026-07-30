@@ -257,6 +257,10 @@ export function ProjectDetailPage() {
               Backlog
             </Link>
             {' · '}
+            <Link to="/projects/$projectId/agile-charts" params={{ projectId }}>
+              Agile charts
+            </Link>
+            {' · '}
             <Link to="/projects/$projectId/settings" params={{ projectId }}>
               Settings
             </Link>

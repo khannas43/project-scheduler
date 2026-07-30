@@ -28,6 +28,8 @@ vi.mock('../src/services/sprintService.js', async (importOriginal) => {
     updateSprint: vi.fn(),
     deleteSprint: vi.fn(),
     closeSprint: vi.fn(),
+    getProjectVelocity: vi.fn(),
+    getSprintPointsSummary: vi.fn(),
   };
 });
 
@@ -40,7 +42,8 @@ vi.mock('../src/services/taskService.js', async (importOriginal) => {
 });
 
 const { getEffectivePermissions } = await import('../src/services/permissionService.js');
-const { listSprints, createSprint, closeSprint } = await import('../src/services/sprintService.js');
+const { listSprints, createSprint, closeSprint, getProjectVelocity, getSprintPointsSummary } =
+  await import('../src/services/sprintService.js');
 const { reorderTaskBacklog } = await import('../src/services/taskService.js');
 const { buildApp } = await import('../src/app.js');
 const { signAccessToken } = await import('../src/lib/jwt.js');
@@ -55,6 +58,8 @@ describe('sprint + backlog-rank routes', () => {
     vi.mocked(listSprints).mockReset();
     vi.mocked(createSprint).mockReset();
     vi.mocked(closeSprint).mockReset();
+    vi.mocked(getProjectVelocity).mockReset();
+    vi.mocked(getSprintPointsSummary).mockReset();
     vi.mocked(reorderTaskBacklog).mockReset();
     taskProjectLimit.mockReset();
     taskProjectLimit.mockResolvedValue([{ projectId: PROJECT }]);
@@ -163,6 +168,50 @@ describe('sprint + backlog-rank routes', () => {
     expect(res.statusCode).toBe(200);
     expect(closeSprint).toHaveBeenCalledWith(SPRINT, null, USER);
     expect(res.json()).toMatchObject({ carriedOverTaskIds: ['task-a'] });
+    await app.close();
+  });
+
+  it('returns velocity with sprint.view', async () => {
+    vi.mocked(getEffectivePermissions).mockResolvedValue(new Set(['sprint.view']));
+    vi.mocked(getProjectVelocity).mockResolvedValue([]);
+    const app = await buildApp();
+    const token = await signAccessToken(USER, 'u@example.com');
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/projects/${PROJECT}/velocity`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([]);
+    expect(getProjectVelocity).toHaveBeenCalledWith(PROJECT);
+    await app.close();
+  });
+
+  it('returns points-summary with sprint.view', async () => {
+    const SPRINT = '00000000-0000-4000-8000-000000000021';
+    vi.mocked(getEffectivePermissions).mockResolvedValue(new Set(['sprint.view']));
+    vi.mocked(getSprintPointsSummary).mockResolvedValue({
+      sprintId: SPRINT,
+      startDate: '2026-01-01T00:00:00.000Z',
+      endDate: '2026-01-14T00:00:00.000Z',
+      totalPoints: 10,
+      completedPoints: 4,
+      remainingPoints: 6,
+    });
+    const app = await buildApp();
+    const token = await signAccessToken(USER, 'u@example.com');
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/sprints/${SPRINT}/points-summary`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ totalPoints: 10, remainingPoints: 6 });
+    expect(getSprintPointsSummary).toHaveBeenCalledWith(SPRINT);
     await app.close();
   });
 

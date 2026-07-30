@@ -82,4 +82,22 @@ export const sprintRoutes: FastifyPluginAsyncZod = async (fastify) => {
       );
     },
   );
+
+  fastify.get(
+    '/api/projects/:id/velocity',
+    {
+      preHandler: [requireAuth, requirePermission('sprint.view')],
+      schema: { params: ProjectIdParams },
+    },
+    async (request) => sprintService.getProjectVelocity(request.params.id),
+  );
+
+  fastify.get(
+    '/api/sprints/:id/points-summary',
+    {
+      preHandler: [requireAuth, requirePermission('sprint.view')],
+      schema: { params: SprintIdParams },
+    },
+    async (request) => sprintService.getSprintPointsSummary(request.params.id),
+  );
 };

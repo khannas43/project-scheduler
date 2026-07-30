@@ -1300,6 +1300,104 @@ button:disabled {
   fill: #3b5bdb;
 }
 
+.agile-chart {
+  width: 100%;
+  max-width: 40rem;
+  height: auto;
+  display: block;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.agile-chart-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+
+.agile-chart-axis {
+  stroke: var(--muted);
+  stroke-width: 1.25;
+}
+
+.agile-chart-axis-label {
+  fill: var(--muted);
+  font-size: 10px;
+}
+
+.velocity-bar {
+  fill: #2f5d50;
+}
+
+.burndown-ideal,
+.burnup-ideal {
+  stroke: #2f5d50;
+  stroke-width: 2.5;
+}
+
+.burndown-current,
+.burnup-current {
+  fill: #c45c26;
+}
+
+.burnup-scope {
+  stroke: #8a7a5c;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+}
+
+.chart-section {
+  margin: 0 0 2rem;
+}
+
+.chart-section-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.chart-section h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.chart-honesty,
+.chart-note {
+  margin: 0.35rem 0 0.75rem;
+  font-size: 0.9rem;
+}
+
+.cfd-placeholder {
+  max-width: 40rem;
+  padding: 1rem 1.1rem;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: #f7f4ef;
+}
+
+.cfd-placeholder h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.cfd-placeholder p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.backlog-section.is-readonly {
+  opacity: 0.85;
+}
+
+.backlog-section.is-readonly .backlog-item {
+  cursor: default;
+}
+
 .s-curve-legend {
   display: flex;
   gap: 1.25rem;
