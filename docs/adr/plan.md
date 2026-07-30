@@ -34,12 +34,11 @@ number, not a timeline estimate.
 | 3 — Resources | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 4 — Tracking | 6 | 6 (all items done) | 0 | 0 | 100% |
 | 5 — Interop & reporting | 4 | 4 (all items done) | 0 | 0 | 100% |
-| 6 — Agile | 7 | 2 (rounds 1–2) | 0 | 5 | ~29% |
-| **Total** | **57** | **52** | **0** | **5** | **~91%** |
+| 6 — Agile | 7 | 3 (rounds 1–3) | 0 | 4 | ~43% |
+| **Total** | **57** | **53** | **0** | **4** | **~93%** |
 
-**~91% done, ~9% pending** (52/57 done — Phases 0–5 complete plus Phase 6
-rounds 1–2). Remaining: Phase 6 rounds 3–4 (epics/ceremonies/Gantt sprint
-bars, charts).
+**~93% done, ~7% pending** (53/57 done — Phases 0–5 complete plus Phase 6
+rounds 1–3). Remaining: Phase 6 round 4 (charts).
 
 ---
 
@@ -694,6 +693,20 @@ variance columns, earned value metrics, S-curve) is now fully done.**
   164 api tests, 109 web tests, and all 21 turbo lint/typecheck/build
   tasks pass.
 
+- **Phase 6, round 3 — Epic hierarchy, sprint ceremonies, Gantt sprint
+  bars**. Revises Round 1's hard block on summary→agile: agile
+  summaries (epics) are allowed as pure containers, with
+  `rejectSummaryAgileFields` rejecting `storyPoints` / `sprintId` /
+  `boardColumnId` on summaries at create and update (same shape as
+  `rejectSummaryDurationOrConstraint`). `board_columns.is_done` +
+  Manage Columns checkbox; `POST /api/sprints/:id/close` carries
+  incomplete tasks (cleared column + fresh backlog rank) while done
+  tasks stay on the closed sprint; PATCH `state` narrowed to
+  planned/active only. Gantt: amber `isAgile` bars spanning sprint
+  dates (unsprinted agile omitted), drag refused like summaries.
+  Board Group by None/Resource/Epic; Backlog epic badge + Start/Close
+  sprint ceremonies (no dedicated planning page).
+
 ## Next up
 
 TECHNICAL_DESIGN.md §13's Phase 0/1/2 build order is **entirely done**
@@ -704,8 +717,8 @@ fully reachable end-to-end today.
 
 **Phases 3, 4, and 5 (Resources, Tracking, Interop & reporting) are
 also entirely done** — see their sections below, including Phase 4's
-previously-flagged Gantt status-date progress line, now closed. The
-actual next work is Phase 6 (agile).
+previously-flagged Gantt status-date progress line, now closed. Phase 6
+rounds 1–3 are done; remaining is Round 4 (charts).
 
 ## What can run in parallel (one terminal per Claude Code session)
 
@@ -788,9 +801,10 @@ Split into four rounds.
 
 1. **Round 1 (backend foundation)** — **done** (see Done section above).
 2. **Round 2 (board + backlog UI)** — **done** (see Done section above).
+3. **Round 3 (epics, ceremonies, Gantt sprint bars)** — **done** (see Done
+   section above).
 
-**Still pending**: Round 3 epic hierarchy, sprint ceremonies, Gantt sprint
-bars; Round 4 burndown/burnup/velocity/CFD.
+**Still pending**: Round 4 burndown/burnup/velocity/CFD.
 
 `packages/ui` (shadcn/ui-based shared components) has no dedicated line item
 above — it accretes as `apps/web` needs components.
