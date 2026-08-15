@@ -1,0 +1,51 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowJs": false,
+    "esModuleInterop": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "types": [],
+    "baseUrl": ".",
+    "paths": {
+      "@pkg/scheduler": ["packages/scheduler/src/index.ts"],
+      "@pkg/scheduler/*": ["packages/scheduler/src/*"],
+      "@pkg/schema": ["packages/schema/src/index.ts"],
+      "@pkg/schema/*": ["packages/schema/src/*"],
+      "@pkg/gantt": ["packages/gantt/src/index.ts"],
+      "@pkg/gantt/*": ["packages/gantt/src/*"],
+      "@pkg/rbac": ["packages/rbac/src/index.ts"],
+      "@pkg/rbac/*": ["packages/rbac/src/*"],
+      "@pkg/ui": ["packages/ui/src/index.ts"],
+      "@pkg/ui/*": ["packages/ui/src/*"]
+    }
+  },
+  "include": [
+    "apps/api/src/**/*.ts",
+    "apps/web/src/**/*.ts",
+    "apps/web/src/**/*.tsx",
+    "packages/scheduler/src/**/*.ts",
+    "packages/schema/src/**/*.ts",
+    "packages/gantt/src/**/*.ts",
+    "packages/gantt/src/**/*.tsx",
+    "packages/rbac/src/**/*.ts",
+    "packages/ui/src/**/*.ts",
+    "packages/ui/src/**/*.tsx"
+  ],
+  "exclude": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/coverage/**",
+    "**/project-scheduler-worktrees/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/test/**"
+  ]
+}
