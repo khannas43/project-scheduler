@@ -77,7 +77,11 @@ Vite proxies `/api` → `http://localhost:3100` ([`apps/web/vite.config.ts`](app
 |--------|---------|
 | `pnpm lint` | ESLint (Turbo) |
 | `pnpm typecheck` | TypeScript |
-| `pnpm test` | Vitest across packages/apps |
+| `pnpm test` | Vitest across packages/apps (unit + API contract) |
+| `pnpm test:coverage` | Vitest + LCOV (for Sonar / CI artifacts) |
+| `pnpm test:integration` | API integration tests (testcontainers Postgres; needs Docker) |
+| `pnpm test:e2e` | Playwright critical-path UI (needs API + Vite + seeded DB) |
+| `pnpm sonar` | Local SonarQube scan + quality gate (`docs/SONAR.md`) |
 | `pnpm build` | Build all packages |
 
 ---
@@ -115,7 +119,10 @@ Topics cover getting started, schedule/Gantt, resources & leveling, progress & b
 Full action catalog, filters, gaps, and retention: [`docs/AUDIT_LOG.md`](docs/AUDIT_LOG.md).
 
 API exception contract (no stack leak, `/health` vs `/ready`): [`docs/EXCEPTION_HANDLING.md`](docs/EXCEPTION_HANDLING.md).  
-FE banners / API-down / validation UX: [`docs/ERROR_HANDLING_UX.md`](docs/ERROR_HANDLING_UX.md).
+FE banners / API-down / validation UX: [`docs/ERROR_HANDLING_UX.md`](docs/ERROR_HANDLING_UX.md).  
+SonarQube (local `:9012` + CI quality gate): [`docs/SONAR.md`](docs/SONAR.md).
+
+Testing pyramid (unit / API contract / integration / Playwright): [`docs/TESTING.md`](docs/TESTING.md).
 
 ---
 
