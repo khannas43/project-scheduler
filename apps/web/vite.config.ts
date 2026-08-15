@@ -20,7 +20,7 @@ export default defineConfig({
     proxy: {
       // Cookie path is /api/auth — same-origin in dev via this proxy.
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://localhost:3100',
         changeOrigin: true,
       },
     },

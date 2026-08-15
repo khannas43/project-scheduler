@@ -88,6 +88,8 @@ export async function createProject(
         calendarId,
         ownerId: userId,
         isArchived: input.isArchived ?? false,
+        category: input.category ?? null,
+        templateKey: input.templateKey ?? null,
       })
       .returning();
 
@@ -152,6 +154,8 @@ export async function updateProject(
           : {}),
         ...(patch.calendarId !== undefined ? { calendarId: patch.calendarId } : {}),
         ...(patch.isArchived !== undefined ? { isArchived: patch.isArchived } : {}),
+        ...(patch.category !== undefined ? { category: patch.category } : {}),
+        ...(patch.templateKey !== undefined ? { templateKey: patch.templateKey } : {}),
         ...(patch.settings !== undefined
           ? {
               settings: {

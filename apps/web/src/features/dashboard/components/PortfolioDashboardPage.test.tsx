@@ -22,6 +22,29 @@ vi.mock('../api.js', () => ({
   getPortfolioDashboard: vi.fn(),
 }));
 
+vi.mock('../../projects/hooks/useProjects.js', () => ({
+  useProjects: () => ({
+    data: [
+      {
+        id: '11111111-1111-4111-8111-111111111111',
+        name: 'Aurora',
+        version: 1,
+        isArchived: false,
+      },
+      {
+        id: '22222222-2222-4222-8222-222222222222',
+        name: 'Northwind',
+        version: 2,
+        isArchived: false,
+      },
+    ],
+    isLoading: false,
+    isError: false,
+  }),
+  useSetProjectArchived: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteProject: () => ({ mutateAsync: vi.fn(), isPending: false }),
+}));
+
 import * as dashboardApi from '../api.js';
 import { PortfolioDashboardPage } from './PortfolioDashboardPage.js';
 
@@ -83,5 +106,7 @@ describe('PortfolioDashboardPage', () => {
     );
     expect(screen.getByText('On track')).toBeInTheDocument();
     expect(screen.getByText('Behind')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /disable/i })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /delete/i })).toHaveLength(2);
   });
 });

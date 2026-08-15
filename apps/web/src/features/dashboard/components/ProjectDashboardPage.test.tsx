@@ -51,6 +51,64 @@ describe('ProjectDashboardPage', () => {
       cpi: 0.95,
       criticalTaskCount: 3,
       overallocatedResourceCount: 1,
+      startDate: '2026-01-01',
+      finishDate: '2026-12-31',
+      statusDate: '2026-08-15',
+      taskCounts: {
+        total: 20,
+        summary: 4,
+        leaf: 16,
+        milestone: 2,
+        critical: 3,
+        completed: 5,
+      },
+      earnedValue: {
+        baselineId: '22222222-2222-4222-8222-222222222222',
+        bac: 100000,
+        pv: 45000,
+        ev: 42000,
+        ac: 48000,
+        spi: 1.02,
+        cpi: 0.95,
+      },
+      progressBreakdown: {
+        notStarted: 8,
+        inProgress: 3,
+        completed: 5,
+        milestone: 2,
+      },
+      phaseProgress: [
+        {
+          taskId: 'p1',
+          wbsCode: '1',
+          name: 'Foundation',
+          percentComplete: 80,
+          isCritical: true,
+        },
+      ],
+      topInProgress: [
+        {
+          taskId: 'a1',
+          wbsCode: '1.2',
+          name: 'Steel frame',
+          percentComplete: 65,
+          earlyStart: '2026-07-01T09:00:00.000Z',
+          earlyFinish: '2026-08-20T17:00:00.000Z',
+          isCritical: true,
+          resourceNames: 'Alex',
+        },
+      ],
+      nearCritical: [
+        {
+          taskId: 'a1',
+          wbsCode: '1.2',
+          name: 'Steel frame',
+          totalFloatMinutes: 0,
+          percentComplete: 65,
+          earlyFinish: '2026-08-20T17:00:00.000Z',
+          isCritical: true,
+        },
+      ],
       upcomingMilestones: [
         {
           wbsCode: '1.5',
@@ -71,10 +129,21 @@ describe('ProjectDashboardPage', () => {
           varianceMinutes: 480,
         },
       ],
+      topOverallocated: [
+        { resourceId: 'r1', resourceName: 'Crane', overallocatedDayCount: 4 },
+      ],
+      sCurve: {
+        points: [
+          { date: '2026-01-01', pv: 0 },
+          { date: '2026-06-01', pv: 40000 },
+          { date: '2026-12-31', pv: 100000 },
+        ],
+        current: { date: '2026-08-15', ev: 42000, ac: 48000 },
+      },
     });
   });
 
-  it('renders the health badge and key stat tiles', async () => {
+  it('renders the health badge, key stats, and top in-progress', async () => {
     wrap(<ProjectDashboardPage />);
 
     await waitFor(() => {
@@ -85,8 +154,11 @@ describe('ProjectDashboardPage', () => {
     expect(screen.getByTestId('stat-overalloc')).toHaveTextContent('1');
     expect(screen.getByTestId('stat-spi')).toHaveTextContent('1.02');
     expect(screen.getByTestId('stat-cpi')).toHaveTextContent('0.95');
+    expect(screen.getByTestId('stat-in-progress')).toHaveTextContent('3');
     expect(screen.getByText('Go-live')).toBeInTheDocument();
     expect(screen.getByText('Pour foundation')).toBeInTheDocument();
+    expect(screen.getByText('Steel frame')).toBeInTheDocument();
+    expect(screen.getByTestId('top-in-progress-table')).toBeInTheDocument();
     expect(screen.getByTestId('ev-baselines-link')).toBeInTheDocument();
   });
 });

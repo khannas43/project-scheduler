@@ -40,6 +40,8 @@ function baseProject(): Project {
     calendarId,
     ownerId: '55555555-5555-4555-8555-555555555555',
     isArchived: false,
+    category: null,
+    templateKey: null,
     settings: {
       dateFormat: 'yyyy-mm-dd',
       dateTimeDisplay: 'date',

@@ -4,6 +4,7 @@ export const DEFAULT_TASK_GRID_COLUMN_ORDER = [
   'name',
   'schedulingMode',
   'durationMinutes',
+  'percentComplete',
   'predecessors',
   'earlyStart',
   'earlyFinish',

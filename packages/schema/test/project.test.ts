@@ -32,6 +32,21 @@ describe('ProjectCreateInputSchema', () => {
     expect(result.success).toBe(true);
   });
 
+  it('accepts an optional category and templateKey', () => {
+    const result = ProjectCreateInputSchema.safeParse({
+      ...validCreate,
+      category: 'application-development',
+      templateKey: 'goi-custom-application',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects an unknown category', () => {
+    expect(
+      ProjectCreateInputSchema.safeParse({ ...validCreate, category: 'not-a-category' }).success,
+    ).toBe(false);
+  });
+
   it('rejects a missing name', () => {
     const rest = {
       status: validCreate.status,

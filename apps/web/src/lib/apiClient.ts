@@ -53,12 +53,12 @@ let refreshInFlight: Promise<boolean> | null = null;
 
 async function parseProblem(response: Response): Promise<ProblemDetails> {
   try {
-    const data = (await response.json()) as Partial<ProblemDetails>;
+    const data = (await response.json()) as Partial<ProblemDetails> & { message?: string };
     return {
       type: data.type,
       title: data.title,
       status: data.status ?? response.status,
-      detail: data.detail,
+      detail: data.detail ?? data.title ?? (typeof data.message === 'string' ? data.message : undefined),
       code: data.code,
       current: data.current,
       taskIds: data.taskIds,

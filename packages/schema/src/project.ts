@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { ProjectCategorySchema, ProjectTemplateKeySchema } from './projectCategory.js';
 import { ProjectSettingsPatchSchema } from './projectSettings.js';
 
 /**
@@ -14,6 +15,8 @@ export const ProjectCreateInputSchema = z.object({
   calendarId: z.uuid(),
   ownerId: z.uuid(),
   isArchived: z.boolean().optional(),
+  category: ProjectCategorySchema.nullable().optional(),
+  templateKey: ProjectTemplateKeySchema.nullable().optional(),
 });
 
 export const ProjectUpdateInputSchema = ProjectCreateInputSchema.partial().extend({

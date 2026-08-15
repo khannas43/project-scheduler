@@ -60,35 +60,38 @@ export function ResourceAssignmentEditor({
         });
       }
 
-      const patch: {
-        taskId: string;
-        version: number;
-        durationMinutes?: number;
-        constraintType?: string;
-        constraintDate?: string;
-      } = {
-        taskId: item.task.id,
-        version: item.task.version,
-      };
+      // Duration / MSO constraints are CPM-only — skip for agile stories.
+      if (item.task.schedulingMode !== 'agile') {
+        const patch: {
+          taskId: string;
+          version: number;
+          durationMinutes?: number;
+          constraintType?: string;
+          constraintDate?: string;
+        } = {
+          taskId: item.task.id,
+          version: item.task.version,
+        };
 
-      const nextDuration = minutesFromWorkingDays(days);
-      if (nextDuration !== (item.task.durationMinutes ?? 0)) {
-        patch.durationMinutes = nextDuration;
-      }
-
-      if (startDate) {
-        const constraintDate = dateInputToIso(startDate);
-        const currentStart = item.task.earlyStart
-          ? toDateInputValue(item.task.earlyStart)
-          : '';
-        if (constraintDate && startDate !== currentStart) {
-          patch.constraintType = 'mso';
-          patch.constraintDate = constraintDate;
+        const nextDuration = minutesFromWorkingDays(days);
+        if (nextDuration !== (item.task.durationMinutes ?? 0)) {
+          patch.durationMinutes = nextDuration;
         }
-      }
 
-      if (patch.durationMinutes !== undefined || patch.constraintType !== undefined) {
-        await editTask.mutateAsync(patch);
+        if (startDate) {
+          const constraintDate = dateInputToIso(startDate);
+          const currentStart = item.task.earlyStart
+            ? toDateInputValue(item.task.earlyStart)
+            : '';
+          if (constraintDate && startDate !== currentStart) {
+            patch.constraintType = 'mso';
+            patch.constraintDate = constraintDate;
+          }
+        }
+
+        if (patch.durationMinutes !== undefined || patch.constraintType !== undefined) {
+          await editTask.mutateAsync(patch);
+        }
       }
       onClose();
     } catch {
@@ -144,31 +147,40 @@ export function ResourceAssignmentEditor({
         <p className="muted resource-cal-editor-hint">
           For a single day only, close this panel and click that day on the calendar.
         </p>
-        <label>
-          Start date
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            data-testid="resource-cal-start"
-          />
-        </label>
-        <label>
-          Duration (working days)
-          <input
-            type="number"
-            min="1"
-            step="1"
-            value={durationDays}
-            onChange={(e) => setDurationDays(e.target.value)}
-            data-testid="resource-cal-duration"
-          />
-        </label>
+        {item.task.schedulingMode === 'agile' ? (
+          <p className="muted resource-cal-editor-hint">
+            This is an agile story — start date and duration are driven by the sprint,
+            not CPM constraints.
+          </p>
+        ) : (
+          <>
+            <label>
+              Start date
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                data-testid="resource-cal-start"
+              />
+            </label>
+            <label>
+              Duration (working days)
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={durationDays}
+                onChange={(e) => setDurationDays(e.target.value)}
+                data-testid="resource-cal-duration"
+              />
+            </label>
 
-        <p className="muted resource-cal-editor-hint">
-          Start edits apply a Must Start On constraint; duration updates the task and
-          reschedules the plan.
-        </p>
+            <p className="muted resource-cal-editor-hint">
+              Start edits apply a Must Start On constraint; duration updates the task and
+              reschedules the plan.
+            </p>
+          </>
+        )}
 
         <div className="resource-cal-editor-actions">
           <button type="submit" disabled={busy} data-testid="resource-cal-save">

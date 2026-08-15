@@ -40,6 +40,10 @@ export const projects = pgTable('projects', {
     .notNull()
     .references(() => users.id),
   isArchived: boolean('is_archived').notNull().default(false),
+  /** Delivery-type category (see @pkg/schema PROJECT_CATEGORY_KEYS). */
+  category: text('category'),
+  /** System template this project was created from, if any. */
+  templateKey: text('template_key'),
   /**
    * Project-scoped display / planning preferences (date format, active
    * baseline, etc.). Scheduling fields (startDate, statusDate, calendarId)

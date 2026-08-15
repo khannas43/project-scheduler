@@ -31,6 +31,10 @@ export interface TaskRow {
   readonly isCritical: boolean;
   /** When set, forces critical display/storage; null/absent follows CPM. */
   readonly criticalOverride?: boolean | null;
+  /** 0–100; summaries are engine-rolled; leaves are user-set. Numeric columns may arrive as strings. */
+  readonly percentComplete?: number | string | null;
+  readonly actualStart?: string | null;
+  readonly actualFinish?: string | null;
   readonly storyPoints: string | null;
   readonly sprintId: string | null;
   readonly boardColumnId: string | null;
@@ -118,4 +122,5 @@ export interface TaskEditPatch {
   readonly schedulingMode?: 'cpm' | 'agile';
   readonly sprintId?: string | null;
   readonly storyPoints?: number | null;
+  readonly percentComplete?: number | null;
 }

@@ -73,6 +73,7 @@ export function applyPatchToTree(tree: TaskTreeResponse, patch: TaskEditPatch): 
       ...(patch.storyPoints !== undefined
         ? { storyPoints: patch.storyPoints === null ? null : String(patch.storyPoints) }
         : {}),
+      ...(patch.percentComplete !== undefined ? { percentComplete: patch.percentComplete } : {}),
     };
 
     if (patch.schedulingMode !== undefined && patch.schedulingMode !== task.schedulingMode) {

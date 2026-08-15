@@ -1,3 +1,4 @@
+import { categoryName } from '@pkg/schema';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
 import { useEffect, useState, type FormEvent } from 'react';
@@ -13,6 +14,7 @@ import {
   toDateInputValue,
 } from '../dateFormat.js';
 import { useUpdateProject } from '../hooks/useUpdateProject.js';
+import { ImportSpreadsheetModal } from './ImportSpreadsheetModal.js';
 
 export function ProjectSettingsPage() {
   const { projectId } = useParams({ strict: false }) as { projectId: string };
@@ -36,6 +38,7 @@ export function ProjectSettingsPage() {
   const [showBaselineOnGantt, setShowBaselineOnGantt] = useState(settings.showBaselineOnGantt);
   const [formError, setFormError] = useState<string | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     if (!project) return;
@@ -133,6 +136,12 @@ export function ProjectSettingsPage() {
               <option value="complete">Complete</option>
             </select>
           </label>
+          {project.category ? (
+            <p className="muted">
+              Category: {categoryName(project.category)}
+              {project.templateKey ? ` · created from template` : ''}
+            </p>
+          ) : null}
         </section>
 
         <section className="settings-section" aria-labelledby="settings-dates">
@@ -240,6 +249,24 @@ export function ProjectSettingsPage() {
           </label>
         </section>
 
+        <section className="settings-section" aria-labelledby="settings-import">
+          <h2 id="settings-import">Import / duplicate</h2>
+          <p className="muted section-help">
+            Bring tasks in from Excel/CSV. To copy the whole project, use{' '}
+            <strong>Duplicate</strong> on the projects list.
+          </p>
+          <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setImportOpen(true)}
+              data-testid="settings-import-spreadsheet"
+            >
+              Import Excel / CSV
+            </button>
+          </div>
+        </section>
+
         {formError ? <p className="form-error">{formError}</p> : null}
         {savedFlash ? <p className="settings-saved">Settings saved.</p> : null}
 
@@ -252,6 +279,17 @@ export function ProjectSettingsPage() {
           </button>
         </div>
       </form>
+
+      {importOpen ? (
+        <ImportSpreadsheetModal
+          projectId={projectId}
+          projectName={project.name}
+          onClose={() => setImportOpen(false)}
+          onImported={() => {
+            void projectQuery.refetch();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

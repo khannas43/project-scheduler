@@ -50,6 +50,20 @@
       "when": 1785402000000,
       "tag": "0006_board_column_is_done",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786797000000,
+      "tag": "0007_saved_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1786798000000,
+      "tag": "0008_project_category",
+      "breakpoints": true
     }
   ]
 }

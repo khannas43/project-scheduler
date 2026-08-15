@@ -13,6 +13,7 @@ import {
   useSlippingTasksReport,
 } from '../hooks/useReports.js';
 import { REPORT_OPTIONS, type ReportKind } from '../types.js';
+import { CustomReportBuilder } from './CustomReportBuilder.js';
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return '—';
@@ -86,7 +87,9 @@ export function ReportsPage() {
             </Link>
           </p>
           <h1>Reports</h1>
-          <p className="lede muted">Built-in project reports and task-list exports.</p>
+          <p className="lede muted">
+            Built-in reports, custom/saved task reports, and task-list exports.
+          </p>
         </div>
         <div className="reports-export-actions">
           <button
@@ -120,6 +123,8 @@ export function ReportsPage() {
       </header>
 
       {downloadError ? <p className="form-error">{downloadError}</p> : null}
+
+      <CustomReportBuilder projectId={projectId} />
 
       <section className="reports-ev-card" aria-label="Earned value">
         <h2>Earned value</h2>
@@ -289,6 +294,7 @@ export function ReportsPage() {
               <tr>
                 <th>Resource</th>
                 <th>Overallocated days</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -296,6 +302,21 @@ export function ReportsPage() {
                 <tr key={r.resourceId}>
                   <td>{r.resourceName}</td>
                   <td>{r.overallocatedDayCount}</td>
+                  <td>
+                    <Link
+                      to="/projects/$projectId"
+                      params={{ projectId }}
+                      className="btn-link"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        window.location.assign(
+                          `/projects/${projectId}?level=1&resourceId=${encodeURIComponent(r.resourceId)}`,
+                        );
+                      }}
+                    >
+                      Level
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>

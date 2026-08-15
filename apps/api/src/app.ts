@@ -15,11 +15,16 @@ import { calendarRoutes } from './routes/calendars.js';
 import { dashboardRoutes } from './routes/dashboards.js';
 import { dependencyRoutes } from './routes/dependencies.js';
 import { healthRoutes } from './routes/health.js';
+import { levelingRoutes } from './routes/leveling.js';
 import { mspdiRoutes } from './routes/mspdi.js';
+import { progressUpdateRoutes } from './routes/progressUpdate.js';
 import { projectRoutes } from './routes/projects.js';
+import { projectTemplateRoutes } from './routes/projectTemplates.js';
 import { reportRoutes } from './routes/reports.js';
 import { resourceRoutes } from './routes/resources.js';
 import { roleRoutes } from './routes/roles.js';
+import { savedReportRoutes } from './routes/savedReports.js';
+import { spreadsheetImportRoutes } from './routes/spreadsheetImport.js';
 import { sprintRoutes } from './routes/sprints.js';
 import { taskRoutes } from './routes/tasks.js';
 
@@ -63,6 +68,8 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(healthRoutes);
   await fastify.register(authRoutes);
   await fastify.register(projectRoutes);
+  await fastify.register(projectTemplateRoutes);
+  await fastify.register(spreadsheetImportRoutes);
   await fastify.register(taskRoutes);
   await fastify.register(dependencyRoutes);
   await fastify.register(roleRoutes);
@@ -71,7 +78,10 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(assignmentRoutes);
   await fastify.register(baselineRoutes);
   await fastify.register(mspdiRoutes);
+  await fastify.register(levelingRoutes);
+  await fastify.register(progressUpdateRoutes);
   await fastify.register(reportRoutes);
+  await fastify.register(savedReportRoutes);
   await fastify.register(dashboardRoutes);
   await fastify.register(sprintRoutes);
   await fastify.register(boardColumnRoutes);

@@ -20,6 +20,7 @@ describe('task grid column order', () => {
       'wbsCode',
       'schedulingMode',
       'durationMinutes',
+      'percentComplete',
       'predecessors',
       'earlyFinish',
       'totalFloatMinutes',
