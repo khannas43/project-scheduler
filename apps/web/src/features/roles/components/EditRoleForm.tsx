@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react';
 
+import { formatApiErrorMessage } from '../../../lib/apiErrors.js';
 import { useUpdateRole } from '../hooks/useRoles.js';
 import type { Permission, Role } from '../types.js';
 import { PermissionMatrix } from './PermissionMatrix.js';
@@ -49,7 +50,7 @@ export function EditRoleForm({
       });
       onUpdated?.(updated);
     } catch {
-      // ApiError already surfaced via useUpdateRole → useErrorBanner.
+      // Form-local error via update.error (banner suppressed).
     }
   }
 
@@ -86,7 +87,7 @@ export function EditRoleForm({
       </fieldset>
       {update.error ? (
         <p className="form-error" role="alert">
-          {update.error instanceof Error ? update.error.message : 'Could not update role'}
+          {formatApiErrorMessage(update.error, 'Could not update role')}
         </p>
       ) : null}
       <div className="form-actions">

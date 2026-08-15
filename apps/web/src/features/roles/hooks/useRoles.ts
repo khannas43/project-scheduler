@@ -1,7 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { ApiError } from '../../../lib/apiClient.js';
-import { useErrorBanner } from '../../../stores/errorBanner.js';
 import * as rolesApi from '../api.js';
 import type { CreateRoleInput, UpdateRoleInput } from '../types.js';
 
@@ -29,45 +27,29 @@ export function usePermissions(projectId: string) {
   });
 }
 
+/** Errors surface in the role modal form (suppress global banner). */
 export function useCreateRole(projectId: string) {
   const queryClient = useQueryClient();
-  const showBanner = useErrorBanner((s) => s.show);
 
   return useMutation({
+    meta: { suppressErrorBanner: true },
     mutationFn: (input: CreateRoleInput) => rolesApi.createRole(input),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: rolesQueryKey(projectId) });
     },
-    onError: (err) => {
-      if (err instanceof ApiError) {
-        showBanner(err);
-        return;
-      }
-      if (err instanceof Error) {
-        showBanner(err);
-      }
-    },
   });
 }
 
+/** Errors surface in the role modal form (suppress global banner). */
 export function useUpdateRole(projectId: string) {
   const queryClient = useQueryClient();
-  const showBanner = useErrorBanner((s) => s.show);
 
   return useMutation({
+    meta: { suppressErrorBanner: true },
     mutationFn: ({ roleId, patch }: { roleId: string; patch: UpdateRoleInput }) =>
       rolesApi.updateRole(roleId, patch),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: rolesQueryKey(projectId) });
-    },
-    onError: (err) => {
-      if (err instanceof ApiError) {
-        showBanner(err);
-        return;
-      }
-      if (err instanceof Error) {
-        showBanner(err);
-      }
     },
   });
 }

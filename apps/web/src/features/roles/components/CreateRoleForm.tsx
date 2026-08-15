@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from 'react';
 
+import { formatApiErrorMessage } from '../../../lib/apiErrors.js';
 import { useCreateRole } from '../hooks/useRoles.js';
 import type { Permission, Role } from '../types.js';
 import { PermissionMatrix } from './PermissionMatrix.js';
@@ -40,7 +41,7 @@ export function CreateRoleForm({
       });
       onCreated?.(role);
     } catch {
-      // ApiError already surfaced via useCreateRole → useErrorBanner.
+      // Form-local error via create.error (banner suppressed).
     }
   }
 
@@ -77,7 +78,7 @@ export function CreateRoleForm({
       </fieldset>
       {create.error ? (
         <p className="form-error" role="alert">
-          {create.error instanceof Error ? create.error.message : 'Could not create role'}
+          {formatApiErrorMessage(create.error, 'Could not create role')}
         </p>
       ) : null}
       <div className="form-actions">
