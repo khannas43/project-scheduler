@@ -36,7 +36,7 @@ services, the CPM scheduler) rather than replace or bypass them.
 | Aspect | Detail |
 |---|---|
 | Risk | Higher — write-adjacent; bad LLM output (invalid deps, cycles) must never reach the schedule directly |
-| Input | Natural-language project description |
+| Input | Natural-language project description, including uploaded RFP/SOW documents (typically 100-200+ pages) |
 | Output | Draft tasks + dependencies conforming to a strict JSON schema |
 | Flow | **Generate → validate → user reviews/edits → confirm → normal task-creation API writes.** Never a silent auto-create. |
 | Validation | Draft is run through the existing CPM engine's cycle-detection and constraint checks *before* it's shown as importable. Schema-valid ≠ logically-valid — a model can emit a well-formed but cyclic dependency graph, so the CPM check is mandatory, not optional. |
@@ -44,6 +44,25 @@ services, the CPM scheduler) rather than replace or bypass them.
 | Web | New review/diff UI where the user edits/accepts before anything is committed |
 | Cloud model | Claude API, `claude-opus-5`, using structured outputs (`output_config.format` / `client.messages.parse()`) to force schema-conformant JSON |
 | Local model | `gemma4:26b` (26B, already installed) — chosen over an 8B/narrator-tier model because this task needs real multi-step reasoning about dependency correctness, and has confirmed `tools`/`thinking` capability. Ollama's `format: <json-schema>` (grammar-constrained decoding) gives genuine schema conformance locally, not just prompted-and-hoped-for JSON — same CPM validation step still applies regardless of provider. |
+
+### 3a. Rejected: rule-based / no-LLM plan generation
+
+Considered and dropped for the RFP-to-schedule case:
+
+- **Auto-classify RFP type → pick a template.** Low value on its own — it
+  replaces a 10-second manual template pick with parsing to build and
+  maintain; doesn't touch the actual expensive work (reading the document).
+- **Regex/section-heading extraction of deliverables, milestones, dates.**
+  Only reliable on short, formulaic documents. Real RFPs at 100-200+ pages
+  scatter requirements across sections, cross-reference and qualify them
+  elsewhere, and get amended by addenda — rule-based parsing doesn't fail
+  loudly there, it fails silently, producing a plausible-looking but wrong
+  or incomplete draft. That is worse than no draft, since a wrong-but-
+  confident output gets edited less carefully than one written from scratch.
+- **Conclusion:** at the target document scale, there is no rule-based
+  stepping stone worth building — it isn't a smaller version of Feature 2,
+  it's a different feature that doesn't solve the problem. Feature 2 is
+  LLM-only; the no-LLM path is out of scope for this release.
 
 ## 4. AI-mode toggle
 
