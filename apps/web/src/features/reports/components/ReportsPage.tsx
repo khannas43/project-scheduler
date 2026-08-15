@@ -13,6 +13,7 @@ import {
   useSlippingTasksReport,
 } from '../hooks/useReports.js';
 import { REPORT_OPTIONS, type ReportKind } from '../types.js';
+import { HelpLink } from '../../help/index.js';
 import { CustomReportBuilder } from './CustomReportBuilder.js';
 
 function formatDate(value: string | null | undefined): string {
@@ -86,7 +87,9 @@ export function ReportsPage() {
               ← Project
             </Link>
           </p>
-          <h1>Reports</h1>
+          <h1>
+            Reports <HelpLink topic="reports" />
+          </h1>
           <p className="lede muted">
             Built-in reports, custom/saved task reports, and task-list exports.
           </p>

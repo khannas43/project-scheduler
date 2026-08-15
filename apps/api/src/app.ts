@@ -21,12 +21,16 @@ import { progressUpdateRoutes } from './routes/progressUpdate.js';
 import { projectRoutes } from './routes/projects.js';
 import { projectTemplateRoutes } from './routes/projectTemplates.js';
 import { reportRoutes } from './routes/reports.js';
+import { auditRoutes } from './routes/audit.js';
 import { resourceRoutes } from './routes/resources.js';
 import { roleRoutes } from './routes/roles.js';
 import { savedReportRoutes } from './routes/savedReports.js';
 import { spreadsheetImportRoutes } from './routes/spreadsheetImport.js';
 import { sprintRoutes } from './routes/sprints.js';
+import { taskNotifyRoutes } from './routes/taskNotify.js';
 import { taskRoutes } from './routes/tasks.js';
+import { userRoutes } from './routes/users.js';
+import { memberRoutes } from './routes/members.js';
 
 /** Separate from server.ts (which calls .listen()) so tests can `fastify.inject()` against it (§11). */
 export async function buildApp(): Promise<FastifyInstance> {
@@ -71,6 +75,9 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(projectTemplateRoutes);
   await fastify.register(spreadsheetImportRoutes);
   await fastify.register(taskRoutes);
+  await fastify.register(taskNotifyRoutes);
+  await fastify.register(userRoutes);
+  await fastify.register(memberRoutes);
   await fastify.register(dependencyRoutes);
   await fastify.register(roleRoutes);
   await fastify.register(calendarRoutes);
@@ -81,6 +88,7 @@ export async function buildApp(): Promise<FastifyInstance> {
   await fastify.register(levelingRoutes);
   await fastify.register(progressUpdateRoutes);
   await fastify.register(reportRoutes);
+  await fastify.register(auditRoutes);
   await fastify.register(savedReportRoutes);
   await fastify.register(dashboardRoutes);
   await fastify.register(sprintRoutes);

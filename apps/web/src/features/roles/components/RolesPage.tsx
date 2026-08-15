@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 
 import { ApiError } from '../../../lib/apiClient.js';
 import { useErrorBanner } from '../../../stores/errorBanner.js';
+import { HelpLink } from '../../help/index.js';
 import { usePermissions, useRoles } from '../hooks/useRoles.js';
 import type { Role } from '../types.js';
 import { CreateRoleForm } from './CreateRoleForm.js';
@@ -44,8 +45,13 @@ export function RolesPage() {
               ← Project
             </Link>
           </p>
-          <h1>Roles</h1>
-          <p className="lede muted">Create and edit custom roles for this workspace.</p>
+          <h1>
+            Roles <HelpLink topic="roles" />
+          </h1>
+          <p className="lede muted">
+            Create and edit custom roles for this workspace. New and updated roles appear on Activity
+            as role.create / role.update.
+          </p>
         </div>
         {panel.kind === 'none' ? (
           <button

@@ -11,6 +11,7 @@ import {
 } from 'react';
 
 import { projectsApi } from '../../projects/index.js';
+import { HelpLink } from '../../help/index.js';
 import { useResources } from '../../resources/index.js';
 import { useCreateTask } from '../hooks/useCreateTask.js';
 import { useDeleteTask } from '../hooks/useDeleteTask.js';
@@ -304,6 +305,7 @@ export function ProjectDetailPage() {
               <span className="project-version mono">
                 v<span>{projectVersion}</span>
               </span>
+              <HelpLink topic="schedule" label="Schedule help" />
             </div>
           </div>
         </div>
@@ -436,11 +438,25 @@ export function ProjectDetailPage() {
           Reports
         </Link>
         <Link
+          to="/projects/$projectId/activity"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+        >
+          Activity
+        </Link>
+        <Link
           to="/projects/$projectId/agile-charts"
           params={{ projectId }}
           className="project-workspace-nav-link"
         >
           Charts
+        </Link>
+        <Link
+          to="/projects/$projectId/people"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+        >
+          People
         </Link>
         <Link
           to="/projects/$projectId/roles"
