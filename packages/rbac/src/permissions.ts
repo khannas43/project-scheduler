@@ -60,6 +60,9 @@ export const PERMISSIONS = {
   REPORT_CREATE: { key: 'report.create', category: 'Report', description: 'Create reports' },
   REPORT_EXPORT: { key: 'report.export', category: 'Report', description: 'Export reports' },
 
+  // Audit
+  AUDIT_VIEW: { key: 'audit.view', category: 'Admin', description: 'View project activity / audit log' },
+
   // Import/Export
   DATA_IMPORT: { key: 'data.import', category: 'Import/Export', description: 'Import project data' },
   DATA_EXPORT: { key: 'data.export', category: 'Import/Export', description: 'Export project data' },

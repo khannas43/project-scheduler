@@ -121,6 +121,16 @@ describe('route-guard drift (§6.4)', () => {
     byKey('POST', '/api/projects/:id/import/spreadsheet', PERMISSIONS.DATA_IMPORT.key);
     byKey('POST', '/api/projects/:id/duplicate', PERMISSIONS.PROJECT_EDIT.key);
 
+    byKey('GET', '/api/users', PERMISSIONS.PROJECT_EDIT.key);
+    byKey('POST', '/api/users', PERMISSIONS.USER_MANAGE.key);
+    byKey('PATCH', '/api/users/:id', PERMISSIONS.USER_MANAGE.key);
+    byKey('GET', '/api/projects/:id/members', PERMISSIONS.PROJECT_VIEW.key);
+    byKey('POST', '/api/projects/:id/members', PERMISSIONS.PROJECT_EDIT.key);
+    byKey('PATCH', '/api/projects/:id/members/:userId', PERMISSIONS.PROJECT_EDIT.key);
+    byKey('DELETE', '/api/projects/:id/members/:userId', PERMISSIONS.PROJECT_EDIT.key);
+    byKey('POST', '/api/projects/:id/members/:userId/notify-tasks', PERMISSIONS.PROJECT_EDIT.key);
+    byKey('POST', '/api/tasks/:id/notify', PERMISSIONS.PROJECT_EDIT.key);
+
     // Built-in JSON reports — GETs need explicit assertion (SAFE_METHODS skips them).
     byKey('GET', '/api/projects/:id/reports/summary', PERMISSIONS.REPORT_VIEW.key);
     byKey('GET', '/api/projects/:id/reports/critical-tasks', PERMISSIONS.REPORT_VIEW.key);
@@ -129,6 +139,8 @@ describe('route-guard drift (§6.4)', () => {
     byKey('GET', '/api/projects/:id/reports/cost-overview', PERMISSIONS.REPORT_VIEW.key);
     byKey('GET', '/api/projects/:id/reports/slipping-tasks', PERMISSIONS.REPORT_VIEW.key);
     byKey('GET', '/api/projects/:id/dashboard', PERMISSIONS.REPORT_VIEW.key);
+
+    byKey('GET', '/api/projects/:id/audit-log', PERMISSIONS.AUDIT_VIEW.key);
 
     // Custom / saved reports
     byKey('GET', '/api/projects/:id/saved-reports', PERMISSIONS.REPORT_VIEW.key);

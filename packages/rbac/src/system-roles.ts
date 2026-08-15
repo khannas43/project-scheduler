@@ -66,6 +66,7 @@ export const SYSTEM_ROLES = {
       PERMISSIONS.REPORT_VIEW.key,
       PERMISSIONS.REPORT_CREATE.key,
       PERMISSIONS.REPORT_EXPORT.key,
+      PERMISSIONS.AUDIT_VIEW.key,
       PERMISSIONS.DATA_IMPORT.key,
       PERMISSIONS.DATA_EXPORT.key,
       // No Admin-category permissions: role/user/calendar/settings management
@@ -118,6 +119,7 @@ export const SYSTEM_ROLES = {
       PERMISSIONS.BASELINE_VIEW.key,
       PERMISSIONS.REPORT_VIEW.key,
       PERMISSIONS.BOARD_VIEW.key,
+      PERMISSIONS.AUDIT_VIEW.key,
     ],
   },
 } as const satisfies Record<string, SystemRole>;
