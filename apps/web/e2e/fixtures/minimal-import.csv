@@ -1,0 +1,3 @@
+Task ID,Name,Parent Task ID,Duration (days),Milestone,Summary,Predecessors,Notes
+e2e-1,E2E Imported Root,,1,false,false,,Playwright fixture
+e2e-2,E2E Imported Child,e2e-1,2,false,false,,

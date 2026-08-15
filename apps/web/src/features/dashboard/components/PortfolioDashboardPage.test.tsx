@@ -43,6 +43,7 @@ vi.mock('../../projects/hooks/useProjects.js', () => ({
   }),
   useSetProjectArchived: () => ({ mutateAsync: vi.fn(), isPending: false }),
   useDeleteProject: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDuplicateProject: () => ({ mutateAsync: vi.fn(), isPending: false }),
 }));
 
 import * as dashboardApi from '../api.js';
