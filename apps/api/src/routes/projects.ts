@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { AUTH_ONLY_ROUTE_CONFIG } from '../lib/routeMeta.js';
 import { requireAuth } from '../middleware/auth.js';
 import { requirePermission } from '../middleware/permissions.js';
+import { duplicateProject } from '../services/projectDuplicateService.js';
 import * as projectService from '../services/projectService.js';
 
 const ProjectIdParams = z.object({ id: z.uuid() });
@@ -70,6 +71,28 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
       const user = request.user;
       if (!user) throw new Error('requireAuth must run first');
       return projectService.updateProject(request.params.id, request.body, user.id);
+    },
+  );
+
+  fastify.post(
+    '/api/projects/:id/duplicate',
+    {
+      preHandler: [requireAuth, requirePermission('project.edit')],
+      schema: {
+        params: ProjectIdParams,
+        body: z.object({ name: z.string().min(1).max(200).optional() }).optional(),
+      },
+    },
+    async (request, reply) => {
+      const user = request.user;
+      if (!user) throw new Error('requireAuth must run first');
+      const result = await duplicateProject(
+        request.params.id,
+        { ...(request.body?.name !== undefined ? { name: request.body.name } : {}) },
+        user.id,
+      );
+      reply.code(201);
+      return { ...result.project, taskCount: result.taskCount, assignmentCount: result.assignmentCount };
     },
   );
 

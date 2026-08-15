@@ -16,6 +16,14 @@ export { TaskGrid } from './components/TaskGrid.js';
 export { GanttPanel } from './components/GanttPanel.js';
 export { AssignmentPanel } from './components/AssignmentPanel.js';
 export { CreateTaskModal } from './components/CreateTaskModal.js';
+export { ScheduleFilterBar } from './components/ScheduleFilterBar.js';
+export {
+  applyScheduleFilters,
+  filterDependenciesForTasks,
+  DEFAULT_SCHEDULE_FILTERS,
+  NEAR_CRITICAL_FLOAT_MINUTES,
+} from './scheduleFilters.js';
+export type { ScheduleFilterState, ScheduleFocus, LookaheadWeeks } from './scheduleFilters.js';
 export { useTaskTree, tasksQueryKey } from './hooks/useTaskTree.js';
 export { useTaskEdit, projectQueryKey } from './hooks/useTaskEdit.js';
 export { useCreateTask } from './hooks/useCreateTask.js';

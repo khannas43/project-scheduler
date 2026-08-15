@@ -77,6 +77,8 @@ describe('route-guard drift (§6.4)', () => {
 
     // POST /api/projects is intentionally auth-only (no project to resolve yet).
     expect(authOnlyPaths).toContain('POST /api/projects');
+    expect(authOnlyPaths).toContain('POST /api/projects/from-spreadsheet');
+    expect(authOnlyPaths).toContain('POST /api/projects/from-template');
 
     // Calendar-exception mutators (and the list GET) must use calendar.manage.
     const byKey = (method: string, path: string, key: PermissionKey) => {
@@ -116,6 +118,8 @@ describe('route-guard drift (§6.4)', () => {
     byKey('GET', '/api/projects/:id/export/excel', PERMISSIONS.DATA_EXPORT.key);
     byKey('GET', '/api/projects/:id/export/pdf', PERMISSIONS.DATA_EXPORT.key);
     byKey('POST', '/api/projects/:id/import/xml', PERMISSIONS.DATA_IMPORT.key);
+    byKey('POST', '/api/projects/:id/import/spreadsheet', PERMISSIONS.DATA_IMPORT.key);
+    byKey('POST', '/api/projects/:id/duplicate', PERMISSIONS.PROJECT_EDIT.key);
 
     // Built-in JSON reports — GETs need explicit assertion (SAFE_METHODS skips them).
     byKey('GET', '/api/projects/:id/reports/summary', PERMISSIONS.REPORT_VIEW.key);
@@ -125,6 +129,20 @@ describe('route-guard drift (§6.4)', () => {
     byKey('GET', '/api/projects/:id/reports/cost-overview', PERMISSIONS.REPORT_VIEW.key);
     byKey('GET', '/api/projects/:id/reports/slipping-tasks', PERMISSIONS.REPORT_VIEW.key);
     byKey('GET', '/api/projects/:id/dashboard', PERMISSIONS.REPORT_VIEW.key);
+
+    // Custom / saved reports
+    byKey('GET', '/api/projects/:id/saved-reports', PERMISSIONS.REPORT_VIEW.key);
+    byKey('POST', '/api/projects/:id/saved-reports', PERMISSIONS.REPORT_CREATE.key);
+    byKey('GET', '/api/projects/:id/saved-reports/:reportId', PERMISSIONS.REPORT_VIEW.key);
+    byKey('PATCH', '/api/projects/:id/saved-reports/:reportId', PERMISSIONS.REPORT_CREATE.key);
+    byKey('DELETE', '/api/projects/:id/saved-reports/:reportId', PERMISSIONS.REPORT_CREATE.key);
+    byKey('POST', '/api/projects/:id/saved-reports/preview', PERMISSIONS.REPORT_VIEW.key);
+    byKey('GET', '/api/projects/:id/saved-reports/:reportId/run', PERMISSIONS.REPORT_VIEW.key);
+    byKey(
+      'GET',
+      '/api/projects/:id/saved-reports/:reportId/export/csv',
+      PERMISSIONS.REPORT_EXPORT.key,
+    );
 
     byKey('GET', '/api/projects/:id/sprints', PERMISSIONS.SPRINT_VIEW.key);
     byKey('POST', '/api/projects/:id/sprints', PERMISSIONS.SPRINT_CREATE.key);

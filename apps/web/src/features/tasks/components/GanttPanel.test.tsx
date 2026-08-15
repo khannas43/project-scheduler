@@ -54,6 +54,8 @@ const project: Project = {
   calendarId: '22222222-2222-4222-8222-222222222222',
   ownerId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   isArchived: false,
+  category: null,
+  templateKey: null,
   settings: {
     dateFormat: 'yyyy-mm-dd',
     dateTimeDisplay: 'date',

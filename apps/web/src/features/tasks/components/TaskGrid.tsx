@@ -54,6 +54,8 @@ export interface TaskGridProps {
   readonly tasks: readonly TaskRow[];
   readonly dependencies?: readonly DependencyRow[];
   readonly highlightedTaskId: string | null;
+  /** Extra rows to highlight (e.g. tasks just merged from spreadsheet import). */
+  readonly highlightedTaskIds?: ReadonlySet<string>;
   readonly collapsedIds: ReadonlySet<string>;
   readonly onToggleCollapse: (taskId: string) => void;
   readonly onCollapseAll?: () => void;
@@ -72,7 +74,7 @@ export interface TaskGridProps {
   readonly dateSettings?: Pick<ProjectSettings, 'dateFormat' | 'dateTimeDisplay'>;
 }
 
-type EditableField = 'name' | 'durationMinutes';
+type EditableField = 'name' | 'durationMinutes' | 'percentComplete';
 
 /** Working-day length used by the default Mon–Fri calendar (8h). */
 export const WORKING_MINUTES_PER_DAY = 480;
@@ -94,6 +96,19 @@ export function formatDurationDays(minutes: number | null): string {
   return String(Math.round(days * 100) / 100);
 }
 
+export function parsePercentComplete(value: number | string | null | undefined): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const n = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n * 100) / 100;
+}
+
+export function formatPercentComplete(value: number | string | null | undefined): string {
+  const n = parsePercentComplete(value);
+  if (n === null) return '';
+  return Number.isInteger(n) ? String(n) : String(n);
+}
+
 function InlineCell({
   task,
   field,
@@ -109,11 +124,13 @@ function InlineCell({
   const [draft, setDraft] = useState(display);
 
   const start = () => {
-    setDraft(
-      field === 'durationMinutes'
-        ? formatDurationDays(task.durationMinutes)
-        : task.name,
-    );
+    if (field === 'durationMinutes') {
+      setDraft(formatDurationDays(task.durationMinutes));
+    } else if (field === 'percentComplete') {
+      setDraft(formatPercentComplete(task.percentComplete));
+    } else {
+      setDraft(task.name);
+    }
     setEditing(true);
   };
 
@@ -123,6 +140,20 @@ function InlineCell({
       const next = draft.trim();
       if (!next || next === task.name) return;
       onCommit({ taskId: task.id, version: task.version, name: next });
+      return;
+    }
+    if (field === 'percentComplete') {
+      const trimmed = draft.trim();
+      const parsed = trimmed === '' ? 0 : Number(trimmed);
+      if (!Number.isFinite(parsed) || parsed < 0 || parsed > 100) return;
+      const next = Math.round(parsed * 100) / 100;
+      const current = parsePercentComplete(task.percentComplete) ?? 0;
+      if (next === current) return;
+      onCommit({
+        taskId: task.id,
+        version: task.version,
+        percentComplete: next,
+      });
       return;
     }
     // Duration is edited in working days; persist as minutes for the API.
@@ -149,11 +180,18 @@ function InlineCell({
     }
   };
 
+  const ariaLabel =
+    field === 'name'
+      ? `Edit name for ${task.wbsCode ?? task.id}`
+      : field === 'percentComplete'
+        ? `Edit percent complete for ${task.wbsCode ?? task.id}`
+        : `Edit duration for ${task.wbsCode ?? task.id}`;
+
   if (editing) {
     return (
       <input
         className="cell-input"
-        aria-label={field === 'name' ? `Edit name for ${task.wbsCode ?? task.id}` : `Edit duration for ${task.wbsCode ?? task.id}`}
+        aria-label={ariaLabel}
         value={draft}
         autoFocus
         onChange={(e) => setDraft(e.target.value)}
@@ -396,6 +434,7 @@ const COLUMN_TIPS = {
   wbs: `Work Breakdown Structure code — hierarchical ID for the task in the plan (e.g. 1.2.3).${DRAG_HINT}`,
   name: `Task name. Click to edit.${DRAG_HINT}`,
   duration: `How long the task takes, in working days (8-hour days). Click to edit. Summaries show — because duration is rolled up from children.${DRAG_HINT}`,
+  percentComplete: `Percent complete (0–100). Click to edit on leaf tasks. Summaries are rolled up from children.${DRAG_HINT}`,
   predecessors: `Tasks that must finish (or otherwise constrain this one) before this task can proceed. Enter WBS codes, comma-separated (e.g. 1.1, 1.2).${DRAG_HINT}`,
   startDate: `Earliest start from the schedule (CPM). Click to set a Must Start On date; clear to let dependencies drive the start again.${DRAG_HINT}`,
   finishDate: `Earliest finish from the schedule (CPM). Click to set a Must Finish On date; clear to let the schedule drive the finish again.${DRAG_HINT}`,
@@ -411,6 +450,7 @@ export function TaskGrid({
   tasks,
   dependencies = [],
   highlightedTaskId,
+  highlightedTaskIds,
   collapsedIds,
   onToggleCollapse,
   onCollapseAll,
@@ -486,6 +526,7 @@ export function TaskGrid({
           const depth = wbsDepth(task.wbsCode);
           const hasChildren = taskHasChildren(task.id, childrenIndex);
           const collapsed = collapsedIds.has(task.id);
+          const isImported = highlightedTaskIds?.has(task.id) ?? false;
           return (
             <div
               className={task.isSummary || hasChildren ? 'task-name-cell is-group' : 'task-name-cell'}
@@ -505,6 +546,11 @@ export function TaskGrid({
                 <span className="wbs-toggle-spacer" aria-hidden="true" />
               )}
               <InlineCell task={task} field="name" display={task.name} onCommit={onEdit} />
+              {isImported ? (
+                <span className="task-import-badge" title="Added by the latest spreadsheet import">
+                  New
+                </span>
+              ) : null}
             </div>
           );
         },
@@ -536,6 +582,14 @@ export function TaskGrid({
           if (task.isSummary) {
             return <span className="muted">—</span>;
           }
+          if (task.schedulingMode === 'agile') {
+            const pts = task.storyPoints;
+            return (
+              <span className="mono muted" title="Agile tasks use story points, not duration">
+                {pts === null || pts === undefined ? '—' : `${pts} pts`}
+              </span>
+            );
+          }
           if (task.isMilestone) {
             return (
               <span className="mono muted" title="Milestones have zero duration">
@@ -548,6 +602,29 @@ export function TaskGrid({
               task={task}
               field="durationMinutes"
               display={formatDurationDays(task.durationMinutes)}
+              onCommit={onEdit}
+            />
+          );
+        },
+      }),
+      columnHelper.accessor((row) => parsePercentComplete(row.percentComplete), {
+        id: 'percentComplete',
+        header: () => <ColumnHeader label="% Complete" tip={COLUMN_TIPS.percentComplete} />,
+        cell: (info) => {
+          const task = info.row.original;
+          const display = formatPercentComplete(task.percentComplete);
+          if (task.isSummary) {
+            return (
+              <span className="mono muted" title="Summary % is rolled up from children">
+                {display === '' ? '—' : `${display}%`}
+              </span>
+            );
+          }
+          return (
+            <InlineCell
+              task={task}
+              field="percentComplete"
+              display={display === '' ? '' : `${display}%`}
               onCommit={onEdit}
             />
           );
@@ -610,7 +687,7 @@ export function TaskGrid({
         header: () => <ColumnHeader label="Critical" tip={COLUMN_TIPS.critical} />,
         cell: (info) => {
           const task = info.row.original;
-          if (task.isSummary) {
+          if (task.isSummary || task.schedulingMode === 'agile') {
             return <span className="muted">{info.getValue() ? 'Yes' : '—'}</span>;
           }
           return (
@@ -632,7 +709,7 @@ export function TaskGrid({
         header: () => <ColumnHeader label="Milestone" tip={COLUMN_TIPS.milestone} />,
         cell: (info) => {
           const task = info.row.original;
-          if (task.isSummary) {
+          if (task.isSummary || task.schedulingMode === 'agile') {
             return <span className="muted">{info.getValue() ? 'Yes' : '—'}</span>;
           }
           return (
@@ -715,6 +792,7 @@ export function TaskGrid({
       tasks,
       tasksById,
       dateSettings,
+      highlightedTaskIds,
     ],
   );
 
@@ -743,22 +821,25 @@ export function TaskGrid({
   return (
     <div className="task-grid-shell">
       <div className="task-grid-toolbar" role="group" aria-label="Task actions">
-        {onAddTask ? (
-          <button type="button" className="btn-compact" onClick={onAddTask}>
-            Add task
-          </button>
-        ) : null}
-        {canCollapseAny ? (
-          <>
-            <span className="muted toolbar-sep">Group by WBS</span>
-            <button type="button" className="btn-secondary btn-compact" onClick={onExpandAll}>
-              Expand all
+        <div className="task-grid-toolbar-left">
+          <span className="task-grid-panel-label">Tasks</span>
+          {onAddTask ? (
+            <button type="button" className="btn-compact" onClick={onAddTask}>
+              Add task
             </button>
-            <button type="button" className="btn-secondary btn-compact" onClick={onCollapseAll}>
-              Collapse all
-            </button>
-          </>
-        ) : null}
+          ) : null}
+          {canCollapseAny ? (
+            <>
+              <span className="muted toolbar-sep">WBS</span>
+              <button type="button" className="btn-secondary btn-compact" onClick={onExpandAll}>
+                Expand
+              </button>
+              <button type="button" className="btn-secondary btn-compact" onClick={onCollapseAll}>
+                Collapse
+              </button>
+            </>
+          ) : null}
+        </div>
         <button
           type="button"
           className="btn-secondary btn-compact"
@@ -805,7 +886,9 @@ export function TaskGrid({
           <tbody>
             {table.getRowModel().rows.map((row) => {
               const critical = row.original.isCritical;
-              const highlighted = row.original.id === highlightedTaskId;
+              const highlighted =
+                row.original.id === highlightedTaskId ||
+                (highlightedTaskIds?.has(row.original.id) ?? false);
               const grouped = row.original.isSummary || taskHasChildren(row.original.id, childrenIndex);
               return (
                 <tr
@@ -814,6 +897,7 @@ export function TaskGrid({
                   className={[
                     critical ? 'is-critical' : '',
                     highlighted ? 'is-highlighted' : '',
+                    highlightedTaskIds?.has(row.original.id) ? 'is-imported' : '',
                     grouped ? 'is-group-row' : '',
                     collapsedIds.has(row.original.id) ? 'is-collapsed' : '',
                   ]

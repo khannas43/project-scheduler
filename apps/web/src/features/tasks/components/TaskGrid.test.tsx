@@ -470,6 +470,35 @@ describe('TaskGrid', () => {
     expect(screen.getByRole('button', { name: /expand 1/i })).toBeInTheDocument();
   });
 
+  it('does not offer CPM date/duration edits on agile tasks', () => {
+    const onEdit = vi.fn();
+    render(
+      <TaskGrid
+        tasks={[
+          task({
+            id: 't1',
+            name: 'Story',
+            version: 5,
+            schedulingMode: 'agile',
+            storyPoints: '5',
+            durationMinutes: null,
+            earlyStart: null,
+            earlyFinish: null,
+          }),
+        ]}
+        highlightedTaskId={null}
+        collapsedIds={new Set()}
+        onToggleCollapse={vi.fn()}
+        onEdit={onEdit}
+      />,
+    );
+
+    expect(screen.queryByLabelText(/edit start date/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/edit finish date/i)).not.toBeInTheDocument();
+    expect(screen.getByText('5 pts')).toBeInTheDocument();
+    expect(onEdit).not.toHaveBeenCalled();
+  });
+
   it('confirms mode switch before committing schedulingMode', async () => {
     const user = userEvent.setup();
     const onEdit = vi.fn();

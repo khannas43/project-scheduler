@@ -1,25 +1,30 @@
 /**
- * Two full-fidelity sample projects for UI demos.
+ * Two full-fidelity sample projects for UI demos, plus one agile project that
+ * cross-links Board · Backlog · Agile charts.
  *
  * 1. Aurora Website Launch — hierarchy, Gantt, critical path, milestones, light resources
  * 2. Northwind Plant Retrofit — overallocation, costs, baseline/EV, slipping tasks, reports
+ * 3. Orbit Mobile Release — epics/stories, sprints, board columns, velocity history
  *
- * Idempotent: skips when either project name already exists.
+ * Idempotent: wiped and recreated when seed re-runs.
  */
 import { and, eq, ilike, inArray, sql } from 'drizzle-orm';
 
 import { db } from './client.js';
 import {
   assignments,
+  boardColumns,
   calendarExceptions,
   projects,
   resources,
+  sprints,
   taskDependencies,
   tasks,
   users,
 } from './schema/index.js';
 import { env } from '../env.js';
 import { createAssignment, updateAssignment } from '../services/assignmentService.js';
+import { nextBacklogRank } from '../services/backlogRank.js';
 import { createBaseline } from '../services/baselineService.js';
 import { createProject, deleteProject, updateProject } from '../services/projectService.js';
 import { createResource } from '../services/resourceService.js';
@@ -31,6 +36,7 @@ const DAY = 480; // working minutes (8h × 60)
 
 const AURORA = 'Aurora Website Launch';
 const NORTHWIND = 'Northwind Plant Retrofit';
+const ORBIT = 'Orbit Mobile Release';
 
 /**
  * assignment_timephased is range-partitioned by month (§3.5). The initial
@@ -69,7 +75,7 @@ async function wipeDemoProjects(ownerId: string): Promise<void> {
     .select({ id: projects.id })
     .from(projects)
     .where(
-      and(eq(projects.ownerId, ownerId), inArray(projects.name, [AURORA, NORTHWIND])),
+      and(eq(projects.ownerId, ownerId), inArray(projects.name, [AURORA, NORTHWIND, ORBIT])),
     );
   if (rows.length === 0) return;
   for (const row of rows) {
@@ -916,6 +922,417 @@ async function seedNorthwind(actorUserId: string): Promise<string> {
   return project.id;
 }
 
+/**
+ * Agile-only demo project that feeds Board, Backlog, and Agile charts from the
+ * same sprints / epics / story-point pool:
+ * - Closed sprints → velocity bars
+ * - Active sprint + Done column → board cards + burndown/burnup current point
+ * - Unassigned backlog stories + epic badges on Backlog
+ */
+async function seedOrbit(actorUserId: string): Promise<string> {
+  const project = await createProject(
+    {
+      name: ORBIT,
+      description:
+        'Agile sample for Board · Backlog · Agile charts: epics, multi-sprint velocity, and an in-flight active sprint.',
+      status: 'active',
+      startDate: '2026-06-16T09:00:00.000Z',
+    },
+    actorUserId,
+  );
+
+  // Columns shared by Board + sprint-close "done" detection.
+  const columnDefs = [
+    { name: 'To do', sortOrder: 0, wipLimit: null as number | null, isDone: false },
+    { name: 'In progress', sortOrder: 1, wipLimit: 3, isDone: false },
+    { name: 'Review', sortOrder: 2, wipLimit: 2, isDone: false },
+    { name: 'Done', sortOrder: 3, wipLimit: null, isDone: true },
+  ];
+  const colIdByName = new Map<string, string>();
+  for (const col of columnDefs) {
+    const [row] = await db
+      .insert(boardColumns)
+      .values({
+        projectId: project.id,
+        name: col.name,
+        sortOrder: col.sortOrder,
+        wipLimit: col.wipLimit,
+        isDone: col.isDone,
+      })
+      .returning({ id: boardColumns.id });
+    if (!row) throw new Error(`Failed to insert board column ${col.name}`);
+    colIdByName.set(col.name, row.id);
+  }
+
+  // Sprints: two closed (velocity), one active spanning "today" (burndown), one planned.
+  const sprintDefs = [
+    {
+      key: 's1',
+      name: 'Sprint 1 — Foundations',
+      goal: 'Auth skeleton and design system tokens',
+      startDate: new Date('2026-06-16T00:00:00.000Z'),
+      endDate: new Date('2026-06-29T23:59:59.999Z'),
+      capacity: '21',
+      state: 'closed',
+    },
+    {
+      key: 's2',
+      name: 'Sprint 2 — Checkout MVP',
+      goal: 'Cart + payment happy path',
+      startDate: new Date('2026-06-30T00:00:00.000Z'),
+      endDate: new Date('2026-07-13T23:59:59.999Z'),
+      capacity: '26',
+      state: 'closed',
+    },
+    {
+      key: 's3',
+      name: 'Sprint 3 — Notifications',
+      goal: 'Push opt-in and deep links',
+      startDate: new Date('2026-07-20T00:00:00.000Z'),
+      endDate: new Date('2026-08-02T23:59:59.999Z'),
+      capacity: '34',
+      state: 'active',
+    },
+    {
+      key: 's4',
+      name: 'Sprint 4 — Polish',
+      goal: 'Perf + accessibility',
+      startDate: new Date('2026-08-03T00:00:00.000Z'),
+      endDate: new Date('2026-08-16T23:59:59.999Z'),
+      capacity: '30',
+      state: 'planned',
+    },
+  ] as const;
+
+  const sprintIdByKey = new Map<string, string>();
+  for (const s of sprintDefs) {
+    const [row] = await db
+      .insert(sprints)
+      .values({
+        projectId: project.id,
+        name: s.name,
+        goal: s.goal,
+        startDate: s.startDate,
+        endDate: s.endDate,
+        capacity: s.capacity,
+        state: s.state,
+      })
+      .returning({ id: sprints.id });
+    if (!row) throw new Error(`Failed to insert sprint ${s.name}`);
+    sprintIdByKey.set(s.key, row.id);
+  }
+
+  const alex = await ensureResource(actorUserId, project.id, {
+    name: 'Alex Rivera',
+    resourceType: 'work',
+    maxUnits: 1,
+    standardRate: 95,
+    email: 'alex.rivera@example.com',
+  });
+  const sam = await ensureResource(actorUserId, project.id, {
+    name: 'Sam Chen',
+    resourceType: 'work',
+    maxUnits: 1,
+    standardRate: 90,
+    email: 'sam.chen@example.com',
+  });
+  const jordan = await ensureResource(actorUserId, project.id, {
+    name: 'Jordan Lee',
+    resourceType: 'work',
+    maxUnits: 1,
+    standardRate: 85,
+    email: 'jordan.lee@example.com',
+  });
+
+  // Epics are agile summaries (containers) — no sprint/points/column.
+  type AgileLeaf = {
+    key: string;
+    name: string;
+    parentKey: string;
+    wbsPath: string;
+    sortOrder: number;
+    points: number;
+    sprintKey: 's1' | 's2' | 's3' | 's4' | null;
+    column: 'To do' | 'In progress' | 'Review' | 'Done' | null;
+    assignee?: string;
+  };
+
+  const epics = [
+    { key: 'epic-auth', name: 'Epic: Auth & Onboarding', wbsPath: '1', sortOrder: 0 },
+    { key: 'epic-checkout', name: 'Epic: Checkout Experience', wbsPath: '2', sortOrder: 1 },
+    { key: 'epic-push', name: 'Epic: Push Notifications', wbsPath: '3', sortOrder: 2 },
+  ] as const;
+
+  const stories: AgileLeaf[] = [
+    // —— Closed Sprint 1 (velocity = 21) ——
+    {
+      key: 's1-login',
+      name: 'Email/password login screen',
+      parentKey: 'epic-auth',
+      wbsPath: '1.1',
+      sortOrder: 0,
+      points: 5,
+      sprintKey: 's1',
+      column: 'Done',
+      assignee: alex,
+    },
+    {
+      key: 's1-tokens',
+      name: 'Design-system color tokens',
+      parentKey: 'epic-auth',
+      wbsPath: '1.2',
+      sortOrder: 1,
+      points: 3,
+      sprintKey: 's1',
+      column: 'Done',
+      assignee: jordan,
+    },
+    {
+      key: 's1-session',
+      name: 'Refresh-token session store',
+      parentKey: 'epic-auth',
+      wbsPath: '1.3',
+      sortOrder: 2,
+      points: 8,
+      sprintKey: 's1',
+      column: 'Done',
+      assignee: sam,
+    },
+    {
+      key: 's1-welcome',
+      name: 'Welcome carousel',
+      parentKey: 'epic-auth',
+      wbsPath: '1.4',
+      sortOrder: 3,
+      points: 5,
+      sprintKey: 's1',
+      column: 'Done',
+      assignee: jordan,
+    },
+
+    // —— Closed Sprint 2 (velocity = 26) ——
+    {
+      key: 's2-cart',
+      name: 'Cart line-item editor',
+      parentKey: 'epic-checkout',
+      wbsPath: '2.1',
+      sortOrder: 0,
+      points: 8,
+      sprintKey: 's2',
+      column: 'Done',
+      assignee: alex,
+    },
+    {
+      key: 's2-pay',
+      name: 'Stripe payment sheet',
+      parentKey: 'epic-checkout',
+      wbsPath: '2.2',
+      sortOrder: 1,
+      points: 13,
+      sprintKey: 's2',
+      column: 'Done',
+      assignee: sam,
+    },
+    {
+      key: 's2-receipt',
+      name: 'Order confirmation receipt',
+      parentKey: 'epic-checkout',
+      wbsPath: '2.3',
+      sortOrder: 2,
+      points: 5,
+      sprintKey: 's2',
+      column: 'Done',
+      assignee: jordan,
+    },
+
+    // —— Active Sprint 3 (board + burndown/burnup) ——
+    {
+      key: 's3-optin',
+      name: 'Push opt-in prompt',
+      parentKey: 'epic-push',
+      wbsPath: '3.1',
+      sortOrder: 0,
+      points: 5,
+      sprintKey: 's3',
+      column: 'Done',
+      assignee: jordan,
+    },
+    {
+      key: 's3-token',
+      name: 'Device token registration',
+      parentKey: 'epic-push',
+      wbsPath: '3.2',
+      sortOrder: 1,
+      points: 8,
+      sprintKey: 's3',
+      column: 'Review',
+      assignee: sam,
+    },
+    {
+      key: 's3-deeplink',
+      name: 'Notification deep-link router',
+      parentKey: 'epic-push',
+      wbsPath: '3.3',
+      sortOrder: 2,
+      points: 8,
+      sprintKey: 's3',
+      column: 'In progress',
+      assignee: alex,
+    },
+    {
+      key: 's3-prefs',
+      name: 'Notification preference center',
+      parentKey: 'epic-push',
+      wbsPath: '3.4',
+      sortOrder: 3,
+      points: 5,
+      sprintKey: 's3',
+      column: 'To do',
+      assignee: jordan,
+    },
+    {
+      key: 's3-badge',
+      name: 'App icon badge sync',
+      parentKey: 'epic-push',
+      wbsPath: '3.5',
+      sortOrder: 4,
+      points: 3,
+      sprintKey: 's3',
+      column: 'To do',
+    },
+
+    // —— Planned Sprint 4 (backlog section) ——
+    {
+      key: 's4-a11y',
+      name: 'VoiceOver pass on checkout',
+      parentKey: 'epic-checkout',
+      wbsPath: '2.4',
+      sortOrder: 3,
+      points: 5,
+      sprintKey: 's4',
+      column: null,
+    },
+    {
+      key: 's4-perf',
+      name: 'Cold-start under 2s',
+      parentKey: 'epic-auth',
+      wbsPath: '1.5',
+      sortOrder: 4,
+      points: 8,
+      sprintKey: 's4',
+      column: null,
+    },
+
+    // —— Product backlog (no sprint) ——
+    {
+      key: 'bl-sso',
+      name: 'Sign in with Apple',
+      parentKey: 'epic-auth',
+      wbsPath: '1.6',
+      sortOrder: 5,
+      points: 8,
+      sprintKey: null,
+      column: null,
+    },
+    {
+      key: 'bl-guest',
+      name: 'Guest checkout',
+      parentKey: 'epic-checkout',
+      wbsPath: '2.5',
+      sortOrder: 4,
+      points: 13,
+      sprintKey: null,
+      column: null,
+    },
+    {
+      key: 'bl-topics',
+      name: 'Topic-based push campaigns',
+      parentKey: 'epic-push',
+      wbsPath: '3.6',
+      sortOrder: 5,
+      points: 5,
+      sprintKey: null,
+      column: null,
+    },
+  ];
+
+  const idByKey = new Map<string, string>();
+
+  for (const epic of epics) {
+    const [row] = await db
+      .insert(tasks)
+      .values({
+        projectId: project.id,
+        parentId: null,
+        name: epic.name,
+        wbsPath: epic.wbsPath,
+        wbsCode: wbsCodeFromPath(epic.wbsPath),
+        sortOrder: epic.sortOrder,
+        isSummary: true,
+        isMilestone: false,
+        schedulingMode: 'agile',
+        durationMinutes: null,
+        taskType: null,
+        constraintType: null,
+        storyPoints: null,
+        sprintId: null,
+        boardColumnId: null,
+        backlogRank: null,
+        isCritical: false,
+      })
+      .returning({ id: tasks.id });
+    if (!row) throw new Error(`Failed to insert epic ${epic.key}`);
+    idByKey.set(epic.key, row.id);
+  }
+
+  let rankCursor: string | null = null;
+  for (const story of stories) {
+    rankCursor = nextBacklogRank(rankCursor);
+    const parentId = idByKey.get(story.parentKey);
+    if (!parentId) throw new Error(`Missing epic ${story.parentKey}`);
+    const sprintId = story.sprintKey ? sprintIdByKey.get(story.sprintKey)! : null;
+    const boardColumnId = story.column ? colIdByName.get(story.column)! : null;
+
+    const [row] = await db
+      .insert(tasks)
+      .values({
+        projectId: project.id,
+        parentId,
+        name: story.name,
+        wbsPath: story.wbsPath,
+        wbsCode: wbsCodeFromPath(story.wbsPath),
+        sortOrder: story.sortOrder,
+        isSummary: false,
+        isMilestone: false,
+        schedulingMode: 'agile',
+        durationMinutes: null,
+        taskType: null,
+        constraintType: null,
+        storyPoints: String(story.points),
+        sprintId,
+        boardColumnId,
+        backlogRank: rankCursor,
+        isCritical: false,
+      })
+      .returning({ id: tasks.id });
+    if (!row) throw new Error(`Failed to insert story ${story.key}`);
+    idByKey.set(story.key, row.id);
+
+    if (story.assignee) {
+      await createAssignment(
+        {
+          taskId: row.id,
+          resourceId: story.assignee,
+          units: 1,
+        },
+        actorUserId,
+      );
+    }
+  }
+
+  return project.id;
+}
+
 export async function seedDemoProjects(): Promise<void> {
   const [admin] = await db
     .select({ id: users.id })
@@ -937,5 +1354,7 @@ export async function seedDemoProjects(): Promise<void> {
   await seedAurora(admin.id);
   console.log(`Seeding demo project: ${NORTHWIND}`);
   await seedNorthwind(admin.id);
+  console.log(`Seeding demo project: ${ORBIT}`);
+  await seedOrbit(admin.id);
   console.log('Demo projects ready.');
 }

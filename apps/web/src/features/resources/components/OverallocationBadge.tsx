@@ -5,7 +5,7 @@ export interface OverallocationBadgeProps {
   readonly resourceId: string;
 }
 
-/** Small warning pill with overallocated-day count; renders nothing while loading or when clean. */
+/** Warning pill with overallocated-day count; opens Schedule leveling for this resource. */
 export function OverallocationBadge({ projectId, resourceId }: OverallocationBadgeProps) {
   const query = useOverallocations(projectId, resourceId, true);
 
@@ -14,12 +14,16 @@ export function OverallocationBadge({ projectId, resourceId }: OverallocationBad
   }
 
   const count = query.data.length;
+  const href = `/projects/${projectId}?level=1&resourceId=${encodeURIComponent(resourceId)}`;
+
   return (
-    <span
-      className="status-pill overalloc-badge"
-      title={`${count} overallocated day${count === 1 ? '' : 's'}`}
+    <a
+      href={href}
+      className="status-pill overalloc-badge overalloc-badge-link"
+      title={`${count} overallocated day${count === 1 ? '' : 's'} — open Level resources`}
+      data-testid={`overalloc-level-${resourceId}`}
     >
-      {count} day{count === 1 ? '' : 's'} over
-    </span>
+      {count} day{count === 1 ? '' : 's'} over · Level
+    </a>
   );
 }

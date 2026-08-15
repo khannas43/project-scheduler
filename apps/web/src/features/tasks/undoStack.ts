@@ -12,6 +12,7 @@ export type TaskEditFields = {
   readonly constraintDate?: string | null;
   readonly criticalOverride?: boolean | null;
   readonly isMilestone?: boolean;
+  readonly percentComplete?: number | null;
 };
 
 export interface UndoCommand {
@@ -109,8 +110,15 @@ function hasEditFields(fields: TaskEditFields): boolean {
     fields.constraintType !== undefined ||
     fields.constraintDate !== undefined ||
     fields.criticalOverride !== undefined ||
-    fields.isMilestone !== undefined
+    fields.isMilestone !== undefined ||
+    fields.percentComplete !== undefined
   );
+}
+
+function rowPercentComplete(task: TaskRow): number | null {
+  if (task.percentComplete === null || task.percentComplete === undefined) return null;
+  const n = Number(task.percentComplete);
+  return Number.isFinite(n) ? n : null;
 }
 
 /** Capture only fields present on the outbound patch. */
@@ -122,6 +130,7 @@ export function captureAfterFields(patch: TaskEditPatch): TaskEditFields {
     constraintDate?: string | null;
     criticalOverride?: boolean | null;
     isMilestone?: boolean;
+    percentComplete?: number | null;
   } = {};
   if (patch.name !== undefined) after.name = patch.name;
   if (patch.durationMinutes !== undefined) after.durationMinutes = patch.durationMinutes;
@@ -129,6 +138,7 @@ export function captureAfterFields(patch: TaskEditPatch): TaskEditFields {
   if (patch.constraintDate !== undefined) after.constraintDate = patch.constraintDate;
   if (patch.criticalOverride !== undefined) after.criticalOverride = patch.criticalOverride;
   if (patch.isMilestone !== undefined) after.isMilestone = patch.isMilestone;
+  if (patch.percentComplete !== undefined) after.percentComplete = patch.percentComplete;
   return after;
 }
 
@@ -140,6 +150,7 @@ export function captureBeforeFields(task: TaskRow, patch: TaskEditPatch): TaskEd
     constraintDate?: string | null;
     criticalOverride?: boolean | null;
     isMilestone?: boolean;
+    percentComplete?: number | null;
   } = {};
   if (patch.name !== undefined) before.name = task.name;
   if (patch.durationMinutes !== undefined) before.durationMinutes = task.durationMinutes;
@@ -147,6 +158,7 @@ export function captureBeforeFields(task: TaskRow, patch: TaskEditPatch): TaskEd
   if (patch.constraintDate !== undefined) before.constraintDate = task.constraintDate;
   if (patch.criticalOverride !== undefined) before.criticalOverride = task.criticalOverride ?? null;
   if (patch.isMilestone !== undefined) before.isMilestone = task.isMilestone;
+  if (patch.percentComplete !== undefined) before.percentComplete = rowPercentComplete(task);
   return before;
 }
 

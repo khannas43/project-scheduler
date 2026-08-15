@@ -234,7 +234,7 @@ export function GanttPanel({
         const uuid = adapterRef.current.toUuid(numericId);
         if (!uuid) return;
         const task = tasksRef.current.find((t) => t.id === uuid);
-        if (!task) return;
+        if (!task || task.schedulingMode === 'agile') return;
         const projectStart = projectStartEpochMinutes(projectRef.current);
         const constraintDate = epochMinutesToIso(projectStart + newStartMinutes);
         onCommitMoveRef.current?.({
@@ -248,7 +248,7 @@ export function GanttPanel({
         const uuid = adapterRef.current.toUuid(numericId);
         if (!uuid) return;
         const task = tasksRef.current.find((t) => t.id === uuid);
-        if (!task) return;
+        if (!task || task.schedulingMode === 'agile') return;
         onCommitResizeRef.current?.({
           taskId: uuid,
           version: task.version,

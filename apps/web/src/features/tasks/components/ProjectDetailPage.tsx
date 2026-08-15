@@ -3,6 +3,7 @@ import { Link, useParams } from '@tanstack/react-router';
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -10,12 +11,19 @@ import {
 } from 'react';
 
 import { projectsApi } from '../../projects/index.js';
+import { useResources } from '../../resources/index.js';
 import { useCreateTask } from '../hooks/useCreateTask.js';
 import { useDeleteTask } from '../hooks/useDeleteTask.js';
 import { useSetTaskPredecessors } from '../hooks/useDependencies.js';
 import { projectQueryKey, useTaskEdit } from '../hooks/useTaskEdit.js';
 import { useTaskTree } from '../hooks/useTaskTree.js';
 import { useUndoRedo } from '../hooks/useUndoRedo.js';
+import {
+  DEFAULT_SCHEDULE_FILTERS,
+  applyScheduleFilters,
+  filterDependenciesForTasks,
+  type ScheduleFilterState,
+} from '../scheduleFilters.js';
 import {
   buildChildrenIndex,
   collapsibleTaskIds,
@@ -25,7 +33,11 @@ import type { TaskEditPatch, TaskRow } from '../types.js';
 import { AssignmentPanel } from './AssignmentPanel.js';
 import { CreateTaskModal, suggestWbsCode, type CreateTaskDraft } from './CreateTaskModal.js';
 import { GanttPanel } from './GanttPanel.js';
+import { LevelResourcesModal } from './LevelResourcesModal.js';
+import { ScheduleFilterBar } from './ScheduleFilterBar.js';
 import { TaskGrid } from './TaskGrid.js';
+import { UpdateProgressModal } from './UpdateProgressModal.js';
+import { ImportSpreadsheetModal } from '../../projects/components/ImportSpreadsheetModal.js';
 
 type DetailViewMode = 'split' | 'grid' | 'gantt';
 
@@ -53,15 +65,28 @@ function loadLayoutPrefs(): { mode: DetailViewMode; gridPct: number } {
   }
 }
 
+function formatStatus(status: string | null | undefined): string | null {
+  if (!status) return null;
+  return status.replace(/_/g, ' ');
+}
+
 export function ProjectDetailPage() {
   const { projectId } = useParams({ strict: false }) as { projectId: string };
   const [highlightedTaskId, setHighlightedTaskId] = useState<string | null>(null);
+  const [importedTaskIds, setImportedTaskIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [importNotice, setImportNotice] = useState<string | null>(null);
   const [assignTask, setAssignTask] = useState<TaskRow | null>(null);
   const [createParent, setCreateParent] = useState<TaskRow | null | undefined>(undefined);
   const [collapsedIds, setCollapsedIds] = useState<ReadonlySet<string>>(() => new Set());
   const [layoutPrefs] = useState(loadLayoutPrefs);
   const [viewMode, setViewMode] = useState<DetailViewMode>(layoutPrefs.mode);
   const [gridPct, setGridPct] = useState(layoutPrefs.gridPct);
+  const [scheduleFilters, setScheduleFilters] =
+    useState<ScheduleFilterState>(DEFAULT_SCHEDULE_FILTERS);
+  const [levelingOpen, setLevelingOpen] = useState(false);
+  const [levelResourceIds, setLevelResourceIds] = useState<string[] | undefined>(undefined);
+  const [progressOpen, setProgressOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const layoutRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ startX: number; startPct: number } | null>(null);
 
@@ -71,6 +96,7 @@ export function ProjectDetailPage() {
   });
 
   const taskTree = useTaskTree(projectId);
+  const resourcesQuery = useResources(projectId);
   const edit = useTaskEdit(projectId);
   const createTask = useCreateTask(projectId);
   const deleteTask = useDeleteTask(projectId);
@@ -144,6 +170,23 @@ export function ProjectDetailPage() {
     localStorage.setItem(LAYOUT_STORAGE_KEY, JSON.stringify({ mode: viewMode, gridPct }));
   }, [viewMode, gridPct]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('level') !== '1') return;
+    const resourceId = params.get('resourceId');
+    setLevelResourceIds(resourceId ? [resourceId] : undefined);
+    setLevelingOpen(true);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('level');
+    url.searchParams.delete('resourceId');
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  }, [projectId]);
+
+  const openLeveling = useCallback((resourceIds?: string[]) => {
+    setLevelResourceIds(resourceIds && resourceIds.length > 0 ? resourceIds : undefined);
+    setLevelingOpen(true);
+  }, []);
+
   const onSplitterPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if (viewMode !== 'split') return;
@@ -181,10 +224,36 @@ export function ProjectDetailPage() {
     enabled: Boolean(projectQuery.data && taskTree.data),
   });
 
+  const tasks = taskTree.data?.tasks ?? [];
+  const dependencies = taskTree.data?.dependencies ?? [];
+  const assignments = taskTree.data?.assignments ?? [];
+  const projectVersion = taskTree.data?.projectVersion ?? projectQuery.data?.version ?? 0;
+  const statusDate = projectQuery.data?.statusDate ?? null;
+
+  const filteredTasks = useMemo(
+    () =>
+      applyScheduleFilters(tasks, assignments, scheduleFilters, {
+        statusDate,
+      }),
+    [tasks, assignments, scheduleFilters, statusDate],
+  );
+  const filteredDependencies = useMemo(
+    () => filterDependenciesForTasks(dependencies, filteredTasks),
+    [dependencies, filteredTasks],
+  );
+  const filterResources = useMemo(
+    () =>
+      (resourcesQuery.data ?? []).map((r) => ({
+        id: r.id,
+        name: r.name,
+      })),
+    [resourcesQuery.data],
+  );
+
   if (projectQuery.isLoading || taskTree.isLoading) {
     return (
       <div className="page project-detail-page">
-        <p className="muted">Loading project…</p>
+        <p className="project-workspace-loading">Loading project…</p>
       </div>
     );
   }
@@ -193,7 +262,9 @@ export function ProjectDetailPage() {
     return (
       <div className="page project-detail-page">
         <p className="form-error">Could not load project.</p>
-        <Link to="/projects">← Back to projects</Link>
+        <Link to="/projects" className="project-workspace-back">
+          ← Back to projects
+        </Link>
       </div>
     );
   }
@@ -201,13 +272,11 @@ export function ProjectDetailPage() {
   if (taskTree.isError || !taskTree.data) {
     return (
       <div className="page project-detail-page">
-        <header className="page-header">
-          <div>
-            <p className="eyebrow">
-              <Link to="/projects">← Projects</Link>
-            </p>
-            <h1>{projectQuery.data.name}</h1>
-          </div>
+        <header className="project-workspace-bar">
+          <Link to="/projects" className="project-workspace-back">
+            ← Projects
+          </Link>
+          <h1 className="project-workspace-title">{projectQuery.data.name}</h1>
         </header>
         <p className="form-error">Could not load tasks.</p>
       </div>
@@ -215,58 +284,30 @@ export function ProjectDetailPage() {
   }
 
   const project = projectQuery.data;
-  const { tasks, dependencies, assignments, projectVersion } = taskTree.data;
+  const statusLabel = formatStatus(project.status);
 
   return (
     <div className="page project-detail-page">
-      <header className="page-header">
-        <div>
-          <p className="eyebrow">
-            <Link to="/projects">← Projects</Link>
-          </p>
-          <h1>{project.name}</h1>
-          <p className="lede muted">
-            Version <span className="mono">{projectVersion}</span>
-            {project.status ? <> · {project.status}</> : null}
-            {' · '}
-            <Link to="/projects/$projectId/roles" params={{ projectId }}>
-              Manage roles
-            </Link>
-            {' · '}
-            <Link to="/projects/$projectId/resources" params={{ projectId }}>
-              Resources
-            </Link>
-            {' · '}
-            <Link to="/projects/$projectId/baselines" params={{ projectId }}>
-              Baselines
-            </Link>
-            {' · '}
-            <Link to="/projects/$projectId/dashboard" params={{ projectId }}>
-              Dashboard
-            </Link>
-            {' · '}
-            <Link to="/projects/$projectId/reports" params={{ projectId }}>
-              Reports
-            </Link>
-            {' · '}
-            <Link to="/projects/$projectId/board" params={{ projectId }}>
-              Board
-            </Link>
-            {' · '}
-            <Link to="/projects/$projectId/backlog" params={{ projectId }}>
-              Backlog
-            </Link>
-            {' · '}
-            <Link to="/projects/$projectId/agile-charts" params={{ projectId }}>
-              Agile charts
-            </Link>
-            {' · '}
-            <Link to="/projects/$projectId/settings" params={{ projectId }}>
-              Settings
-            </Link>
-          </p>
+      <header className="project-workspace-bar">
+        <div className="project-workspace-bar-main">
+          <Link to="/projects" className="project-workspace-back">
+            ← Projects
+          </Link>
+          <div className="project-workspace-identity">
+            <h1 className="project-workspace-title">{project.name}</h1>
+            <div className="project-workspace-meta">
+              {statusLabel ? (
+                <span className="project-status-chip" data-status={project.status ?? undefined}>
+                  {statusLabel}
+                </span>
+              ) : null}
+              <span className="project-version mono">
+                v<span>{projectVersion}</span>
+              </span>
+            </div>
+          </div>
         </div>
-        <div className="project-detail-toolbar">
+        <div className="project-workspace-tools">
           <div className="view-mode-toggle" role="group" aria-label="Panel layout">
             <button
               type="button"
@@ -312,113 +353,293 @@ export function ProjectDetailPage() {
             >
               Redo
             </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setImportOpen(true)}
+              data-testid="schedule-import-spreadsheet-toolbar"
+              title="Import tasks from Excel or CSV into this project"
+            >
+              Import
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => setProgressOpen(true)}
+              data-testid="schedule-update-progress-toolbar"
+              title="Set status date and update task % complete / reschedule incomplete work"
+            >
+              Update progress
+            </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => openLeveling()}
+              data-testid="schedule-level-resources-toolbar"
+              title="Delay non-critical tasks within float to clear resource overloads"
+            >
+              Level resources
+            </button>
           </div>
         </div>
       </header>
 
-      <div
-        ref={layoutRef}
-        className={`project-detail-layout is-${viewMode}`}
-        style={
-          viewMode === 'split'
-            ? ({ ['--grid-pct']: `${gridPct}%` } as CSSProperties)
-            : undefined
-        }
-      >
-        <section
-          className="project-detail-grid"
-          aria-label="Task grid"
-          hidden={viewMode === 'gantt'}
+      <nav className="project-workspace-nav" aria-label="Project">
+        <Link
+          to="/projects/$projectId"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+          aria-current="page"
         >
-          <TaskGrid
-            tasks={tasks}
-            dependencies={dependencies}
-            highlightedTaskId={highlightedTaskId}
-            collapsedIds={collapsedIds}
-            onToggleCollapse={onToggleCollapse}
-            onExpandAll={onExpandAll}
-            onCollapseAll={onCollapseAll}
-            onAddTask={() => setCreateParent(null)}
-            onAddSubtask={(parent) => setCreateParent(parent)}
-            onDeleteTask={onDeleteTask}
-            onEdit={onEdit}
-            onSetPredecessors={setPredecessors}
-            onAssignResources={setAssignTask}
-            isEditing={edit.isPending}
-            dateSettings={project.settings}
-          />
-        </section>
+          Schedule
+        </Link>
+        <Link
+          to="/projects/$projectId/dashboard"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+        >
+          Dashboard
+        </Link>
+        <Link
+          to="/projects/$projectId/resources"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+        >
+          Resources
+        </Link>
+        <Link
+          to="/projects/$projectId/board"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+        >
+          Board
+        </Link>
+        <Link
+          to="/projects/$projectId/backlog"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+        >
+          Backlog
+        </Link>
+        <Link
+          to="/projects/$projectId/baselines"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+        >
+          Baselines
+        </Link>
+        <Link
+          to="/projects/$projectId/reports"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+        >
+          Reports
+        </Link>
+        <Link
+          to="/projects/$projectId/agile-charts"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+        >
+          Charts
+        </Link>
+        <Link
+          to="/projects/$projectId/roles"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+        >
+          Roles
+        </Link>
+        <Link
+          to="/projects/$projectId/settings"
+          params={{ projectId }}
+          className="project-workspace-nav-link"
+        >
+          Settings
+        </Link>
+      </nav>
 
-        {viewMode === 'split' ? (
-          <div
-            className="project-detail-splitter"
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="Resize task list and Gantt"
-            aria-valuemin={MIN_PANEL_PCT}
-            aria-valuemax={MAX_PANEL_PCT}
-            aria-valuenow={Math.round(gridPct)}
-            tabIndex={0}
-            onPointerDown={onSplitterPointerDown}
-            onPointerMove={onSplitterPointerMove}
-            onPointerUp={onSplitterPointerUp}
-            onPointerCancel={onSplitterPointerUp}
-            onDoubleClick={() => setGridPct(DEFAULT_GRID_PCT)}
-            onKeyDown={(e) => {
-              if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                setGridPct((p) => Math.max(MIN_PANEL_PCT, p - 3));
-              }
-              if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                setGridPct((p) => Math.min(MAX_PANEL_PCT, p + 3));
-              }
-            }}
-          >
+      <div className="project-schedule-stage">
+        {importNotice ? (
+          <div className="info-banner import-highlight-banner" role="status" data-testid="import-highlight-banner">
+            <span>{importNotice}</span>
             <button
               type="button"
-              className="splitter-collapse"
-              aria-label="Hide task list"
-              title="Hide task list"
-              onClick={(e) => {
-                e.stopPropagation();
-                setViewMode('gantt');
+              className="btn-link"
+              onClick={() => {
+                setImportNotice(null);
+                setImportedTaskIds(new Set());
               }}
             >
-              ‹
-            </button>
-            <div className="splitter-grip" aria-hidden="true" />
-            <button
-              type="button"
-              className="splitter-collapse"
-              aria-label="Hide Gantt"
-              title="Hide Gantt"
-              onClick={(e) => {
-                e.stopPropagation();
-                setViewMode('grid');
-              }}
-            >
-              ›
+              Dismiss
             </button>
           </div>
         ) : null}
-
-        <section
-          className="project-detail-gantt"
-          aria-label="Gantt chart"
-          hidden={viewMode === 'grid'}
+        <ScheduleFilterBar
+          filters={scheduleFilters}
+          onChange={setScheduleFilters}
+          resources={filterResources}
+          visibleCount={filteredTasks.length}
+          totalCount={tasks.length}
+          onLevelResources={() => openLeveling()}
+          onUpdateProgress={() => setProgressOpen(true)}
+          onImportSpreadsheet={() => setImportOpen(true)}
+        />
+        <div
+          ref={layoutRef}
+          className={`project-detail-layout is-${viewMode}`}
+          style={
+            viewMode === 'split'
+              ? ({ ['--grid-pct']: `${gridPct}%` } as CSSProperties)
+              : undefined
+          }
         >
-          <GanttPanel
-            project={project}
-            tasks={tasks}
-            dependencies={dependencies}
-            collapsedIds={collapsedIds}
-            onHoverTask={setHighlightedTaskId}
-            onCommitMove={onEdit}
-            onCommitResize={onEdit}
-          />
-        </section>
+          <section
+            className="project-detail-grid"
+            aria-label="Task grid"
+            hidden={viewMode === 'gantt'}
+          >
+            <TaskGrid
+              tasks={filteredTasks}
+              dependencies={filteredDependencies}
+              highlightedTaskId={highlightedTaskId}
+              highlightedTaskIds={importedTaskIds}
+              collapsedIds={collapsedIds}
+              onToggleCollapse={onToggleCollapse}
+              onExpandAll={onExpandAll}
+              onCollapseAll={onCollapseAll}
+              onAddTask={() => setCreateParent(null)}
+              onAddSubtask={(parent) => setCreateParent(parent)}
+              onDeleteTask={onDeleteTask}
+              onEdit={onEdit}
+              onSetPredecessors={setPredecessors}
+              onAssignResources={setAssignTask}
+              isEditing={edit.isPending}
+              dateSettings={project.settings}
+            />
+          </section>
+
+          {viewMode === 'split' ? (
+            <div
+              className="project-detail-splitter"
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="Resize task list and Gantt"
+              aria-valuemin={MIN_PANEL_PCT}
+              aria-valuemax={MAX_PANEL_PCT}
+              aria-valuenow={Math.round(gridPct)}
+              tabIndex={0}
+              onPointerDown={onSplitterPointerDown}
+              onPointerMove={onSplitterPointerMove}
+              onPointerUp={onSplitterPointerUp}
+              onPointerCancel={onSplitterPointerUp}
+              onDoubleClick={() => setGridPct(DEFAULT_GRID_PCT)}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  setGridPct((p) => Math.max(MIN_PANEL_PCT, p - 3));
+                }
+                if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  setGridPct((p) => Math.min(MAX_PANEL_PCT, p + 3));
+                }
+              }}
+            >
+              <button
+                type="button"
+                className="splitter-collapse"
+                aria-label="Hide task list"
+                title="Hide task list"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setViewMode('gantt');
+                }}
+              >
+                ‹
+              </button>
+              <div className="splitter-grip" aria-hidden="true" />
+              <button
+                type="button"
+                className="splitter-collapse"
+                aria-label="Hide Gantt"
+                title="Hide Gantt"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setViewMode('grid');
+                }}
+              >
+                ›
+              </button>
+            </div>
+          ) : null}
+
+          <section
+            className="project-detail-gantt"
+            aria-label="Gantt chart"
+            hidden={viewMode === 'grid'}
+          >
+            <GanttPanel
+              project={project}
+              tasks={filteredTasks}
+              dependencies={filteredDependencies}
+              collapsedIds={collapsedIds}
+              onHoverTask={setHighlightedTaskId}
+              onCommitMove={onEdit}
+              onCommitResize={onEdit}
+            />
+          </section>
+        </div>
       </div>
+
+      {levelingOpen ? (
+        <LevelResourcesModal
+          projectId={projectId}
+          {...(levelResourceIds ? { resourceIds: levelResourceIds } : {})}
+          onClose={() => {
+            setLevelingOpen(false);
+            setLevelResourceIds(undefined);
+          }}
+          onApplied={() => {
+            // Task tree invalidation is handled by the mutation hook.
+          }}
+        />
+      ) : null}
+
+      {progressOpen ? (
+        <UpdateProgressModal
+          projectId={projectId}
+          initialStatusDate={project.statusDate}
+          onClose={() => setProgressOpen(false)}
+          onApplied={() => {
+            // Invalidation handled by mutation hook.
+          }}
+        />
+      ) : null}
+
+      {importOpen ? (
+        <ImportSpreadsheetModal
+          projectId={projectId}
+          projectName={project.name}
+          onClose={() => setImportOpen(false)}
+          onImported={(result) => {
+            const ids = result.createdTaskIds;
+            setImportedTaskIds(new Set(ids));
+            setCollapsedIds(new Set());
+            const n = result.taskCount;
+            setImportNotice(
+              result.mode === 'merge'
+                ? `Merged ${n} new task${n === 1 ? '' : 's'} — highlighted with a New badge.`
+                : `Replaced schedule with ${n} task${n === 1 ? '' : 's'} — highlighted with a New badge.`,
+            );
+            window.setTimeout(() => {
+              const firstId = ids[0];
+              if (!firstId) return;
+              document
+                .querySelector(`[data-task-id="${firstId}"]`)
+                ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }, 100);
+          }}
+        />
+      ) : null}
 
       {assignTask ? (
         <div className="modal-backdrop" role="presentation">

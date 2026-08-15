@@ -22,6 +22,8 @@ vi.mock('../hooks/useProjects.js', () => ({
         calendarId: 'c1',
         ownerId: '11111111-1111-4111-8111-111111111111',
         isArchived: false,
+        category: 'application-development',
+        templateKey: 'goi-custom-application',
         settings: {
           dateFormat: 'yyyy-mm-dd',
           dateTimeDisplay: 'date',
@@ -39,12 +41,18 @@ vi.mock('../hooks/useProjects.js', () => ({
     refetch: vi.fn(),
   }),
   useCreateProject: () => ({ mutateAsync: vi.fn(), isPending: false, error: null }),
+  useSetProjectArchived: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDeleteProject: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useDuplicateProject: () => ({ mutateAsync: vi.fn(), isPending: false }),
+  useProjectTemplates: () => ({ data: undefined, isLoading: false, isError: false, error: null }),
+  useCreateProjectFromTemplate: () => ({ mutateAsync: vi.fn(), isPending: false, error: null }),
+  useCreateProjectFromSpreadsheet: () => ({ mutateAsync: vi.fn(), isPending: false, error: null }),
 }));
 
 import { ProjectListPage } from './ProjectListPage.js';
 
 describe('ProjectListPage', () => {
-  it('renders project name, status, owner, and date range columns', () => {
+  it('renders project name, status, owner, date range, and lifecycle actions', () => {
     const client = new QueryClient();
     render(
       <QueryClientProvider client={client}>
@@ -54,11 +62,16 @@ describe('ProjectListPage', () => {
 
     expect(screen.getByRole('columnheader', { name: /name/i })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: /status/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /category/i })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: /owner/i })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: /date range/i })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /actions/i })).toBeInTheDocument();
     expect(screen.getByText('Bridge retrofit')).toBeInTheDocument();
     expect(screen.getByText('active')).toBeInTheDocument();
+    expect(screen.getByText('Application development')).toBeInTheDocument();
     expect(screen.getByText('11111111')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /disable/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /delete/i })).toBeInTheDocument();
     expect(screen.queryByText(/health/i)).not.toBeInTheDocument();
   });
 });

@@ -6,6 +6,20 @@ export {
 } from './project.js';
 
 export {
+  PROJECT_CATEGORY_KEYS,
+  PROJECT_CATEGORIES,
+  ProjectCategorySchema,
+  PROJECT_TEMPLATE_KEYS,
+  PROJECT_TEMPLATES,
+  ProjectTemplateKeySchema,
+  ProjectCreateFromTemplateInputSchema,
+  categoryName,
+  type ProjectCategoryKey,
+  type ProjectTemplateKey,
+  type ProjectCreateFromTemplateInput,
+} from './projectCategory.js';
+
+export {
   DateFormatSchema,
   DateTimeDisplaySchema,
   ProjectSettingsSchema,
@@ -88,3 +102,22 @@ export {
   type AssignmentUpdateInput,
   type TimephasedDayUpdateInput,
 } from './assignment.js';
+
+export {
+  SavedReportColumnSchema,
+  SavedReportFiltersSchema,
+  SavedReportSortSchema,
+  SavedReportDefinitionSchema,
+  SavedReportCreateBodySchema,
+  SavedReportUpdateBodySchema,
+  SavedReportPreviewBodySchema,
+  SAVED_REPORT_COLUMN_LABELS,
+  DEFAULT_SAVED_REPORT_COLUMNS,
+  type SavedReportColumn,
+  type SavedReportFilters,
+  type SavedReportSort,
+  type SavedReportDefinition,
+  type SavedReportCreateBody,
+  type SavedReportUpdateBody,
+  type SavedReportPreviewBody,
+} from './savedReport.js';

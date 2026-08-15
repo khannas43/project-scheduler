@@ -170,3 +170,125 @@ export function moveTaskBoardColumn(
     body: { boardColumnId },
   });
 }
+
+export interface LevelingMove {
+  readonly taskId: string;
+  readonly taskName: string;
+  readonly resourceId: string;
+  readonly resourceName: string;
+  readonly fromStart: string;
+  readonly toStart: string;
+  readonly delayMinutes: number;
+  readonly constraintType: 'snet';
+  readonly constraintDate: string;
+  readonly reason: string;
+}
+
+export interface EligibleLevelingTask {
+  readonly taskId: string;
+  readonly taskName: string;
+  readonly resourceNames: readonly string[];
+}
+
+export interface LevelProjectResult {
+  readonly dryRun: boolean;
+  readonly moves: readonly LevelingMove[];
+  readonly remainingOverallocations: readonly {
+    readonly resourceId: string;
+    readonly resourceName: string;
+    readonly days: readonly { date: string; totalUnits: number; maxUnits: number }[];
+  }[];
+  readonly eligibleTasks: readonly EligibleLevelingTask[];
+  readonly projectVersion?: number;
+  readonly canUndo?: boolean;
+}
+
+export interface LevelUndoResult {
+  readonly restoredTaskCount: number;
+  readonly projectVersion: number;
+}
+
+export interface LevelProjectInput {
+  readonly dryRun?: boolean;
+  readonly resourceIds?: readonly string[];
+  /** When set, only these tasks may be delayed; others still count toward load. */
+  readonly taskIds?: readonly string[];
+  readonly withinFloat?: 'free' | 'total';
+  readonly maxMoves?: number;
+}
+
+/** POST /api/projects/:id/level — preview (dryRun) or apply resource leveling. */
+export function levelProject(
+  projectId: string,
+  input: LevelProjectInput = {},
+): Promise<LevelProjectResult> {
+  return apiRequest<LevelProjectResult>(`/api/projects/${projectId}/level`, {
+    method: 'POST',
+    body: input,
+  });
+}
+
+/** POST /api/projects/:id/level/undo — restore constraints from last apply. */
+export function undoLevelProject(projectId: string): Promise<LevelUndoResult> {
+  return apiRequest<LevelUndoResult>(`/api/projects/${projectId}/level/undo`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
+export interface ProgressEligibleTask {
+  readonly taskId: string;
+  readonly taskName: string;
+  readonly percentComplete: number;
+  readonly earlyStart: string | null;
+  readonly earlyFinish: string | null;
+}
+
+export interface ProgressPercentChange {
+  readonly taskId: string;
+  readonly taskName: string;
+  readonly fromPercent: number;
+  readonly toPercent: number;
+  readonly actualStart: string | null;
+  readonly actualFinish: string | null;
+  readonly reason: string;
+}
+
+export interface ProgressRescheduleChange {
+  readonly taskId: string;
+  readonly taskName: string;
+  readonly fromStart: string | null;
+  readonly toStart: string;
+  readonly constraintType: 'snet';
+  readonly constraintDate: string;
+  readonly reason: string;
+}
+
+export interface ProgressUpdateResult {
+  readonly dryRun: boolean;
+  readonly statusDate: string;
+  readonly percentChanges: readonly ProgressPercentChange[];
+  readonly rescheduleChanges: readonly ProgressRescheduleChange[];
+  readonly eligibleTasks: readonly ProgressEligibleTask[];
+  readonly projectVersion?: number;
+}
+
+export interface ProgressUpdateInput {
+  readonly dryRun?: boolean;
+  readonly statusDate: string;
+  readonly taskIds?: readonly string[];
+  readonly updateAsScheduled?: boolean;
+  readonly setPercentComplete?: number;
+  readonly rescheduleIncomplete?: boolean;
+}
+
+/** POST /api/projects/:id/progress-update — preview or apply status-date progress update. */
+export function updateProjectProgress(
+  projectId: string,
+  input: ProgressUpdateInput,
+): Promise<ProgressUpdateResult> {
+  return apiRequest<ProgressUpdateResult>(`/api/projects/${projectId}/progress-update`, {
+    method: 'POST',
+    body: input,
+  });
+}

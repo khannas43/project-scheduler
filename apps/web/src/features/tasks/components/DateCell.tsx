@@ -250,6 +250,16 @@ export function DateCell({
     });
   };
 
+  // Agile dates come from the sprint, not CPM constraints — editing would
+  // PATCH constraintType and the API correctly rejects that.
+  if (task.schedulingMode === 'agile') {
+    return (
+      <span className="mono muted" title="Agile tasks use sprint dates, not CPM constraints">
+        {displayLabel || '—'}
+      </span>
+    );
+  }
+
   const label =
     kind === 'start'
       ? `Edit start date for ${task.wbsCode ?? task.id}`

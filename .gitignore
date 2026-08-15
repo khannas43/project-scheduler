@@ -30,3 +30,10 @@ pnpm-debug.log*
 # Git worktrees nested inside the repo itself (kept out of the way, not out
 # of existence — see docs/adr/plan.md's parallel-work notes for what each is)
 /project-scheduler-worktrees/
+
+# Local env copies (keep infra/.env.example tracked)
+infra/.env
+infra/.env.*
+!infra/.env.example
+.claude/
+infra/.env 2

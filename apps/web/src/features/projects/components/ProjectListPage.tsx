@@ -1,9 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from '@tanstack/react-router';
+
+import { categoryName } from '@pkg/schema';
 
 import type { Project } from '../api.js';
 import { useProjects } from '../hooks/useProjects.js';
 import { CreateProjectForm } from './CreateProjectForm.js';
+import { ProjectLifecycleActions } from './ProjectLifecycleActions.js';
 
 function formatDate(value: string | null): string {
   if (!value) return '—';
@@ -18,20 +21,27 @@ function shortOwner(ownerId: string): string {
 
 function ProjectRow({ project }: { project: Project }) {
   return (
-    <tr>
+    <tr className={project.isArchived ? 'is-archived' : undefined}>
       <td>
-        <Link to="/projects/$projectId" params={{ projectId: project.id }} className="project-link">
-          {project.name}
-        </Link>
+        <div className="project-name-cell">
+          <Link to="/projects/$projectId" params={{ projectId: project.id }} className="project-link">
+            {project.name}
+          </Link>
+          {project.isArchived ? <span className="status-pill status-archived">Disabled</span> : null}
+        </div>
       </td>
       <td>
         <span className={`status-pill status-${project.status}`}>{project.status}</span>
       </td>
+      <td>{categoryName(project.category) ?? '—'}</td>
       <td className="mono" title={project.ownerId}>
         {shortOwner(project.ownerId)}
       </td>
       <td>
         {formatDate(project.startDate)} → {formatDate(project.finishDate)}
+      </td>
+      <td>
+        <ProjectLifecycleActions project={project} />
       </td>
     </tr>
   );
@@ -40,6 +50,17 @@ function ProjectRow({ project }: { project: Project }) {
 export function ProjectListPage() {
   const { data, isLoading, isError, error, refetch } = useProjects();
   const [creating, setCreating] = useState(false);
+  const [showDisabled, setShowDisabled] = useState(false);
+
+  const visible = useMemo(() => {
+    const rows = data ?? [];
+    return showDisabled ? rows : rows.filter((p) => !p.isArchived);
+  }, [data, showDisabled]);
+
+  const disabledCount = useMemo(
+    () => (data ?? []).filter((p) => p.isArchived).length,
+    [data],
+  );
 
   return (
     <div className="page">
@@ -48,9 +69,21 @@ export function ProjectListPage() {
           <h1>Projects</h1>
           <p className="lede">Your workspace — membership-scoped.</p>
         </div>
-        <button type="button" onClick={() => setCreating(true)}>
-          New project
-        </button>
+        <div className="page-header-actions">
+          {disabledCount > 0 ? (
+            <label className="show-disabled-toggle">
+              <input
+                type="checkbox"
+                checked={showDisabled}
+                onChange={(e) => setShowDisabled(e.target.checked)}
+              />
+              Show disabled ({disabledCount})
+            </label>
+          ) : null}
+          <button type="button" onClick={() => setCreating(true)}>
+            New project
+          </button>
+        </div>
       </header>
 
       {creating ? (
@@ -88,19 +121,30 @@ export function ProjectListPage() {
         </div>
       ) : null}
 
-      {data && data.length > 0 ? (
+      {data && data.length > 0 && visible.length === 0 ? (
+        <div className="empty-state">
+          <p>All projects are disabled.</p>
+          <button type="button" className="btn-secondary" onClick={() => setShowDisabled(true)}>
+            Show disabled projects
+          </button>
+        </div>
+      ) : null}
+
+      {visible.length > 0 ? (
         <div className="table-wrap">
           <table className="data-table">
             <thead>
               <tr>
                 <th>Name</th>
                 <th>Status</th>
+                <th>Category</th>
                 <th>Owner</th>
                 <th>Date range</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {data.map((project) => (
+              {visible.map((project) => (
                 <ProjectRow key={project.id} project={project} />
               ))}
             </tbody>
