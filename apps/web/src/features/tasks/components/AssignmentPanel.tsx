@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent, type KeyboardEvent } from 'react';
 
+import { useNotifyTaskAssignees } from '../../people/index.js';
 import { useResources } from '../../resources/index.js';
 import type { AssignmentUpdateInput } from '../api.js';
 import {
@@ -46,6 +47,8 @@ export function AssignmentPanel({
   const create = useCreateAssignment(projectId);
   const update = useUpdateAssignment(projectId);
   const del = useDeleteAssignment(projectId);
+  const notify = useNotifyTaskAssignees();
+  const [notifyFlash, setNotifyFlash] = useState<string | null>(null);
 
   const taskAssignments = useMemo(
     () => assignments.filter((a) => a.taskId === task.id),
@@ -99,10 +102,33 @@ export function AssignmentPanel({
             task duration.
           </p>
         </div>
-        <button type="button" className="btn-secondary" onClick={onClose}>
-          Close
-        </button>
+        <div className="people-row-actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={notify.isPending || taskAssignments.length === 0}
+            onClick={() => {
+              void notify.mutateAsync({ taskId: task.id }).then((result) => {
+                setNotifyFlash(
+                  result.smtpConfigured
+                    ? `Email sent to ${result.emailed.length} assignee${result.emailed.length === 1 ? '' : 's'}.`
+                    : `SMTP is not configured — message logged for ${result.emailed.length} assignee${result.emailed.length === 1 ? '' : 's'}.`,
+                );
+              });
+            }}
+          >
+            {notify.isPending ? 'Sending…' : 'Email assignees'}
+          </button>
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Close
+          </button>
+        </div>
       </header>
+      {notifyFlash ? (
+        <p className="muted" role="status">
+          {notifyFlash}
+        </p>
+      ) : null}
 
       {resourcesQuery.isLoading ? <p className="muted">Loading resources…</p> : null}
 

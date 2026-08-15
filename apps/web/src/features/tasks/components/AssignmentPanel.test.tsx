@@ -15,6 +15,13 @@ vi.mock('../../resources/api.js', () => ({
   getOverallocations: vi.fn(),
 }));
 
+vi.mock('../../people/index.js', () => ({
+  useNotifyTaskAssignees: () => ({
+    mutateAsync: vi.fn(),
+    isPending: false,
+  }),
+}));
+
 vi.mock('../api.js', () => ({
   createAssignment: vi.fn(),
   updateAssignment: vi.fn(),

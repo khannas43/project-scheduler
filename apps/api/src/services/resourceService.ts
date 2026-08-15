@@ -50,6 +50,7 @@ function toResourceValues(input: ResourceCreateInput | ResourceUpdateInput): Rec
     values.calendarId = input.calendarId;
   }
   if ('skills' in input && input.skills !== undefined) values.skills = input.skills;
+  if ('userId' in input && input.userId !== undefined) values.userId = input.userId;
   return values;
 }
 
@@ -76,6 +77,7 @@ export async function createResource(
         costPerUse: numericToDb(input.costPerUse) ?? null,
         accrualType: input.accrualType ?? null,
         calendarId: input.calendarId ?? null,
+        userId: input.userId ?? null,
         skills: input.skills ?? null,
       })
       .returning();
