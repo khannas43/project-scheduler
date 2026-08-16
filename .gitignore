@@ -46,5 +46,11 @@ pnpm-debug.log*
 infra/.env
 infra/.env.*
 !infra/.env.example
+
+# Image-only deploy pack (dist/ above would otherwise swallow this dir)
+!infra/dist/
+!infra/dist/README.md
+!infra/dist/compose.yaml
+!infra/dist/.env.example
 .claude/
 infra/.env 2
