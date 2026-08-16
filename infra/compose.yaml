@@ -22,14 +22,6 @@ services:
       timeout: 5s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   # Init container (§10.2): runs migrations once and exits. Never run on
   # API boot — two API replicas racing on the same migration is exactly
   # what this avoids.
@@ -51,8 +43,6 @@ services:
     env_file: .env
     depends_on:
       postgres:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully

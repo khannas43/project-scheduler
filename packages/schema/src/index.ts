@@ -84,6 +84,19 @@ export {
 } from './dependency.js';
 
 export {
+  UserCreateInputSchema,
+  UserUpdateInputSchema,
+  ProjectMemberCreateInputSchema,
+  ProjectMemberUpdateInputSchema,
+  TaskNotifyInputSchema,
+  type UserCreateInput,
+  type UserUpdateInput,
+  type ProjectMemberCreateInput,
+  type ProjectMemberUpdateInput,
+  type TaskNotifyInput,
+} from './user.js';
+
+export {
   ResourceTypeSchema,
   AccrualTypeSchema,
   ResourceCreateInputSchema,

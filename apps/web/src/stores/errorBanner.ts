@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import type { ApiError } from '../lib/apiClient.js';
+import { formatApiErrorMessage } from '../lib/apiErrors.js';
 
 export type BannerSeverity = 'error' | 'info';
 
@@ -38,10 +39,22 @@ export const useErrorBanner = create<ErrorBannerState>((set) => ({
       return;
     }
     if ('code' in error && 'detail' in error) {
-      set({ message: error.detail, code: error.code, actionLabel, onAction, severity });
+      set({
+        message: formatApiErrorMessage(error),
+        code: error.code,
+        actionLabel,
+        onAction,
+        severity,
+      });
       return;
     }
-    set({ message: error.message, code: null, actionLabel, onAction, severity });
+    set({
+      message: formatApiErrorMessage(error),
+      code: null,
+      actionLabel,
+      onAction,
+      severity,
+    });
   },
   showInfo: (message, code = null) =>
     set({

@@ -167,7 +167,7 @@ export function collectEligibleTasks(
     .map(([taskId, v]) => ({
       taskId,
       taskName: v.taskName,
-      resourceNames: [...v.resources].sort(),
+      resourceNames: [...v.resources].sort((a, b) => a.localeCompare(b)),
     }))
     .sort((a, b) => a.taskName.localeCompare(b.taskName));
 }
@@ -259,7 +259,9 @@ export function proposeLevelingMoves(
         }
       | null = null;
 
-    const resourceIds = [...new Set(loadSpans.map((s) => s.resourceId))].sort();
+    const resourceIds = [...new Set(loadSpans.map((s) => s.resourceId))].sort((a, b) =>
+      a.localeCompare(b),
+    );
     for (const resourceId of resourceIds) {
       const maxUnits = resourceMaxUnits.get(resourceId) ?? 1;
       const resourceLoad = loadSpans.filter((s) => s.resourceId === resourceId);
@@ -330,7 +332,9 @@ export function proposeLevelingMoves(
 
   syncLoadFromEligible();
   const remainingOverallocations: RemainingOverallocation[] = [];
-  for (const resourceId of [...new Set(loadSpans.map((s) => s.resourceId))].sort()) {
+  for (const resourceId of [...new Set(loadSpans.map((s) => s.resourceId))].sort((a, b) =>
+    a.localeCompare(b),
+  )) {
     const maxUnits = resourceMaxUnits.get(resourceId) ?? 1;
     const days = findOverallocatedDays(
       maxUnits,

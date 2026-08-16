@@ -14,6 +14,7 @@ import {
   toDateInputValue,
 } from '../dateFormat.js';
 import { useUpdateProject } from '../hooks/useUpdateProject.js';
+import { HelpLink } from '../../help/index.js';
 import { ImportSpreadsheetModal } from './ImportSpreadsheetModal.js';
 
 export function ProjectSettingsPage() {
@@ -112,7 +113,9 @@ export function ProjectSettingsPage() {
               ← Project
             </Link>
           </p>
-          <h1>Project settings</h1>
+          <h1>
+            Project settings <HelpLink topic="settings" />
+          </h1>
           <p className="lede muted">
             Configure schedule dates, display formats, and the default baseline for{' '}
             <strong>{project.name}</strong>.

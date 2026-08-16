@@ -5,7 +5,7 @@ import {
 } from '@pkg/schema';
 import { useMemo, useState } from 'react';
 
-import { ApiError } from '../../../lib/apiClient.js';
+import { formatApiErrorMessage } from '../../../lib/apiErrors.js';
 import * as reportsApi from '../api.js';
 import type {
   CustomReportRunResult,
@@ -119,7 +119,7 @@ export function CustomReportBuilder({ projectId }: CustomReportBuilderProps) {
       const result = await reportsApi.previewCustomReport(projectId, definition);
       setPreview(result);
     } catch (err) {
-      setLocalError(err instanceof ApiError ? err.detail : 'Preview failed');
+      setLocalError(formatApiErrorMessage(err, 'Preview failed'));
     } finally {
       setBusy(null);
     }
@@ -150,7 +150,7 @@ export function CustomReportBuilder({ projectId }: CustomReportBuilderProps) {
       const result = await reportsApi.previewCustomReport(projectId, definition);
       setPreview(result);
     } catch (err) {
-      setLocalError(err instanceof ApiError ? err.detail : 'Save failed');
+      setLocalError(formatApiErrorMessage(err, 'Save failed'));
     } finally {
       setBusy(null);
     }
@@ -165,7 +165,7 @@ export function CustomReportBuilder({ projectId }: CustomReportBuilderProps) {
       setSelectedId('');
       setPreview(null);
     } catch (err) {
-      setLocalError(err instanceof ApiError ? err.detail : 'Delete failed');
+      setLocalError(formatApiErrorMessage(err, 'Delete failed'));
     }
   }
 
@@ -179,7 +179,7 @@ export function CustomReportBuilder({ projectId }: CustomReportBuilderProps) {
     try {
       await reportsApi.downloadSavedReportCsv(projectId, selectedId, `${name || 'report'}.csv`);
     } catch (err) {
-      setLocalError(err instanceof ApiError ? err.detail : 'Export failed');
+      setLocalError(formatApiErrorMessage(err, 'Export failed'));
     } finally {
       setBusy(null);
     }

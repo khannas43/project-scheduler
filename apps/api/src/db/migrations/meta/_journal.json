@@ -64,6 +64,13 @@
       "when": 1786798000000,
       "tag": "0008_project_category",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786799000000,
+      "tag": "0009_resource_user",
+      "breakpoints": true
     }
   ]
 }

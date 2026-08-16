@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { useErrorBanner } from '../../../stores/errorBanner.js';
 import * as reportsApi from '../api.js';
 import type { SavedReportDefinition } from '../api.js';
 
@@ -16,15 +15,13 @@ export function useSavedReports(projectId: string) {
   });
 }
 
+/** Errors surface in CustomReportBuilder localError (suppress global banner). */
 export function useCreateSavedReport(projectId: string) {
   const queryClient = useQueryClient();
-  const showBanner = useErrorBanner((s) => s.show);
   return useMutation({
+    meta: { suppressErrorBanner: true },
     mutationFn: (input: { name: string; definition: SavedReportDefinition }) =>
       reportsApi.createSavedReport(projectId, input),
-    onError: (err) => {
-      if (err instanceof Error) showBanner(err);
-    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: savedReportsQueryKey(projectId) });
     },
@@ -33,8 +30,8 @@ export function useCreateSavedReport(projectId: string) {
 
 export function useUpdateSavedReport(projectId: string) {
   const queryClient = useQueryClient();
-  const showBanner = useErrorBanner((s) => s.show);
   return useMutation({
+    meta: { suppressErrorBanner: true },
     mutationFn: (input: {
       reportId: string;
       name?: string;
@@ -42,9 +39,6 @@ export function useUpdateSavedReport(projectId: string) {
     }) => {
       const { reportId, ...body } = input;
       return reportsApi.updateSavedReport(projectId, reportId, body);
-    },
-    onError: (err) => {
-      if (err instanceof Error) showBanner(err);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: savedReportsQueryKey(projectId) });
@@ -54,12 +48,9 @@ export function useUpdateSavedReport(projectId: string) {
 
 export function useDeleteSavedReport(projectId: string) {
   const queryClient = useQueryClient();
-  const showBanner = useErrorBanner((s) => s.show);
   return useMutation({
+    meta: { suppressErrorBanner: true },
     mutationFn: (reportId: string) => reportsApi.deleteSavedReport(projectId, reportId),
-    onError: (err) => {
-      if (err instanceof Error) showBanner(err);
-    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: savedReportsQueryKey(projectId) });
     },

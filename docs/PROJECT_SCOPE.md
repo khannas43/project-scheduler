@@ -329,7 +329,7 @@ PV (BCWS), EV (BCWP), AC (ACWP), SV, CV, SPI, CPI, BAC, EAC, ETC, VAC, TCPI — 
 - Fastify
 - Drizzle ORM, with raw recursive CTEs where needed
 - Zod validation, schemas shared with frontend
-- BullMQ + Redis — imports, exports, PDF generation
+- Imports, exports, and PDF generation run in-process (no job queue)
 
 **Database**
 - PostgreSQL 17
@@ -365,14 +365,13 @@ PV (BCWS), EV (BCWP), AC (ACWP), SV, CV, SPI, CPI, BAC, EAC, ETC, VAC, TCPI — 
 
 ```
 compose.yaml
-├── postgres   :17-alpine, named volume, healthcheck-gated
-├── redis      :7-alpine
+├── postgres   :16-alpine, named volume, healthcheck-gated
 ├── migrate    init container, runs migrations, exits 0
 ├── api        Node 22 alpine, multi-stage build, non-root user
 └── web        Vite build → nginx:alpine
 ```
 
-Five services — no JVM sidecar, since `.mpp` is out of scope.
+Four services — no Redis, no JVM sidecar, since `.mpp` is out of scope.
 
 Principles: multi-stage builds, non-root users, `depends_on` with `condition: service_healthy`, migrations as a separate init container (never on API boot), secrets via environment or Docker secrets, `compose.override.yaml` for dev hot-reload, named volume for Postgres persistence, nightly backup sidecar or host cron.
 

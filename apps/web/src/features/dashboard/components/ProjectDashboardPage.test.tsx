@@ -157,7 +157,8 @@ describe('ProjectDashboardPage', () => {
     expect(screen.getByTestId('stat-in-progress')).toHaveTextContent('3');
     expect(screen.getByText('Go-live')).toBeInTheDocument();
     expect(screen.getByText('Pour foundation')).toBeInTheDocument();
-    expect(screen.getByText('Steel frame')).toBeInTheDocument();
+    // Appears in both top-in-progress and near-critical lists.
+    expect(screen.getAllByText('Steel frame').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByTestId('top-in-progress-table')).toBeInTheDocument();
     expect(screen.getByTestId('ev-baselines-link')).toBeInTheDocument();
   });

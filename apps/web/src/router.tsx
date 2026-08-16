@@ -4,7 +4,10 @@ import { AppShell } from './components/AppShell.js';
 import { LoginPage, RequireAuth } from './features/auth/index.js';
 import { ProjectListPage, ProjectSettingsPage } from './features/projects/index.js';
 import { PortfolioDashboardPage, ProjectDashboardPage } from './features/dashboard/index.js';
+import { HelpPage } from './features/help/index.js';
+import { ActivityPage } from './features/activity/index.js';
 import { ResourceCalendarPage, ResourceSheet } from './features/resources/index.js';
+import { PeoplePage } from './features/people/index.js';
 import { RolesPage } from './features/roles/index.js';
 import { BoardPage, BacklogPage } from './features/board/index.js';
 import { AgileChartsPage } from './features/charts/index.js';
@@ -56,10 +59,22 @@ const portfolioDashboardRoute = createRoute({
   component: PortfolioDashboardPage,
 });
 
+const helpRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/help',
+  component: HelpPage,
+});
+
 const projectDetailRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/projects/$projectId',
   component: ProjectDetailPage,
+});
+
+const projectPeopleRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/projects/$projectId/people',
+  component: PeoplePage,
 });
 
 const projectRolesRoute = createRoute({
@@ -90,6 +105,12 @@ const projectReportsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/projects/$projectId/reports',
   component: ReportsPage,
+});
+
+const projectActivityRoute = createRoute({
+  getParentRoute: () => shellRoute,
+  path: '/projects/$projectId/activity',
+  component: ActivityPage,
 });
 
 const projectBoardRoute = createRoute({
@@ -129,12 +150,15 @@ const routeTree = rootRoute.addChildren([
     shellRoute.addChildren([
       projectsRoute,
       portfolioDashboardRoute,
+      helpRoute,
       projectDetailRoute,
+      projectPeopleRoute,
       projectRolesRoute,
       projectResourcesRoute,
       projectResourceCalendarRoute,
       projectBaselinesRoute,
       projectReportsRoute,
+      projectActivityRoute,
       projectBoardRoute,
       projectBacklogRoute,
       projectAgileChartsRoute,

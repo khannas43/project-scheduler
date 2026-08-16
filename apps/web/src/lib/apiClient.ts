@@ -1,3 +1,9 @@
+import {
+  API_UNREACHABLE_CODE,
+  API_UNREACHABLE_DETAIL,
+  apiUnreachableProblem,
+} from './apiErrors.js';
+
 /** RFC 7807 problem+json (§5.1) as returned by apps/api. */
 export interface ProblemDetails {
   readonly type?: string | undefined;
@@ -51,21 +57,83 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
 
 let refreshInFlight: Promise<boolean> | null = null;
 
+function looksLikeProxyFailure(detail: string | undefined, status: number): boolean {
+  if (status === 502 || status === 504) return true;
+  if (!detail) return false;
+  const lower = detail.toLowerCase();
+  return (
+    lower.includes('econnrefused') ||
+    lower.includes('socket hang up') ||
+    lower.includes('http proxy error') ||
+    lower.includes('proxy error')
+  );
+}
+
 async function parseProblem(response: Response): Promise<ProblemDetails> {
+  const status = response.status;
   try {
-    const data = (await response.json()) as Partial<ProblemDetails> & { message?: string };
-    return {
-      type: data.type,
-      title: data.title,
-      status: data.status ?? response.status,
-      detail: data.detail ?? data.title ?? (typeof data.message === 'string' ? data.message : undefined),
-      code: data.code,
-      current: data.current,
-      taskIds: data.taskIds,
-      errors: data.errors,
-    };
+    const text = await response.text();
+    if (!text) {
+      if (status === 502 || status === 503 || status === 504) {
+        return apiUnreachableProblem(status);
+      }
+      return { status, detail: response.statusText || 'Request failed', code: 'http_error' };
+    }
+
+    try {
+      const data = JSON.parse(text) as Partial<ProblemDetails> & { message?: string };
+      const detail =
+        data.detail ?? data.title ?? (typeof data.message === 'string' ? data.message : undefined);
+      const code = data.code;
+
+      if (!code && looksLikeProxyFailure(typeof detail === 'string' ? detail : text, status)) {
+        return apiUnreachableProblem(status === 502 || status === 504 ? status : 503);
+      }
+
+      return {
+        type: data.type,
+        title: data.title,
+        status: data.status ?? status,
+        detail,
+        code,
+        current: data.current,
+        taskIds: data.taskIds,
+        errors: data.errors,
+      };
+    } catch {
+      if (looksLikeProxyFailure(text, status) || status === 502 || status === 504) {
+        return apiUnreachableProblem(status === 502 || status === 504 ? status : 503);
+      }
+      return { status, detail: text.slice(0, 200) || response.statusText, code: 'http_error' };
+    }
   } catch {
-    return { status: response.status, detail: response.statusText, code: 'http_error' };
+    return { status, detail: response.statusText, code: 'http_error' };
+  }
+}
+
+function networkToApiError(cause: unknown): ApiError {
+  const message = cause instanceof Error ? cause.message : String(cause);
+  const lower = message.toLowerCase();
+  if (
+    lower.includes('failed to fetch') ||
+    lower.includes('networkerror') ||
+    lower.includes('load failed') ||
+    lower.includes('network request failed')
+  ) {
+    return new ApiError(apiUnreachableProblem(0));
+  }
+  return new ApiError({
+    status: 0,
+    detail: message || API_UNREACHABLE_DETAIL,
+    code: API_UNREACHABLE_CODE,
+  });
+}
+
+async function fetchApi(path: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(`${API_BASE}${path}`, init);
+  } catch (cause) {
+    throw networkToApiError(cause);
   }
 }
 
@@ -75,7 +143,7 @@ async function tryRefresh(): Promise<boolean> {
 
   refreshInFlight = (async () => {
     try {
-      const response = await fetch(`${API_BASE}/api/auth/refresh`, {
+      const response = await fetchApi('/api/auth/refresh', {
         method: 'POST',
         credentials: 'include',
       });
@@ -100,6 +168,7 @@ async function tryRefresh(): Promise<boolean> {
 /**
  * Thin fetch wrapper — Bearer access token from memory, cookies for refresh.
  * On 401: one silent refresh + single retry; refresh failure clears auth.
+ * Network / dead-proxy failures become ApiError with code `api_unreachable`.
  */
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { body, skipAuthRetry, headers: initHeaders, ...rest } = options;
@@ -122,7 +191,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     init.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${API_BASE}${path}`, init);
+  const response = await fetchApi(path, init);
 
   if (response.status === 401 && !skipAuthRetry) {
     const refreshed = await tryRefresh();
@@ -182,7 +251,7 @@ export async function apiRequestBlob(
     init.body = JSON.stringify(body);
   }
 
-  const response = await fetch(`${API_BASE}${path}`, init);
+  const response = await fetchApi(path, init);
 
   if (response.status === 401 && !skipAuthRetry) {
     const refreshed = await tryRefresh();
@@ -216,4 +285,4 @@ export function downloadBlob(blob: Blob, filename: string): void {
 }
 
 /** Exported for unit tests. */
-export const __testOnly = { tryRefresh, parseProblem, configureApiClient };
+export const __testOnly = { tryRefresh, parseProblem, configureApiClient, networkToApiError };

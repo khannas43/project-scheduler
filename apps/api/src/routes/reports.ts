@@ -15,6 +15,8 @@ import { buildCsv } from '../services/csvExportService.js';
 import { buildExcelBuffer } from '../services/excelExportService.js';
 import { buildPdfBuffer } from '../services/pdfExportService.js';
 import { loadTaskReport, slugExportFilename } from '../services/reportDataService.js';
+import { writeAuditLog } from '../services/scheduleRunner.js';
+import { db } from '../db/client.js';
 
 const ProjectIdParams = z.object({ id: z.uuid() });
 const SlippingTasksQuery = z.object({ baselineId: z.uuid().optional() });
@@ -85,9 +87,19 @@ export const reportRoutes: FastifyPluginAsyncZod = async (fastify) => {
       schema: { params: ProjectIdParams },
     },
     async (request, reply) => {
+      const user = request.user;
+      if (!user) throw new Error('requireAuth must run first');
       const { projectName, rows } = await loadTaskReport(request.params.id);
       const csv = buildCsv(rows);
       const filename = slugExportFilename(projectName, 'csv');
+      await writeAuditLog(db, {
+        userId: user.id,
+        projectId: request.params.id,
+        action: 'project.export_csv',
+        entityType: 'project',
+        entityId: request.params.id,
+        after: { format: 'csv', rowCount: rows.length },
+      });
       reply
         .header('Content-Type', 'text/csv; charset=utf-8')
         .header('Content-Disposition', `attachment; filename="${filename}"`);
@@ -102,9 +114,19 @@ export const reportRoutes: FastifyPluginAsyncZod = async (fastify) => {
       schema: { params: ProjectIdParams },
     },
     async (request, reply) => {
+      const user = request.user;
+      if (!user) throw new Error('requireAuth must run first');
       const { projectName, rows } = await loadTaskReport(request.params.id);
       const buffer = await buildExcelBuffer(projectName, rows);
       const filename = slugExportFilename(projectName, 'xlsx');
+      await writeAuditLog(db, {
+        userId: user.id,
+        projectId: request.params.id,
+        action: 'project.export_excel',
+        entityType: 'project',
+        entityId: request.params.id,
+        after: { format: 'xlsx', rowCount: rows.length },
+      });
       return reply
         .header(
           'Content-Type',
@@ -122,9 +144,19 @@ export const reportRoutes: FastifyPluginAsyncZod = async (fastify) => {
       schema: { params: ProjectIdParams },
     },
     async (request, reply) => {
+      const user = request.user;
+      if (!user) throw new Error('requireAuth must run first');
       const { projectName, rows } = await loadTaskReport(request.params.id);
       const buffer = await buildPdfBuffer(projectName, rows);
       const filename = slugExportFilename(projectName, 'pdf');
+      await writeAuditLog(db, {
+        userId: user.id,
+        projectId: request.params.id,
+        action: 'project.export_pdf',
+        entityType: 'project',
+        entityId: request.params.id,
+        after: { format: 'pdf', rowCount: rows.length },
+      });
       return reply
         .header('Content-Type', 'application/pdf')
         .header('Content-Disposition', `attachment; filename="${filename}"`)

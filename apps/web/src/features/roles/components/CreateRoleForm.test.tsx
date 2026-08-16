@@ -83,7 +83,7 @@ describe('CreateRoleForm', () => {
     expect(onCreated).toHaveBeenCalled();
   });
 
-  it('surfaces a 409 through the error banner', async () => {
+  it('surfaces a 409 as form-local error (not the shell banner)', async () => {
     const user = userEvent.setup();
     vi.mocked(rolesApi.createRole).mockRejectedValue(
       new ApiError({
@@ -101,8 +101,8 @@ describe('CreateRoleForm', () => {
     await user.click(screen.getByRole('button', { name: /create role/i }));
 
     await waitFor(() => {
-      expect(useErrorBanner.getState().message).toBe('Role name already exists: Planner');
-      expect(useErrorBanner.getState().code).toBe('conflict');
+      expect(screen.getByRole('alert')).toHaveTextContent('Role name already exists: Planner');
     });
+    expect(useErrorBanner.getState().message).toBeNull();
   });
 });

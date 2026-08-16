@@ -1,7 +1,8 @@
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { Navigate } from '@tanstack/react-router';
 
 import { ApiError } from '../../../lib/apiClient.js';
+import { formatApiErrorMessage, isApiUnreachableError } from '../../../lib/apiErrors.js';
 import { useAuth } from '../hooks/useAuth.js';
 
 export function LoginPage() {
@@ -10,7 +11,31 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [apiHint, setApiHint] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch('/health', { method: 'GET' });
+        if (!cancelled && !res.ok) {
+          setApiHint(
+            'API health check failed. Start the API on port 3100 (Vite proxies /api and /health there).',
+          );
+        }
+      } catch {
+        if (!cancelled) {
+          setApiHint(
+            'Cannot reach the API. Start it on port 3100 before signing in (Vite proxies /api and /health).',
+          );
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (isAuthenticated) {
     return <Navigate to="/projects" />;
@@ -23,12 +48,15 @@ export function LoginPage() {
     try {
       await login(email, password);
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.detail);
-      } else if (err instanceof Error) {
-        setError(err.message);
+      if (isApiUnreachableError(err)) {
+        setError(formatApiErrorMessage(err));
+        setApiHint(formatApiErrorMessage(err));
+      } else if (err instanceof ApiError && err.status === 401) {
+        setError(err.detail || 'Invalid email or password');
+      } else if (err instanceof ApiError && err.code === 'validation_error') {
+        setError(formatApiErrorMessage(err, 'Check email and password'));
       } else {
-        setError('Login failed');
+        setError(formatApiErrorMessage(err, 'Login failed'));
       }
     } finally {
       setPending(false);
@@ -41,6 +69,11 @@ export function LoginPage() {
         <p className="brand">Project Scheduler</p>
         <h1>Sign in</h1>
         <p className="lede">Plan with a real critical path — not a task board in disguise.</p>
+        {apiHint ? (
+          <p className="form-error" role="status" data-testid="login-api-hint">
+            {apiHint}
+          </p>
+        ) : null}
         <form onSubmit={onSubmit} className="login-form">
           <label>
             Email

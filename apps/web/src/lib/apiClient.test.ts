@@ -107,4 +107,50 @@ describe('apiRequest', () => {
       },
     );
   });
+
+  it('maps Failed to fetch to api_unreachable', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
+
+    configureApiClient({
+      accessToken: null,
+      getAccessToken: () => null,
+      setAccessToken: vi.fn(),
+      onAuthFailure: vi.fn(),
+    });
+
+    await expect(apiRequest('/api/auth/login', { method: 'POST', body: {} })).rejects.toSatisfy(
+      (err: unknown) => {
+        expect(err).toBeInstanceOf(ApiError);
+        const e = err as ApiError;
+        expect(e.code).toBe('api_unreachable');
+        expect(e.detail).toMatch(/port 3100/i);
+        return true;
+      },
+    );
+  });
+
+  it('maps Vite proxy ECONNREFUSED body to api_unreachable', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response('http proxy error: Error: connect ECONNREFUSED 127.0.0.1:3100', {
+          status: 500,
+          statusText: 'Internal Server Error',
+        }),
+      ),
+    );
+
+    configureApiClient({
+      accessToken: 'tok',
+      getAccessToken: () => 'tok',
+      setAccessToken: vi.fn(),
+      onAuthFailure: vi.fn(),
+    });
+
+    await expect(apiRequest('/api/projects')).rejects.toSatisfy((err: unknown) => {
+      expect(err).toBeInstanceOf(ApiError);
+      expect((err as ApiError).code).toBe('api_unreachable');
+      return true;
+    });
+  });
 });

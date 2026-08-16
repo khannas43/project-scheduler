@@ -58,10 +58,10 @@
 │  └─────────────────┬──────────────┘             │
 └────────────────────┼────────────────────────────┘
                      │
-              ┌──────▼──────┐    ┌─────────┐
-              │ PostgreSQL  │    │  Redis  │
-              │     17      │    │ (BullMQ)│
-              └─────────────┘    └─────────┘
+              ┌──────▼──────┐
+              │ PostgreSQL  │
+              │     16      │
+              └─────────────┘
 ```
 
 ### 1.2 The isomorphic engine
@@ -120,8 +120,7 @@ project-scheduler/
 │       │   ├── routes/         HTTP layer only — no business logic
 │       │   ├── services/       Business logic
 │       │   ├── db/             Drizzle schema, migrations, seeds
-│       │   ├── middleware/     auth, permissions, errors
-│       │   └── jobs/           BullMQ workers
+│       │   └── middleware/     auth, permissions, errors
 │       └── drizzle.config.ts
 ├── packages/
 │   ├── scheduler/              CPM engine — PURE, zero deps
@@ -777,7 +776,7 @@ Use `SERIALIZABLE` isolation for reschedules; retry once on serialisation failur
 
 ## 10. Docker & Deployment
 
-Five services. No JVM sidecar — `.mpp` is out of scope.
+Four services (postgres, migrate, api, web). No Redis, no JVM sidecar — `.mpp` is out of scope.
 
 ### 10.1 compose.yaml
 
@@ -796,11 +795,6 @@ services:
       timeout: 5s
       retries: 10
 
-  redis:
-    image: redis:7-alpine
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-
   migrate:
     build: { dockerfile: infra/docker/api.Dockerfile }
     command: ["pnpm", "db:migrate"]
@@ -812,7 +806,6 @@ services:
     build: { dockerfile: infra/docker/api.Dockerfile }
     depends_on:
       postgres: { condition: service_healthy }
-      redis:    { condition: service_healthy }
       migrate:  { condition: service_completed_successfully }
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
@@ -1030,7 +1023,6 @@ Concrete sequencing for Phases 0–2. Each step ends with something demonstrable
 
 ```
 DATABASE_URL=postgresql://scheduler:***@postgres:5432/scheduler
-REDIS_URL=redis://redis:6379
 JWT_SECRET=***
 JWT_ACCESS_TTL=15m
 JWT_REFRESH_TTL=7d

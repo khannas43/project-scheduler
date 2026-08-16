@@ -26,6 +26,5 @@ legitimate client has rotated past it.
 - A stolen refresh token is a real exposure window (up to `JWT_REFRESH_TTL`,
   default 7 days) rather than a single-use window.
 - If this risk becomes unacceptable, the fix is additive: a `refresh_tokens`
-  table (or a Redis-backed revocation set, since Redis is already planned
-  infrastructure for BullMQ) keyed by `jti`, checked in `authService.refresh`
-  before trusting the token, and marked revoked once its replacement issues.
+  table keyed by `jti`, checked in `authService.refresh` before trusting the
+  token, and marked revoked once its replacement issues.

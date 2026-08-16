@@ -23,10 +23,20 @@ export default defineConfig({
         target: 'http://localhost:3100',
         changeOrigin: true,
       },
+      // Liveness / readiness for login API-down hint (not under /api).
+      '/health': {
+        target: 'http://localhost:3100',
+        changeOrigin: true,
+      },
+      '/ready': {
+        target: 'http://localhost:3100',
+        changeOrigin: true,
+      },
     },
   },
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    sourcemap: false,
   },
 });

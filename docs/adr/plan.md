@@ -64,7 +64,7 @@ charts page), not a silent omission from Phase 6 Round 4.
 - **`infra/`** — `compose.yaml`, `compose.override.yaml`, `api.Dockerfile`,
   `web.Dockerfile` (§10.1–10.2: multi-stage via `turbo prune` + `pnpm
   deploy`, non-root, migration init container). Verified with a real
-  `docker compose up` — postgres/redis healthy, migrate applies all 18
+  `docker compose up` — postgres healthy, migrate applies all 18
   tables and exits 0, api passes its healthcheck, web serves on :8080.
   Fixed two real bugs found in the process (this predates the `apps/web`
   shell landing below, verified again end-to-end after it did): `migrate.ts` resolved the migrations path relative to

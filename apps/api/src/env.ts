@@ -51,4 +51,12 @@ export const env = {
   get SEED_ADMIN_PASSWORD(): string {
     return requireEnv('SEED_ADMIN_PASSWORD');
   },
+
+  SMTP_HOST: optionalEnv('SMTP_HOST', ''),
+  SMTP_PORT: optionalIntEnv('SMTP_PORT', 587),
+  SMTP_SECURE: optionalEnv('SMTP_SECURE', 'false'),
+  SMTP_USER: optionalEnv('SMTP_USER', ''),
+  SMTP_PASS: optionalEnv('SMTP_PASS', ''),
+  SMTP_FROM: optionalEnv('SMTP_FROM', ''),
+  APP_BASE_URL: optionalEnv('APP_BASE_URL', 'http://localhost:5173'),
 };

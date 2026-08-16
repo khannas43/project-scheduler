@@ -20,6 +20,9 @@ export function AppShell() {
           <Link to="/projects" className="topbar-nav-link">
             Projects
           </Link>
+          <Link to="/help" className="topbar-nav-link" data-testid="topbar-help">
+            Help
+          </Link>
         </nav>
         <div className="topbar-right">
           {user ? <span className="topbar-user">{user.fullName}</span> : null}

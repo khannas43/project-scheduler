@@ -1,0 +1,64 @@
+# Image-only stack for teams that should not receive the source repo.
+# Build and push images from the repo with: scripts/publish-images.sh
+#
+# Usage (this folder only):
+#   cp .env.example .env
+#   # edit secrets, then:
+#   docker compose -f compose.yaml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: scheduler
+      POSTGRES_USER: scheduler
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scheduler"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  migrate:
+    image: ${SCHEDULER_API_IMAGE:?set SCHEDULER_API_IMAGE in .env}
+    command: ["node", "dist/db/migrate.js"]
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    image: ${SCHEDULER_API_IMAGE}
+    command: ["node", "dist/db/seed.js"]
+    env_file: .env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  api:
+    image: ${SCHEDULER_API_IMAGE}
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    image: ${SCHEDULER_WEB_IMAGE:?set SCHEDULER_WEB_IMAGE in .env}
+    ports: ["${WEB_PORT:-8081}:80"]
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  pgdata:

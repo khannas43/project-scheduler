@@ -22,6 +22,7 @@ export const ResourceCreateInputSchema = z.object({
   accrualType: AccrualTypeSchema.nullable().optional(),
   calendarId: z.uuid().nullable().optional(),
   skills: z.array(z.string()).optional(),
+  userId: z.uuid().nullable().optional(),
 });
 
 /** Resources have no `version` column — update is a plain partial of create fields. */

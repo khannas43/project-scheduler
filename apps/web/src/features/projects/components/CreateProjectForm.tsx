@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 
+import { formatApiErrorMessage } from '../../../lib/apiErrors.js';
 import * as projectsApi from '../api.js';
 import { dateInputToIso } from '../dateFormat.js';
 import {
@@ -48,11 +49,7 @@ export function CreateProjectForm({ onCancel }: CreateProjectFormProps) {
     mode === 'spreadsheet' ? createFromFile.error : mode === 'template' ? createFromTemplate.error : create.error;
   const error =
     formError ??
-    (mutationError instanceof Error
-      ? mutationError.message
-      : mutationError
-        ? String(mutationError)
-        : null);
+    (mutationError ? formatApiErrorMessage(mutationError, 'Could not create project') : null);
 
   const categories = templatesQuery.data?.categories ?? [];
   const templates = templatesQuery.data?.templates ?? [];
@@ -68,7 +65,7 @@ export function CreateProjectForm({ onCancel }: CreateProjectFormProps) {
     try {
       await projectsApi.downloadImportTemplate(format);
     } catch (err) {
-      setTemplateError(err instanceof Error ? err.message : 'Could not download template');
+      setTemplateError(formatApiErrorMessage(err, 'Could not download template'));
     } finally {
       setTemplateBusy(null);
     }
@@ -121,7 +118,7 @@ export function CreateProjectForm({ onCancel }: CreateProjectFormProps) {
         contentBase64,
       });
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Could not create project');
+      setFormError(formatApiErrorMessage(err, 'Could not create project'));
     }
   }
 
@@ -167,13 +164,6 @@ export function CreateProjectForm({ onCancel }: CreateProjectFormProps) {
             you can edit the plan after create.
           </p>
           {templatesQuery.isLoading ? <p className="muted">Loading templates…</p> : null}
-          {templatesQuery.isError ? (
-            <p className="form-error" role="alert">
-              {templatesQuery.error instanceof Error
-                ? templatesQuery.error.message
-                : 'Could not load templates'}
-            </p>
-          ) : null}
           <label>
             Category
             <select

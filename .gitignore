@@ -9,6 +9,17 @@ dist/
 build/
 coverage/
 *.tsbuildinfo
+.scannerwork/
+.sonar/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# API integration testcontainers URL file
+apps/api/test/integration/.db-url
 
 # Turborepo
 .turbo/
@@ -35,5 +46,11 @@ pnpm-debug.log*
 infra/.env
 infra/.env.*
 !infra/.env.example
+
+# Image-only deploy pack (dist/ above would otherwise swallow this dir)
+!infra/dist/
+!infra/dist/README.md
+!infra/dist/compose.yaml
+!infra/dist/.env.example
 .claude/
 infra/.env 2

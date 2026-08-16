@@ -28,3 +28,174 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
+
+  coverage:
+    name: coverage
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Test with coverage (LCOV)
+        run: pnpm test:coverage --concurrency=2
+
+      - name: Upload LCOV artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lcov-coverage
+          path: |
+            apps/*/coverage/lcov.info
+            packages/*/coverage/lcov.info
+          retention-days: 7
+
+  api-integration:
+    name: api-integration
+    needs: ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: API integration (testcontainers Postgres)
+        run: pnpm test:integration
+
+  e2e:
+    name: e2e
+    needs: ci
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: scheduler
+          POSTGRES_PASSWORD: scheduler
+          POSTGRES_DB: scheduler
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U scheduler -d scheduler"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://scheduler:scheduler@localhost:5432/scheduler
+      JWT_SECRET: ci-only-not-secret-32-characters-min
+      SEED_ADMIN_EMAIL: admin@example.com
+      SEED_ADMIN_PASSWORD: change-me
+      E2E_EMAIL: admin@example.com
+      E2E_PASSWORD: change-me
+      PORT: '3100'
+      CORS_ORIGIN: http://127.0.0.1:5173
+      ARGON2_MEMORY_KB: '8192'
+      APP_BASE_URL: http://127.0.0.1:5173
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migrate and seed
+        run: |
+          pnpm --filter api db:migrate
+          pnpm --filter api db:seed
+
+      - name: Install Playwright Chromium
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Start API
+        working-directory: apps/api
+        run: |
+          pnpm exec tsx src/server.ts &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:3100/health >/dev/null; then
+              echo "API ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "API failed to start"
+          exit 1
+
+      - name: Start Vite
+        working-directory: apps/web
+        run: |
+          pnpm exec vite --port 5173 --host 127.0.0.1 &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:5173/ >/dev/null; then
+              echo "Vite ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Vite failed to start"
+          exit 1
+
+      - name: Playwright e2e
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7
+
+  # Requires GitHub secrets SONAR_TOKEN + SONAR_HOST_URL (reachable from runners).
+  # Local SonarQube on :9012 cannot be reached by github.com-hosted runners — see docs/SONAR.md.
+  sonar:
+    name: sonar
+    needs: [ci, coverage]
+    runs-on: ubuntu-latest
+    if: ${{ secrets.SONAR_TOKEN != '' && secrets.SONAR_HOST_URL != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Download LCOV artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: lcov-coverage
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          args: >
+            -Dsonar.qualitygate.wait=true

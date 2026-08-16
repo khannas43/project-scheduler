@@ -28,6 +28,7 @@ export function useCreateProject() {
   const navigate = useNavigate();
 
   return useMutation({
+    meta: { suppressErrorBanner: true },
     mutationFn: (input: CreateProjectInput) => projectsApi.createProject(input),
     onSuccess: async (project) => {
       await queryClient.invalidateQueries({ queryKey: projectsQueryKey });
@@ -58,6 +59,7 @@ export function useCreateProjectFromTemplate() {
   const navigate = useNavigate();
 
   return useMutation({
+    meta: { suppressErrorBanner: true },
     mutationFn: (input: CreateProjectFromTemplateInput) => projectsApi.createProjectFromTemplate(input),
     onSuccess: async (project) => {
       await queryClient.invalidateQueries({ queryKey: projectsQueryKey });
@@ -71,6 +73,7 @@ export function useCreateProjectFromSpreadsheet() {
   const navigate = useNavigate();
 
   return useMutation({
+    meta: { suppressErrorBanner: true },
     mutationFn: (input: CreateProjectFromSpreadsheetInput) =>
       projectsApi.createProjectFromSpreadsheet(input),
     onSuccess: async (project) => {

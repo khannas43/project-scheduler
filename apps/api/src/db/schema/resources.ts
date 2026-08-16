@@ -1,5 +1,6 @@
 import { date, index, integer, numeric, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core';
 
+import { users } from './identity.js';
 import { calendars } from './projects.js';
 import { tasks } from './tasks.js';
 
@@ -15,6 +16,7 @@ export const resources = pgTable('resources', {
   costPerUse: numeric('cost_per_use'),
   accrualType: text('accrual_type'), // 'start' | 'prorated' | 'end'
   calendarId: uuid('calendar_id').references(() => calendars.id),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
   skills: text('skills').array(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
